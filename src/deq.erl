@@ -212,38 +212,3 @@ make_deq_head(_, []) ->
    ?NULL.
 
 
--ifdef(TESTS).
--include_lib("eunit/include/eunit.hrl").
-
-q_enc_deq_test() ->
-   Seq = lists:seq(1, 5),
-   Q0  = lists:foldl(fun q:enq/2, q:new(), Seq),
-   {1, Q1} = q:deq(Q0),   
-   {2, Q2} = q:deq(Q1),   
-   {3, Q3} = q:deq(Q2),   
-   {4, Q4} = q:deq(Q3),   
-   {5, {}} = q:deq(Q4).   
-
-q_hd_tl_test() ->
-   Seq = lists:seq(1, 5),
-   Q   = lists:foldl(fun q:enq/2, q:new(), Seq),
-   1   = q:hd(Q),
-   2   = q:hd(q:tl(Q)),
-   3   = q:hd(q:tl(q:tl(Q))),
-   4   = q:hd(q:tl(q:tl(q:tl(Q)))),
-   5   = q:hd(q:tl(q:tl(q:tl(q:tl(Q))))),
-   {}  = q:tl(q:tl(q:tl(q:tl(q:tl(Q))))).
-
-q_dropwhile_test() ->
-   Seq = lists:seq(1, 5),
-   Q   = q:dropwhile(
-      fun(X) -> X =< 2 end,
-      lists:foldl(fun q:enq/2, q:new(), Seq)
-   ),
-   3   = q:hd(Q),
-   4   = q:hd(q:tl(Q)),
-   5   = q:hd(q:tl(q:tl(Q))),
-   {}  = q:tl(q:tl(q:tl(Q))).
-
--endif.
-
