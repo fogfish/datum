@@ -22,7 +22,8 @@
    new/0,  new/1,
    head/1, last/1, tail/1, lead/1,
    enq/2,  poke/2, deq/1,  pull/1,
-   length/1, is_empty/1, dropwhile/2
+   length/1, is_empty/1, dropwhile/2,
+   list/1
 ]).
 
 %%
@@ -34,7 +35,7 @@ new() ->
    ?NULL.   
 
 new(List) ->
-   make_deq_tail(erlang:length(List), List).
+   make_deq_head(erlang:length(List), List).
 
 %%
 %% queue head element
@@ -175,6 +176,13 @@ dropwhile(Pred, {q, _, _, _}=Q) ->
 
 dropwhile(_,  ?NULL) ->
    q:new().
+
+%%
+%%
+-spec(list/1 :: (datum:q()) -> list()).
+
+list({q, _, Tail, Head}) ->
+   Head ++ lists:reverse(Tail, []).
 
 
 %%%------------------------------------------------------------------
