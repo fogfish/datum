@@ -1,2 +1,6 @@
 
--define(NULL,  {}). %% empty data structure
+%% empty data structure
+-ifndef (NULL).
+-define(NULL,  {}). 
+-endif.
+

@@ -19,10 +19,25 @@
 -include("datum.hrl").
 
 -export([
-   new/0,  new/1,
-   head/1, last/1, tail/1, lead/1,
-   enq/2,  poke/2, deq/1,  pull/1,
-   length/1, is_empty/1, dropwhile/2,
+   new/0,  
+   new/1,
+   
+   %   q - interface
+   head/1, 
+   tail/1, 
+   enq/2,  
+   deq/1,  
+
+   % deq - interface
+   last/1, 
+   lead/1,
+   poke/2, 
+   pull/1,
+
+   % utility interface
+   length/1, 
+   is_empty/1, 
+   dropwhile/2,
    list/1
 ]).
 
@@ -36,6 +51,12 @@ new() ->
 
 new(List) ->
    make_deq_head(erlang:length(List), List).
+
+%%%------------------------------------------------------------------
+%%%
+%%% q - interface
+%%%
+%%%------------------------------------------------------------------
 
 %%
 %% queue head element
@@ -51,7 +72,53 @@ head({q, _N, [_|Tail], []}) ->
    lists:last(Tail);
 
 head(_) ->
-   throw(badarg).
+   exit(badarg).
+
+%%
+%% queue tail (removes head element)
+-spec(tail/1 :: (datum:q()) -> datum:q()).
+
+tail(Q) ->
+   {_, Tail} = deq(Q),
+   Tail.
+
+%%
+%% enqueue element (push to tail)
+-spec(enq/2 :: (any(), datum:q()) -> datum:q()).
+
+enq(E, {q, N, [_]=Tail, []}) ->
+   {q, N + 1, [E], Tail};
+
+enq(E, {q, N, Tail, Head}) ->
+   {q, N + 1, [E|Tail], Head};
+
+enq(E, ?NULL) ->
+   {q, 1, [E], []}.
+
+
+%%
+%% dequeue element (remove first element)
+-spec(deq/1 :: (datum:q()) -> {any(), datum:q()}).
+
+deq({q, _N, [E], []}) ->
+   {E, deq:new()};
+
+deq({q, N, [Last|Tail], []}) ->
+   [E|Head] = lists:reverse(Tail, []),
+   {E, {q, N - 1, [Last], Head}};
+
+deq({q, N, Tail, [E]}) ->
+   {E, make_deq_tail(N - 1, Tail)};
+
+deq({q, N, Tail, [E|Head]}) ->
+   {E, {q, N - 1, Tail, Head}}.
+
+
+%%%------------------------------------------------------------------
+%%%
+%%% deq - interface
+%%%
+%%%------------------------------------------------------------------
 
 %%
 %% queue last element
@@ -67,16 +134,7 @@ last({q, _N, [], [_|Head]}) ->
    lists:last(Head);
 
 last(_) ->
-   throw(badarg).
-
-
-%%
-%% queue tail (removes head element)
--spec(tail/1 :: (datum:q()) -> datum:q()).
-
-tail(Q) ->
-   {_, Tail} = deq(Q),
-   Tail.
+   exit(badarg).
 
 %%
 %% queue init (removes rear element)
@@ -86,18 +144,6 @@ lead(Q) ->
    {_, Lead} = pull(Q),
    Lead.
 
-%%
-%% enqueue element (push to tail)
--spec(enq/2 :: (any(), datum:q()) -> datum:q()).
-
-enq(E, {q, N, [_]=Tail, []}) ->
-   {q, N + 1, [E], Tail};
-
-enq(E, {q, N, Tail, Head}) ->
-   {q, N + 1, [E|Tail], Head};
-
-enq(E, ?NULL) ->
-   {q, 1, [E], []}.
 
 %%
 %% poke element (insert element to front of queue)
@@ -114,28 +160,11 @@ poke(E, ?NULL) ->
 
 
 %%
-%% dequeue element (remove first element)
--spec(deq/1 :: (datum:q()) -> {any(), datum:q()}).
-
-deq({q, _N, [E], []}) ->
-   {E, q:new()};
-
-deq({q, N, [Last|Tail], []}) ->
-   [E|Head] = lists:reverse(Tail, []),
-   {E, {q, N - 1, [Last], Head}};
-
-deq({q, N, Tail, [E]}) ->
-   {E, make_deq_tail(N - 1, Tail)};
-
-deq({q, N, Tail, [E|Head]}) ->
-   {E, {q, N - 1, Tail, Head}}.
-
-%%
 %% removes last element
 -spec(pull/1 :: (datum:q()) -> {any(), datum:q()}).
 
 pull({q, _N, [], [E]}) ->
-   {E, q:new()};
+   {E, deq:new()};
 
 pull({q, N, [], [Head|Tail]}) ->
    [E|T] = lists:reverse(Tail, []),
@@ -146,6 +175,13 @@ pull({q, N, [E], Head}) ->
 
 pull({q, N, [E|Tail], Head}) ->
    {E, {q, N - 1, Tail, Head}}.
+
+%%%------------------------------------------------------------------
+%%%
+%%% utility - interface
+%%%
+%%%------------------------------------------------------------------
+
 
 %%
 %% check length of queue
@@ -175,7 +211,7 @@ dropwhile(Pred, {q, _, _, _}=Q) ->
    end;
 
 dropwhile(_,  ?NULL) ->
-   q:new().
+   deq:new().
 
 %%
 %%
