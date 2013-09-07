@@ -188,7 +188,9 @@ pull({q, N, [E|Tail], Head}) ->
 -spec(length/1 :: (datum:q()) -> boolean()).
 
 length({q, N, _, _}) ->
-   N.
+   N;
+length(?NULL) ->
+   0.
 
 %%
 %% check if the queue is empty
