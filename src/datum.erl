@@ -23,10 +23,12 @@
 
 %%
 %% data types
--type(q() :: {q, integer(), list(), list()}).
+-type(q()      :: {q, integer(), list(), list()}).
+-type(stream() :: {s, any(), function()}).
 
 -export_type([
    q/0
+  ,stream/0
 ]).
 
 %%
