@@ -43,8 +43,7 @@
   ,list/1
   ,list/2
   ,is_empty/1
-
-  % ,build/1   %% build from data type ???
+  ,build/1
 ]).
 
 %%
@@ -257,3 +256,14 @@ is_empty(?NULL) ->
    true;
 is_empty(_) ->
    false.
+
+%%
+%% build stream from data type
+-spec(build/1 :: (any()) -> datum:stream()).
+
+build([]) ->
+   new();
+build([Head|Tail]) ->
+   new(Head, fun() -> build(Tail) end).
+
+
