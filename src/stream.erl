@@ -39,9 +39,10 @@
   ,unfold/2
   ,zip/1
   ,zip/2
-
+  % utility
   ,list/1
   ,list/2
+  ,is_empty/1
 
   % ,build/1   %% build from data type ???
 ]).
@@ -248,3 +249,11 @@ list(N, Stream) ->
 		)
 	).
 
+%%
+%% check if the queue is empty
+-spec(is_empty/1 :: (datum:stream()) -> boolean()).
+
+is_empty(?NULL) ->
+   true;
+is_empty(_) ->
+   false.
