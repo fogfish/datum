@@ -34,6 +34,8 @@
   ,foreach/2
   ,map/2
   ,scan/3
+  ,split/2
+  ,splitwith/2
   ,take/2
   ,takewhile/2
   ,unfold/2
@@ -176,6 +178,33 @@ scan(Fun, Acc0, {s, Head, Tail}) ->
 scan(_, Acc0, ?NULL) ->
 	new(Acc0).
 
+%%
+%% partitions stream into two streams. The split behaves as if it is defined as 
+%% consequent take(N, Stream), drop(N, Stream). The eos marker split streams 
+-spec(split/2 :: (integer(), datum:stream()) -> datum:stream()).
+
+split(1, {s, Head, Tail}) ->
+   new(Head, fun() -> new(eos, Tail) end);
+split(N, {s, Head, Tail}) ->
+   new(Head, fun() -> split(N - 1, Tail()) end);
+split(_, ?NULL) ->
+   ?NULL.
+
+%%
+%% partitions stream into two streams according to predicate.
+%% The splitwith/2 behaves as if it is defined as consequent 
+%% takewhile(Pred, Stream), dropwhile(Pred, Stream)
+-spec(splitwith/2 :: (function(), datum:stream()) -> datum:stream() | {prefix, datum:stream()}).
+
+splitwith(Pred, {s, Head, Tail}) ->
+   case Pred(Head) of
+      true  -> 
+         new(Head, fun() -> splitwith(Pred, Tail()) end);
+      false ->
+         new(eos,  fun() -> new(Head, Tail) end)
+     end;
+splitwith(_, ?NULL) ->
+   ?NULL.
 
 %%
 %% returns a newly-allocated stream containing the first n elements of 
@@ -185,7 +214,9 @@ scan(_, Acc0, ?NULL) ->
 take(0, _) ->
 	?NULL;
 take(N, {s, Head, Tail}) ->
-	new(Head, fun() -> take(N - 1, Tail()) end).
+	new(Head, fun() -> take(N - 1, Tail()) end);
+take(_, ?NULL) ->
+   ?NULL.
 
 %%
 %% returns a newly-allocated stream that contains those elements from stream 
