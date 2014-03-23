@@ -25,10 +25,12 @@
 %% data types
 -type(q()      :: {q, integer(), list(), list()}).
 -type(stream() :: {s, any(), function()}).
+-type(rbtree() :: {r | b, rbtree(), any(), rbtree()}).
 
 -export_type([
    q/0
   ,stream/0
+  ,rbtree/0
 ]).
 
 %%

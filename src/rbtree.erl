@@ -26,7 +26,7 @@
 
 -type(key()     :: any()).
 -type(element() :: any()).
--type(tree()    :: {r | b, tree(), {key(), element()}, tree()} | ?NULL).
+-type(tree()    :: datum:rbtree() | ?NULL).
 
 %%
 %% create new empty red-black tree

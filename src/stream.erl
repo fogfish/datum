@@ -194,7 +194,7 @@ split(_, ?NULL) ->
 %% partitions stream into two streams according to predicate.
 %% The splitwith/2 behaves as if it is defined as consequent 
 %% takewhile(Pred, Stream), dropwhile(Pred, Stream)
--spec(splitwith/2 :: (function(), datum:stream()) -> datum:stream() | {prefix, datum:stream()}).
+-spec(splitwith/2 :: (function(), datum:stream()) -> datum:stream()).
 
 splitwith(Pred, {s, Head, Tail}) ->
    case Pred(Head) of
