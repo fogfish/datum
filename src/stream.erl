@@ -280,7 +280,7 @@ list(N, Stream) ->
 	).
 
 %%
-%% check if the queue is empty
+%% check if stream is empty
 -spec(is_empty/1 :: (datum:stream()) -> boolean()).
 
 is_empty(?NULL) ->
