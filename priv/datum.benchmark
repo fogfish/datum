@@ -1,0 +1,42 @@
+{code_paths, ["./ebin"]}.
+{log_level,       info}.
+{report_interval, 1}.
+{driver,          datum_benchmark}.
+
+%%
+%% workload
+{mode,            max}.
+{duration,          1}.
+{concurrent,        1}.
+%%
+{key_generator,     {uniform_int, 1000000}}.
+{value_generator,   {fixed_bin,     1000}}.
+
+
+%%
+%% data structure(s)
+% {struct,   bst}.
+% {operations, [
+%    {insert,  1}
+%   ,{lookup,  1}
+% ]}.
+
+{struct,   rbtree}.
+{operations, [
+   {insert,  1}
+  ,{lookup,  1}
+]}.
+
+
+% {struct,   dict}.
+% {operations, [
+%    {store,   1}
+%   ,{find,    1}
+% ]}.
+
+% {struct,   gb_trees}.
+% {operations, [
+%    {enter,   1}
+%   ,{lookup,  1}
+% ]}.
+

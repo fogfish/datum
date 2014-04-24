@@ -1,6 +1,6 @@
 
 %% empty data structure
 -ifndef (NULL).
--define(NULL,  {}). 
+-define(NULL,  {}).  
 -endif.
 

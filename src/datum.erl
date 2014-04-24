@@ -18,29 +18,36 @@
 -module(datum).
 
 -export([
-   is_queue/1
+   typeof/1
 ]).
 
 %%
 %% data types
 -type(q()      :: {q, integer(), list(), list()}).
 -type(stream() :: {s, any(), function()}).
--type(rbtree() :: {r | b, rbtree(), any(), rbtree()}).
+-type(tree()   :: {t, any()}).
 
 -export_type([
    q/0
   ,stream/0
-  ,rbtree/0
+  ,tree/0
 ]).
 
 %%
 %%
--spec(is_queue/1 :: (any()) -> true | false).
+-spec(typeof/1 :: (any()) -> q | stream | tree | undefined).
 
-is_queue({q, _, _, _}) ->
-   true;
-is_queue(_) ->
-   false.
+typeof(X)
+ when is_tuple(X) ->
+  type(erlang:element(1, X));
+
+typeof(_) ->
+   undefined.
+
+type(q) -> q;
+type(s) -> stream;
+type(t) -> tree.
+
 
 
 
