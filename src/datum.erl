@@ -26,16 +26,18 @@
 -type(q()      :: {q, integer(), list(), list()}).
 -type(stream() :: {s, any(), function()}).
 -type(tree()   :: {t, any()}).
+-type(heap()   :: {h, integer(), any()}).
 
 -export_type([
    q/0
   ,stream/0
   ,tree/0
+  ,heap/0
 ]).
 
 %%
 %%
--spec(typeof/1 :: (any()) -> q | stream | tree | undefined).
+-spec(typeof/1 :: (any()) -> q | stream | tree | heap | undefined).
 
 typeof(X)
  when is_tuple(X) ->
@@ -46,6 +48,7 @@ typeof(_) ->
 
 type(q) -> q;
 type(s) -> stream;
+type(h) -> heap;
 type(t) -> tree.
 
 

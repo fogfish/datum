@@ -145,6 +145,8 @@ whereis(Key, #ring{}=R) ->
 predecessors(Key, #ring{}=R) ->
    predecessors(R#ring.n, Key, R).
 
+predecessors(_,_Addr, #ring{keys=[]}) ->
+   [];
 predecessors(N, Addr, #ring{}=R)
  when is_integer(Addr) ->
    {Head, Tail} = lists:splitwith(fun({Shard, _}) -> Shard < Addr end, R#ring.keys),
@@ -167,6 +169,8 @@ predecessors(N, Key, Ring) ->
 successors(Key, #ring{}=R) ->
    successors(R#ring.n, Key, R).
 
+successors(_,_Addr, #ring{keys=[]}) ->
+   [];
 successors(N, Addr, #ring{}=R)
  when is_integer(Addr) ->
    {Head, Tail} = lists:splitwith(fun({Shard, _}) -> Shard < Addr end, R#ring.keys),
