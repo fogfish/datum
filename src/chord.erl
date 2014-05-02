@@ -32,11 +32,12 @@
   ,predecessors/3
   ,members/1
   ,lookup/2
-  ,join/2
+  ,join/3
   ,leave/2
 ]).
 
 -type(key()  :: any()).
+-type(val()  :: any()).
 -type(addr() :: integer()).
 
 %%
@@ -46,7 +47,7 @@
   ,q      =   8       :: integer() % number of shards (ranges)
   ,hash   = md5       :: atom()    % hash algorithm
   ,size   =   0       :: integer() % size of ring
-  ,keys   = []        :: [{addr(), key()}]
+  ,keys   = []        :: [{addr(), {key(), val()}}]
 }).
 
 %%
@@ -126,7 +127,7 @@ address(#ring{}=R) ->
 
 %%
 %% lookup key value at address
--spec(whereis/2 :: (key() | addr(), #ring{}) -> key()).
+-spec(whereis/2 :: (key() | addr(), #ring{}) -> {key(), val()}).
 
 whereis(Addr, #ring{}=R)
  when is_integer(Addr) ->
@@ -139,8 +140,8 @@ whereis(Key, #ring{}=R) ->
 
 %%
 %% return list of predecessors 
--spec(predecessors/2 :: (key() | addr(), #ring{}) -> [key()]).
--spec(predecessors/3 :: (integer(), key() | addr(), #ring{}) -> [key()]).
+-spec(predecessors/2 :: (key() | addr(), #ring{}) -> [{key(), val()}]).
+-spec(predecessors/3 :: (integer(), key() | addr(), #ring{}) -> [{key(), val()}]).
 
 predecessors(Key, #ring{}=R) ->
    predecessors(R#ring.n, Key, R).
@@ -163,8 +164,8 @@ predecessors(N, Key, Ring) ->
 
 %% 
 %% return list of successors
--spec(successors/2 :: (key() | addr(), #ring{}) -> [key()]).
--spec(successors/3 :: (integer(), key() | addr(), #ring{}) -> [key()]).
+-spec(successors/2 :: (key() | addr(), #ring{}) -> [{key(), val()}]).
+-spec(successors/3 :: (integer(), key() | addr(), #ring{}) -> [{key(), val()}]).
 
 successors(Key, #ring{}=R) ->
    successors(R#ring.n, Key, R).
@@ -189,11 +190,11 @@ successors(N, Key, Ring) ->
 -spec(members/1 :: (#ring{}) -> [key()]).
 
 members(#ring{}=S) ->
-   [Key || {_, Key} <- S#ring.keys].
+   [X || {_, X} <- S#ring.keys].
 
 %%
 %% lookup key / shard (in contrast with whereis return actual shard)
--spec(lookup/2 :: (key() | addr(), #ring{}) -> [{addr(), key()}]).
+-spec(lookup/2 :: (key() | addr(), #ring{}) -> [{addr(), {key(), val()}}]).
 
 lookup(Addr, #ring{}=R)
  when is_integer(Addr) ->
@@ -210,15 +211,15 @@ lookup(Key, #ring{}=R) ->
 
 %%
 %% join node to the ring
--spec(join/2 :: (key(), #ring{}) -> #ring{}).
+-spec(join/3 :: (key(), val(), #ring{}) -> #ring{}).
 
-join(Key, #ring{}=R) ->
-   join(address(Key, R), Key, R).
+join(Key, Val, #ring{}=R) ->
+   join(address(Key, R), Key, Val, R).
 
-join(Addr, Key, #ring{}=R) ->
+join(Addr, Key, Val, #ring{}=R) ->
    R#ring{
       size = R#ring.size + 1
-     ,keys = orddict:store(Addr, Key, R#ring.keys)
+     ,keys = orddict:store(Addr, {Key, Val}, R#ring.keys)
    }.
 
 %%

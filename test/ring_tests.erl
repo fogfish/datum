@@ -5,7 +5,17 @@
 -define(M,      8).
 -define(N,      3).
 -define(Q,     16).
--define(KEYS, [<<"deadbeef">>, <<"beeff00d">>, <<"f001cafe">>, atom, list, hash, 30, 128, 150]).
+-define(KEYS, [
+   {<<"deadbeef">>, self()}
+  ,{<<"beeff00d">>, self()}
+  ,{<<"f001cafe">>, self()}
+  ,{atom, self()}
+  ,{list, self()}
+  ,{hash, self()}
+  ,{30,   self()}
+  ,{128,  self()}
+  ,{150,  self()}
+]).
 
 chord_test_() ->
    {foreach,
@@ -27,7 +37,13 @@ chord_test_() ->
 
 
 chord() ->
-   {chord, lists:foldl(fun chord:join/2, chord:new([{hash, ?HASH}, {m, ?M}, {n, ?N}, {q, ?Q}]), ?KEYS)}.
+   {chord, 
+      lists:foldl(
+         fun({Key, Val}, Acc) -> chord:join(Key, Val, Acc) end,
+         chord:new([{hash, ?HASH}, {m, ?M}, {n, ?N}, {q, ?Q}]), 
+         ?KEYS
+      )
+   }.
 
 free(_) ->
    ok.
@@ -98,9 +114,9 @@ successors({Mod, Ring}) ->
 %%
 %%
 lookup({Mod, Ring}) ->
-   Key       = lists:nth(random:uniform(length(?KEYS)), ?KEYS),
+   {Key,Pid} = lists:nth(random:uniform(length(?KEYS)), ?KEYS),
    {Addr, _} = chord:whereis(Key, Ring),
-   ?_assertEqual([{Addr, Key}], chord:lookup(Key, Ring)).
+   ?_assertEqual([{Addr, {Key, Pid}}], chord:lookup(Key, Ring)).
 
 
 
