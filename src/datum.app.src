@@ -1,7 +1,7 @@
 {application, datum,
    [
       {description, "pure functional data structure"},
-      {vsn,         "0.8.0"},
+      {vsn,         "0.8.1"},
       {modules,     []},
       {registered,  []},
       {applications,[

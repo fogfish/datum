@@ -49,7 +49,8 @@ typeof(_) ->
 type(q) -> q;
 type(s) -> stream;
 type(h) -> heap;
-type(t) -> tree.
+type(t) -> tree;
+type(_) -> undefined.
 
 
 

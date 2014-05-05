@@ -44,6 +44,8 @@
   % utility
   ,list/1
   ,list/2
+  ,prefix/1
+  ,prefix/2  
   ,is_empty/1
   ,build/1
 ]).
@@ -67,14 +69,18 @@ new(Head, Fun)
 -spec(head/1 :: (datum:stream()) -> any()).
 
 head({s, Head, _}) ->
-	Head.
+	Head;
+head(_) ->
+   exit(badarg).
 
 %%
 %% stream tail
 -spec(tail/1 :: (datum:stream()) -> datum:stream()).
 
 tail({s, _, Fun}) ->
-	Fun().
+	Fun();
+tail(_) ->
+   exit(badarg).
 
 %%
 %% takes list of elements and returns a newly-allocated stream composed of 
@@ -250,10 +256,10 @@ unfold(Head, Fun)
 -spec(zip/1 :: ([datum:stream()]) -> datum:stream()).
 -spec(zip/2 :: (datum:stream(), datum:stream()) -> datum:stream()).
 
-zip(List) ->
-	case [head(X) || X <- List, X =/= ?NULL] of
-		Head when length(Head) =:= length(List) ->
-			new(Head, fun() -> zip([tail(X) || X <- List]) end);
+zip(Streams) ->
+	case [head(X) || X <- Streams, X =/= ?NULL] of
+		Head when length(Head) =:= length(Streams) ->
+			new(Head, fun() -> zip([tail(X) || X <- Streams]) end);
 		_ ->
 			?NULL
 	end.
@@ -278,6 +284,29 @@ list(N, Stream) ->
 			stream:take(N, Stream)
 		)
 	).
+
+%%
+%% accumulate stream prefix to list and return remaining stream
+-spec(prefix/1 :: (datum:stream()) -> {list(), datum:stream()}).
+-spec(prefix/2 :: (function(), datum:stream()) -> {list(), datum:stream()}).
+
+prefix(Stream) ->
+   prefix(fun(X) -> X =/= eos end, Stream).
+
+prefix(Pred, Stream) ->
+   prefix(Pred, [], Stream).
+
+prefix(Pred, Acc, {s, eos, Tail}) ->
+   {lists:reverse(Acc), Tail()};
+prefix(Pred, Acc, {s, Head, Tail}=Stream) ->
+   case Pred(Head) of
+      true  ->
+         prefix(Pred, [Head|Acc], Tail());
+      false ->
+         {lists:reverse(Acc), Stream}
+   end;
+prefix(_Fun, Acc, ?NULL) ->
+   {lists:reverse(Acc), ?NULL}.
 
 %%
 %% check if stream is empty
