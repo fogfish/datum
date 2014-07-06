@@ -80,7 +80,7 @@ head(_) ->
 tail({s, _, Fun}) ->
 	Fun();
 tail(_) ->
-   exit(badarg).
+   {}.
 
 %%
 %% takes list of elements and returns a newly-allocated stream composed of 
@@ -273,17 +273,13 @@ zip(A, B) ->
 -spec(list/1 :: (datum:stream()) -> list()).
 -spec(list/2 :: (integer(), datum:stream()) -> list()).
 
-list(Stream) ->
-	lists:reverse(
-		stream:fold(fun(X, Acc) -> [X|Acc] end, [], Stream)
-	).
+list({s, _, _}=Stream) ->
+   [stream:head(Stream) | list(stream:tail(Stream))];
+list(_) ->
+   [].
 
 list(N, Stream) ->
-	lists:reverse(
-		stream:fold(fun(X, Acc) -> [X|Acc] end, [], 
-			stream:take(N, Stream)
-		)
-	).
+   list(stream:take(N, Stream)).
 
 %%
 %% accumulate stream prefix to list and return remaining stream
