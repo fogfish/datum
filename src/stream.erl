@@ -29,6 +29,7 @@
   ,constant/1
   ,drop/2
   ,dropwhile/2
+  ,dropwhile/3
   ,filter/2
   ,fold/3
   ,foreach/2
@@ -111,6 +112,7 @@ drop(_, ?NULL) ->
 %% drops elements from stream while predicate returns true and returns remaining
 %% stream suffix.
 -spec(dropwhile/2 :: (function(), datum:stream()) -> datum:stream()).
+-spec(dropwhile/3 :: (function(), integer(), datum:stream()) -> {integer(), datum:stream()}).
 
 dropwhile(Pred, {s, Head, Tail}=Stream) ->
    case Pred(Head) of
@@ -122,6 +124,15 @@ dropwhile(Pred, {s, Head, Tail}=Stream) ->
 dropwhile(_, ?NULL) ->
    ?NULL.
 
+dropwhile(Pred, N, {s, Head, Tail}=Stream) ->
+   case Pred(Head) of
+      true  -> 
+         dropwhile(Pred, N + 1, Tail()); 
+      false -> 
+         {N, Stream}
+   end;
+dropwhile(_, N, ?NULL) ->
+   {N, ?NULL}.
 
 %%
 %% returns a newly-allocated stream that contains only those elements x of the 
@@ -292,7 +303,7 @@ prefix(Stream) ->
 prefix(Pred, Stream) ->
    prefix(Pred, [], Stream).
 
-prefix(Pred, Acc, {s, eos, Tail}) ->
+prefix(_Pred, Acc, {s, eos, Tail}) ->
    {lists:reverse(Acc), Tail()};
 prefix(Pred, Acc, {s, Head, Tail}=Stream) ->
    case Pred(Head) of
