@@ -14,72 +14,76 @@
 %%   limitations under the License.
 %%
 %% @description
-%%   heap ordered tree - each element at node is no lager then elements at its children
+%%   heap ordered tree - each element at node is no large then elements at its children
 -module(heap).
 
 -include("datum.hrl").
 
 -export([
-   new/0
-  % ,new/1
-
+   new/0      %% O(1)
   ,head/1     %% O(1)
   ,tail/1     %% O(log n)
-  ,insert/2   %% O(log n)
-
-  ,is_empty/1 %% O(1)
-  ,list/1     
+  ,insert/3   %% O(log n)
+  ,size/1     %% O(1)
+  ,list/1     %% O(n)
 ]).
 
-% %%
-% %% internal state
-% -record(heap, {
-
-% }).
+-type(heap()  :: {heap(), rank(), key(), val(), heap()} | ?NULL).
+-type(key()   :: any()).
+-type(val()   :: any()).
+-type(rank()  :: integer()).
 
 %%
 %% create new empty heap
+-spec(new/0 :: () -> datum:heap()).
+
 new() ->
-   ?NULL.
-
+   {h, 0, ?NULL}.
 
 %%
-%%
-head({_, X, _, _}) ->
-   X;
+%% read head value
+-spec(head/1 :: (datum:heap()) -> {key(), val()}).
 
+head({h, _, {_, _, Key, Val, _}}) ->
+   {Key, Val};
 head(_) ->
    exit(badarg).
 
 %%
-%%
-tail({_, _, A, B}) ->
-   merge(A, B);
+%% return tail value
+-spec(tail/1 :: (datum:heap()) -> datum:heap()).
 
+tail({h, Size, {A, _, _, _, B}}) ->
+   {h, Size - 1, merge(A, B)};
 tail(_) ->
    exit(badarg).
 
 %%
-%%
-insert(E, Heap) ->
-   merge({1, E, ?NULL, ?NULL}, Heap).
+%% insert new value
+-spec(insert/3 :: (key(), val(), datum:heap()) -> heap()).
+
+insert(Key, Val, {h, Size, Heap}) ->
+   {h, Size + 1, merge({?NULL, 1, Key, Val, ?NULL}, Heap)}.
 
 %%
-%%
-is_empty(?NULL) ->
-   true;
+%% return heap size
+-spec(size/1 :: (datum:heap()) -> integer()).
 
-is_empty(_) ->
-   false.
+size({h, Size, _}) ->
+   Size;
+size(_) ->
+   0.
 
 %%
 %% return list of elements
-list(?NULL) -> [];
-list(Heap)  -> list(Heap, []).
+-spec(list/1 :: (datum:heap()) -> [{key(), val()}]).
 
-list(?NULL, Acc) ->
+list({h, _, _} = Heap) -> 
+   list(Heap, []).
+
+list({h, _, ?NULL}, Acc) -> 
    lists:reverse(Acc);
-list(Heap,  Acc) ->
+list({h, _, _}=Heap,  Acc) -> 
    list(tail(Heap), [head(Heap)|Acc]).
 
 
@@ -97,28 +101,28 @@ merge(X, ?NULL) ->
 merge(?NULL, X) ->
    X;
 
-merge({_, X, A, B}, {_, Y, _, _}=H)
- when X =< Y ->
-   make(X, A, merge(B, H));
+merge({A, _, Kx, Vx, B}, {_, _, Ky, _, _}=H)
+ when Kx =< Ky ->
+   make(Kx, Vx, A, merge(B, H));
 
-merge(H, {_, Y, A, B}) ->
-   make(Y, A, merge(H, B)).
+merge(H, {A, _, K, V, B}) ->
+   make(K, V, A, merge(H, B)).
 
 %%
 %%
 rank(?NULL) ->
    0;
-rank({R, _, _, _}) ->
+rank({_, R, _, _, _}) ->
    R.
 
 %%
 %%
-make(X, A, B) ->
+make(K, V, A, B) ->
    case rank(A) >= rank(B) of
       true  ->
-         {rank(B) + 1, X, A, B};
+         {A, rank(B) + 1, K, V, B};
       false ->
-         {rank(A) + 1, X, B, A}
+         {B, rank(A) + 1, K, V, A}
    end.
 
 

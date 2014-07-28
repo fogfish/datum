@@ -19,9 +19,10 @@
 -include("datum.hrl").
 
 -export([
-	new/0     % O(1)
+   new/0     % O(1)
   ,insert/3  % O(log n)
   ,lookup/2  % O(log n)
+  ,apply/3   % O(log n)
 ]).
 
 -type(key()     :: any()).
@@ -34,6 +35,28 @@
 
 new() ->
 	?NULL.
+
+%%
+%% apply function to element
+-spec(apply/3 :: (function(), key(), tree()) -> tree()).
+
+apply(Fun, Key, T) ->
+   erlang:setelement(1, apply_el(Fun, Key, T), b).
+
+apply_el(Fun, Key, ?NULL) ->
+   {r, ?NULL, {Key, Fun(undefined)}, ?NULL};
+
+apply_el(Fun, Key, {C, L, {Key, Val}, R}) ->
+   {C, L, {Key, Fun(Val)}, R};
+
+apply_el(Fun, Key, {C, L, {K, _}=X, R})
+ when Key < K ->
+   balance({C, apply_el(Fun, Key, L), X, R});
+
+apply_el(Fun, Key, {C, L, {K, _}=X, R})
+ when Key > K ->
+   balance({C, L, X, apply_el(Fun, Key, R)}).
+
 
 %%
 %% insert element
