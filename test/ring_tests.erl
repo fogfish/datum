@@ -35,12 +35,39 @@ chord_test_() ->
       ] 
    }.
 
+rint_test_() ->
+   {foreach,
+      fun ring/0,
+      fun free/1,
+      [
+         fun size/1
+        ,fun addresses/1
+        ,fun address_addr/1
+        ,fun address_hash/1
+        ,fun address_binary/1
+        ,fun address_term/1
+        ,fun whereis/1
+        ,fun predecessors/1
+        ,fun successors/1
+        ,fun lookup/1
+      ] 
+   }.
+
 
 chord() ->
    {chord, 
       lists:foldl(
          fun({Key, Val}, Acc) -> chord:join(Key, Val, Acc) end,
          chord:new([{hash, ?HASH}, {m, ?M}, {n, ?N}, {q, ?Q}]), 
+         ?KEYS
+      )
+   }.
+
+ring() ->
+   {ring, 
+      lists:foldl(
+         fun({Key, Val}, Acc) -> ring:join(Key, Val, Acc) end,
+         ring:new([{hash, ?HASH}, {m, ?M}, {n, ?N}, {q, ?Q}]), 
          ?KEYS
       )
    }.
@@ -91,32 +118,48 @@ whereis({Mod, Ring}) ->
 
 %%
 %%
-predecessors({Mod, Ring}) ->
+predecessors({chord=Mod, Ring}) ->
    Key  = <<"qazwsxedc">>,
-   {_, Shard} = chord:whereis(Key, Ring),
+   {_, Shard} = Mod:whereis(Key, Ring),
    {Head, Tail} = lists:splitwith(
       fun(X) -> X =/= Shard end, 
-      chord:members(Ring)
+      Mod:members(Ring)
    ),
-   ?_assert(lists:prefix(Mod:predecessors(Key, Ring), lists:reverse(Head) ++ lists:reverse(Tail))).
+   ?_assert(
+      lists:prefix(
+         [{X, Y} || {_, X, Y} <- Mod:predecessors(Key, Ring)], 
+         lists:reverse(Head) ++ lists:reverse(Tail)
+      )
+   );
+predecessors(_) ->
+   [].
 
 %%
 %%
-successors({Mod, Ring}) ->
+successors({chord=Mod, Ring}) ->
    Key  = <<"qazwsxedc">>,
-   {_, Shard} = chord:whereis(Key, Ring),
+   {_, Shard} = Mod:whereis(Key, Ring),
    {Head, Tail} = lists:splitwith(
       fun(X) -> X =/= Shard end, 
-      chord:members(Ring)
+      Mod:members(Ring)
    ),
-   ?_assert(lists:prefix(Mod:successors(Key, Ring), Tail ++ Head)).
+   ?_assert(
+      lists:prefix(
+         [{X, Y} || {_, X, Y} <- Mod:successors(Key, Ring)], 
+         Tail ++ Head
+      )
+   );
+successors(_) ->
+   [].
 
 %%
 %%
-lookup({Mod, Ring}) ->
+lookup({chord=Mod, Ring}) ->
    {Key,Pid} = lists:nth(random:uniform(length(?KEYS)), ?KEYS),
-   {Addr, _} = chord:whereis(Key, Ring),
-   ?_assertEqual([{Addr, {Key, Pid}}], chord:lookup(Key, Ring)).
+   {Addr, _} = Mod:whereis(Key, Ring),
+   ?_assertEqual([{Addr, Key, Pid}], Mod:lookup(Key, Ring));
+lookup(_) ->
+   [].
 
 
 

@@ -31,6 +31,7 @@
   ,predecessors/2
   ,predecessors/3
   ,members/1
+  ,filter/2
   ,lookup/2
   ,join/3
   ,leave/2
@@ -44,7 +45,7 @@
 -record(ring, {
    m      =   8       :: integer() % ring modulo
   ,n      =   3       :: integer() % number of replica
-  ,q      =   8       :: integer() % number of shards (ranges)
+  ,q      =   8       :: integer() % number of ranges (shards)
   ,hash   = md5       :: atom()    % hash algorithm
   ,size   =   0       :: integer() % size of ring
   ,keys   = []        :: [{addr(), {key(), val()}}]
@@ -54,10 +55,10 @@
 %% create new chord ring
 %%
 %% Options:
-%%   {modulo,  integer()}  - ring module power of 2 is required
-%%   {hash,    md5 | sha1} - ring hashing algorithm
-%%   {shard,   integer()}  - number of shard 
-%%   {replica, integer()}  - number of replicas
+%%   {m,    integer()} - ring module power of 2 is required
+%%   {n,    integer()} - number of replicas
+%%   {q,    integer()}  - number of shard 
+%%   {hash, md5 | sha1} - ring hashing algorithm
 -spec(new/0 :: () -> #ring{}).
 -spec(new/1 :: (list()) -> #ring{}).
 
@@ -93,7 +94,7 @@ init([], R) ->
 -spec(size/1 :: (#ring{}) -> integer()).
 
 size(#ring{}=R) ->
-   R#ring.size.
+   length(R#ring.keys).
 
 %%
 %% maps key into address on the ring
@@ -126,7 +127,7 @@ address(#ring{}=R) ->
    lists:seq(Inc - 1, Top - 1, Inc).
 
 %%
-%% lookup key value at address
+%% lookup key-value at address
 -spec(whereis/2 :: (key() | addr(), #ring{}) -> {key(), val()}).
 
 whereis(Addr, #ring{}=R)
@@ -140,32 +141,35 @@ whereis(Key, #ring{}=R) ->
 
 %%
 %% return list of predecessors 
--spec(predecessors/2 :: (key() | addr(), #ring{}) -> [{key(), val()}]).
--spec(predecessors/3 :: (integer(), key() | addr(), #ring{}) -> [{key(), val()}]).
+-spec(predecessors/2 :: (key() | addr(), #ring{}) -> [{addr(), key(), val()}]).
+-spec(predecessors/3 :: (integer(), key() | addr(), #ring{}) -> [{addr(), key(), val()}]).
 
 predecessors(Key, #ring{}=R) ->
    predecessors(R#ring.n, Key, R).
 
-predecessors(_,_Addr, #ring{keys=[]}) ->
+predecessors(_, _Addr, #ring{keys=[]}) ->
    [];
-predecessors(N, Addr, #ring{}=R)
+predecessors(N,  Addr, #ring{}=R)
  when is_integer(Addr) ->
+   %% split tokens to before and after address
    {Head, Tail} = lists:splitwith(fun({Shard, _}) -> Shard < Addr end, R#ring.keys),
    List = case length(Head) of
       L when L >= N ->
          element(1, lists:split(N, lists:reverse(Head)));
-      L ->
-         lists:reverse(Head) ++ element(1, lists:split(N - L, lists:reverse(Tail)))
+      L when (N - L) =< length(Tail) ->
+         lists:reverse(Head) ++ element(1, lists:split(N - L, lists:reverse(Tail)));
+      _ ->
+         lists:reverse(Head) ++ lists:reverse(Tail)
    end,
-   [X || {_, X} <- List];
+   [{X, Key, Val} || {X, {Key, Val}} <- List];
 
 predecessors(N, Key, Ring) ->
    predecessors(N, address(Key, Ring), Ring).
 
 %% 
 %% return list of successors
--spec(successors/2 :: (key() | addr(), #ring{}) -> [{key(), val()}]).
--spec(successors/3 :: (integer(), key() | addr(), #ring{}) -> [{key(), val()}]).
+-spec(successors/2 :: (key() | addr(), #ring{}) ->[{addr(), key(), val()}]).
+-spec(successors/3 :: (integer(), key() | addr(), #ring{}) -> [{addr(), key(), val()}]).
 
 successors(Key, #ring{}=R) ->
    successors(R#ring.n, Key, R).
@@ -178,10 +182,13 @@ successors(N, Addr, #ring{}=R)
    List = case length(Tail) of
       L when L >= N ->
          element(1, lists:split(N, Tail));
-      L ->
-         Tail ++ element(1, lists:split(N - L, Head))
+      L when (N - L) =< length(Tail) ->
+         Tail ++ element(1, lists:split(N - L, Head));
+      _ ->
+         Tail ++ Head
    end,
-   [X || {_, X} <- List];
+   [{X, Key, Val} || {X, {Key, Val}} <- List];
+
 successors(N, Key, Ring) ->
    successors(N, address(Key, Ring), Ring).
 
@@ -193,16 +200,27 @@ members(#ring{}=S) ->
    [X || {_, X} <- S#ring.keys].
 
 %%
+%% filter
+-spec(filter/2 :: (function(), #ring{}) -> #ring{}).
+
+filter(Fun, #ring{}=R) ->
+   Keys = lists:filter(fun({_, X}) -> Fun(X) end, R#ring.keys),
+   R#ring{
+      size = length(Keys)
+     ,keys = Keys
+   }.
+
+%%
 %% lookup key / shard (in contrast with whereis return actual shard)
--spec(lookup/2 :: (key() | addr(), #ring{}) -> [{addr(), {key(), val()}}]).
+-spec(lookup/2 :: (key() | addr(), #ring{}) -> [{addr(), key(), val()}]).
 
 lookup(Addr, #ring{}=R)
  when is_integer(Addr) ->
    case lists:keyfind(Addr, 1, R#ring.keys) of
       false ->
          [];
-      Shard ->
-         [Shard]
+      {X, {Key, Val}} ->
+         [{X, Key, Val}]
    end;
 
 lookup(Key, #ring{}=R) ->
@@ -210,7 +228,7 @@ lookup(Key, #ring{}=R) ->
 
 
 %%
-%% join node to the ring
+%% join key-value to the ring
 -spec(join/3 :: (key(), val(), #ring{}) -> #ring{}).
 
 join(Key, Val, #ring{}=R) ->
@@ -218,8 +236,7 @@ join(Key, Val, #ring{}=R) ->
 
 join(Addr, Key, Val, #ring{}=R) ->
    R#ring{
-      size = R#ring.size + 1
-     ,keys = orddict:store(Addr, {Key, Val}, R#ring.keys)
+      keys = orddict:store(Addr, {Key, Val}, R#ring.keys)
    }.
 
 %%
@@ -229,8 +246,7 @@ join(Addr, Key, Val, #ring{}=R) ->
 leave(Addr, #ring{}=R)
  when is_integer(Addr) ->
    R#ring{
-      size = R#ring.size - 1
-     ,keys = orddict:erase(Addr, R#ring.keys)
+      keys = orddict:erase(Addr, R#ring.keys)
    };
 leave(Key, #ring{}=R) ->
    leave(address(Key, R), R).

@@ -28,11 +28,14 @@
 -type(tree()   :: {t, any()}).
 -type(heap()   :: {h, integer(), any()}).
 
+-type(ring()   :: tuple()).
+
 -export_type([
    q/0
   ,stream/0
   ,tree/0
   ,heap/0
+  ,ring/0
 ]).
 
 %%

@@ -21,6 +21,7 @@
 -export([
    new/0         %% O(1)
   ,build/1       %% O(n)
+  ,apply/3       %% O(log n)
   ,insert/3      %% O(log n)
   ,lookup/2      %% O(log n)
   ,min/1         %% O(log n)
@@ -72,6 +73,26 @@ list_to_tree(List) ->
    end.
 
 %%
+%% apply function on element
+-spec(apply/3 :: (function(), key(), datum:tree()) -> datum:tree()).
+
+apply(Fun, K, {t, T}) ->
+   {t, apply_el(Fun, K, T)}.
+
+apply_el(Fun, K, ?NULL) ->
+   {?NULL, K, Fun(undefined), ?NULL};
+apply_el(Fun, K, {A, Kx, Vx, B})
+ when K =:= Kx ->
+   {A, Kx, Fun(Vx), B};
+apply_el(Fun, K, {A, Kx, Vx, B})
+ when K  >  Kx ->
+   {A, Kx, Vx, apply_el(Fun, K, B)};
+apply_el(Fun, K, {A, Kx, Vx, B})
+ when K  <  Kx ->
+   {apply_el(Fun, K, A), Kx, Vx, B}.
+
+
+%%
 %% insert element
 -spec(insert/3 :: (key(), val(), datum:tree()) -> datum:tree()).
 
@@ -108,6 +129,7 @@ lookup_el(K, {_, Kx,  _, B})
 lookup_el(K, {A, Kx,  _, _})
  when K  <  Kx ->
    lookup_el(K, A).
+
 
 %%
 %% return smallest element
@@ -149,6 +171,7 @@ map_el(_Fun, ?NULL) ->
 map_el(Fun, {A, K, V, B}) ->
    {Kx, Vx} = Fun(K, V),
    {map_el(Fun, A), Kx, Vx, map_el(Fun, B)}.
+
 
 %%
 %% fold function over tree 
