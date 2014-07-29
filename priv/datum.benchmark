@@ -10,7 +10,7 @@
 {concurrent,        1}.
 %%
 {key_generator,     {uniform_int, 1000000}}.
-{value_generator,   {fixed_bin,     1000}}.
+{value_generator,   {fixed_bin,      1000}}.
 
 
 %%
@@ -21,12 +21,25 @@
 %   ,{lookup,  1}
 % ]}.
 
-{struct,   rbtree}.
-{operations, [
-   {insert,  1}
-  ,{lookup,  1}
-]}.
+% {struct,   rbtree}.
+% {operations, [
+%    {insert,  1}
+%   ,{lookup,  1}
+% ]}.
 
+% {struct,   chord}.
+% {operations, [
+%    {whereis,       1}
+%   ,{predecessors,  1}
+%   ,{successors,    1}
+% ]}.
+
+% {struct,   ring}.
+% {operations, [
+%    {whereis,       1}
+%   ,{predecessors,  1}
+%   ,{successors,    1}
+% ]}.
 
 % {struct,   dict}.
 % {operations, [
