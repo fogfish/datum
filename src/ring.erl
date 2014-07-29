@@ -131,22 +131,26 @@ address(#ring{}=R) ->
 
 %%
 %% lookup key-value at address
--spec(whereis/2 :: (key() | addr(), #ring{}) -> {key(), val()}).
+-spec(whereis/2 :: (key() | addr(), #ring{}) -> {addr(), key(), val()}).
 
 whereis(Addr, #ring{}=R)
  when is_integer(Addr) ->
-   case bst:dropwhile(fun(Shard, _) -> Shard < Addr end, R#ring.tokens) of
-      nil  -> 
-         value(bst:min(R#ring.tokens));
-      Tree -> 
-         value(bst:min(Tree))
-   end;
+   value(where_is_it(Addr, R));
 whereis(Key, #ring{}=R) ->
    whereis(address(Key, R), R).
-
+   
+where_is_it(Addr, #ring{}=R)
+ when is_integer(Addr) ->
+   case bst:dropwhile(fun(Shard, _) -> Shard < Addr end, R#ring.tokens) of
+      nil  -> 
+         bst:min(R#ring.tokens);
+      Tree -> 
+         bst:min(Tree)
+   end.
 
 %%
-%% return list of predecessors 
+%% return list of N - predecessors slots
+%% those N slots are claimed by hopefully distinct N nodes 
 -spec(predecessors/2 :: (key() | addr(), #ring{}) -> [{addr(), key(), val()}]).
 -spec(predecessors/3 :: (integer(), key() | addr(), #ring{}) -> [{addr(), key(), val()}]).
 
@@ -157,12 +161,11 @@ predecessors(_, _Addr, #ring{keys=[]}) ->
    [];
 predecessors(N,  Addr, #ring{}=R)
  when is_integer(Addr) ->
-   %% split tokens to before and after address 
    {Head, Tail} = bst:splitwith(fun(Shard, _) -> Shard < Addr end, R#ring.tokens),
    List = (
       catch bst:foldr(
          fun(Key, Val, Acc) -> 
-            unique(N, Key, Val, Acc) 
+            accumulate(N, Key, Val, Acc) 
          end, 
          [], 
          Head)
@@ -170,7 +173,7 @@ predecessors(N,  Addr, #ring{}=R)
    lists:reverse(
       catch bst:foldr(
          fun(Key, Val, Acc) -> 
-            unique(N - length(List), Key, Val, Acc) 
+            accumulate(N, Key, Val, Acc) 
          end, 
          List, 
          Tail
@@ -181,7 +184,8 @@ predecessors(N, Key, Ring) ->
    predecessors(N, address(Key, Ring), Ring).
 
 %% 
-%% return list of successors
+%% return list of N - successors slots
+%% those N slots are claimed by hopefully distinct N nodes 
 -spec(successors/2 :: (key() | addr(), #ring{}) ->[{addr(), key(), val()}]).
 -spec(successors/3 :: (integer(), key() | addr(), #ring{}) -> [{addr(), key(), val()}]).
 
@@ -196,7 +200,7 @@ successors(N, Addr, #ring{}=R)
    List = (
       catch bst:foldl(
          fun(Key, Val, Acc) -> 
-            unique(N, Key, Val, Acc) 
+            accumulate(N, Key, Val, Acc) 
          end, 
          [], 
          Tail
@@ -205,7 +209,7 @@ successors(N, Addr, #ring{}=R)
    lists:reverse(
       catch bst:foldl(
          fun(Key, Val, Acc) -> 
-            unique(N - length(List), Key, Val, Acc) 
+            accumulate(N, Key, Val, Acc) 
          end, 
          List, 
          Head
@@ -232,10 +236,10 @@ lookup(Addr, #ring{}=R)
    case lists:keyfind(Addr, 1, R#ring.keys) of
       false ->
          [];
-      {_, {_, Val0}} ->
+      {_, {Key0, _}} ->
          bst:foldr(
             fun
-            (X, {_, _, {Key, Val}}, Acc) when Val =:= Val0 -> 
+            (X, {_, _, {Key, Val}}, Acc) when Key =:= Key0 -> 
                [{X, Key, Val}|Acc]; 
             (_, _, Acc) -> 
                Acc 
@@ -264,7 +268,7 @@ join(Addr, Key, Val, #ring{}=R) ->
 join_token([{I, Hash}|Tail], Value, #ring{}=R) ->
    %% allocate hash token from address space
    Addr = address({hash, Hash}, R),
-   case whereis(Addr, R) of
+   case where_is_it(Addr, R) of
       %% shard unallocated
       {Shard, undefined} ->
          join_token(Tail, Value, 
@@ -422,35 +426,23 @@ empty(#ring{}=R) ->
 
 %%
 %% return value associated with token
-value({Shard, {_, _, Node}}) ->
-   {Shard, Node};
-value({_, _}=Shard) ->
-   Shard.
+value({Addr, {_, _, {Key, Val}}}) ->
+   {Addr, Key, Val};
+value({Addr, undefined}) ->
+   {Addr, undefined, undefined}.
 
 
 %%
-%% accumulate N unique nodes to list 
+%% accumulate N nodes to list 
 %% (throw list out when N node collected)
-unique(0, _, _, Acc) ->
-   throw(Acc);
-unique(_, _, undefined, Acc) ->
+accumulate(_, _, undefined, Acc) ->
    Acc;
-unique(N, Addr, {_, _, {Key, Val}}, Acc)
+accumulate(N, Addr, {_, _, {Key, Val}}, Acc) 
  when length(Acc) < N  ->
-   case lists:keyfind(Key, 2, Acc) of
-      false -> 
-         [{Addr, Key, Val}|Acc];
-      _     -> 
-         Acc
-   end;
-unique(_, Addr, {_, _, {Key, Val}}, Acc) ->
-   case lists:keyfind(Key, 2, Acc) of
-      false -> 
-         throw([{Addr, Key, Val}|Acc]);
-      _     -> 
-         Acc
-   end. 
- 
+   [{Addr, Key, Val}|Acc];
+accumulate(_, Addr, {_, _, {Key, Val}}, Acc) ->
+   throw(Acc).
+
 %%
 %% return N hashes, derived from address
 hashes(N, Key, #ring{}=R) ->

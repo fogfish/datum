@@ -118,46 +118,43 @@ whereis({Mod, Ring}) ->
 
 %%
 %%
-predecessors({chord=Mod, Ring}) ->
-   Key  = <<"qazwsxedc">>,
-   {_, Shard} = Mod:whereis(Key, Ring),
+predecessors({Mod, Ring}) ->
+   Key = <<"qazwsxedc">>,
+   {Addr, _, _} = Mod:whereis(Key, Ring),
    {Head, Tail} = lists:splitwith(
-      fun(X) -> X =/= Shard end, 
-      Mod:members(Ring)
+      fun({X, _, _}) -> X =/= Addr end, 
+      Mod:successors(?Q, 0, Ring) %% return shards
    ),
    ?_assert(
-      lists:prefix(
-         [{X, Y} || {_, X, Y} <- Mod:predecessors(Key, Ring)], 
-         lists:reverse(Head) ++ lists:reverse(Tail)
-      )
+      lists:prefix(Mod:predecessors(Key, Ring), lists:reverse(Head) ++ lists:reverse(Tail))
    );
 predecessors(_) ->
    [].
 
 %%
 %%
-successors({chord=Mod, Ring}) ->
+successors({Mod, Ring}) ->
    Key  = <<"qazwsxedc">>,
-   {_, Shard} = Mod:whereis(Key, Ring),
+   {Addr, _, _} = Mod:whereis(Key, Ring),
    {Head, Tail} = lists:splitwith(
-      fun(X) -> X =/= Shard end, 
-      Mod:members(Ring)
+      fun({X, _, _}) -> X =/= Addr end, 
+      Mod:successors(?Q, 0, Ring) %% return shards
    ),
    ?_assert(
-      lists:prefix(
-         [{X, Y} || {_, X, Y} <- Mod:successors(Key, Ring)], 
-         Tail ++ Head
-      )
+      lists:prefix(Mod:successors(Key, Ring), Tail ++ Head)
    );
 successors(_) ->
    [].
 
 %%
 %%
-lookup({chord=Mod, Ring}) ->
-   {Key,Pid} = lists:nth(random:uniform(length(?KEYS)), ?KEYS),
-   {Addr, _} = Mod:whereis(Key, Ring),
-   ?_assertEqual([{Addr, Key, Pid}], Mod:lookup(Key, Ring));
+lookup({Mod, Ring}) ->
+   {Key, Pid} = lists:nth(random:uniform(length(?KEYS)), ?KEYS),
+   List = lists:filter(
+      fun({_, X, _}) -> X =:= Key end,
+      Mod:successors(?Q, 0, Ring)
+   ),
+   ?_assertEqual(List, Mod:lookup(Key, Ring));
 lookup(_) ->
    [].
 

@@ -128,14 +128,15 @@ address(#ring{}=R) ->
 
 %%
 %% lookup key-value at address
--spec(whereis/2 :: (key() | addr(), #ring{}) -> {key(), val()}).
+-spec(whereis/2 :: (key() | addr(), #ring{}) -> {addr(), key(), val()}).
 
 whereis(Addr, #ring{}=R)
  when is_integer(Addr) ->
-   case lists:dropwhile(fun({Shard, _}) -> Shard < Addr end, R#ring.keys) of
+   {X, {Key, Val}} = case lists:dropwhile(fun({Shard, _}) -> Shard < Addr end, R#ring.keys) of
       []   -> hd(R#ring.keys);
       List -> hd(List)
-   end;
+   end,
+   {X, Key, Val};
 whereis(Key, #ring{}=R) ->
    whereis(address(Key, R), R).
 
@@ -182,7 +183,7 @@ successors(N, Addr, #ring{}=R)
    List = case length(Tail) of
       L when L >= N ->
          element(1, lists:split(N, Tail));
-      L when (N - L) =< length(Tail) ->
+      L when (N - L) =< length(Head) ->
          Tail ++ element(1, lists:split(N - L, Head));
       _ ->
          Tail ++ Head
