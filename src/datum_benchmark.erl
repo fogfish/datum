@@ -23,6 +23,7 @@ new(_) ->
 
 %%
 %% datum structure
+init(stream) ->  {stream, stream()};
 init(bst)    ->  {bst,    bst:new()};
 init(rbtree) ->  {rbtree, rbtree:new()};
 init(chord)  ->  {chord,  ring(chord)};
@@ -32,6 +33,20 @@ init(ring)   ->  {ring,   ring(ring)};
 %% erlang built-in data types
 init(dict)     -> {dict,  dict:new()};
 init(gb_trees) -> {gb_trees, gb_trees:empty()}.
+
+%%%------------------------------------------------------------------
+%%%
+%%% stream
+%%%
+%%%------------------------------------------------------------------
+
+run(head, _KeyGen, ValGen, {stream, S0}) ->
+   _ = stream:head(S0),
+   {ok, {stream, S0}};
+
+run(tail, _KeyGen, _ValGen, {stream, S0}) ->
+   S1 = stream:tail(S0),
+   {ok, {stream, S1}};
 
 %%%------------------------------------------------------------------
 %%%
@@ -149,7 +164,13 @@ run(lookup, KeyGen, _ValGen, {gb_trees, S0}) ->
 %%%
 %%%------------------------------------------------------------------
 
+stream() ->
+   random:seed(os:timestamp()),
+   stream:constant(
+      [random:uniform(16#ffffffff) || _ <- lists:seq(1, ?N)]
+   ).
 
+%%
 ring(Mod) ->
    io:format("init ring: "),
    random:seed(os:timestamp()),
@@ -165,6 +186,4 @@ ring(Mod) ->
    ),
    io:nl(),
    Ring.
-
-
 

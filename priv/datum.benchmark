@@ -15,6 +15,12 @@
 
 %%
 %% data structure(s)
+{struct,   stream}.
+{operations, [
+   {head,  1}
+  % ,{tail,  1}
+]}.
+
 % {struct,   bst}.
 % {operations, [
 %    {insert,  1}
