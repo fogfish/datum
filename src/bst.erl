@@ -24,6 +24,7 @@
   ,apply/3       %% O(log n)
   ,insert/3      %% O(log n)
   ,lookup/2      %% O(log n)
+  ,remove/2      %% O(log n)
   ,min/1         %% O(log n)
   ,max/1         %% O(log n)
   ,map/2         %% O(n)
@@ -129,6 +130,31 @@ lookup_el(K, {_, Kx,  _, B})
 lookup_el(K, {A, Kx,  _, _})
  when K  <  Kx ->
    lookup_el(K, A).
+
+%%
+%% remove element
+-spec(remove/2 :: (key(), datum:tree()) -> datum:tree()).
+
+remove(K, {t, T}) ->
+   {t, remove_el(K, T)}.
+
+remove_el(_K, ?NULL) ->
+   ?NULL;
+remove_el(K, {A, Kx, _, ?NULL})
+ when K =:= Kx ->
+   A;
+remove_el(K, {?NULL, Kx, _, B})
+ when K =:= Kx ->
+   B;
+remove_el(K, {{_, Ka, Va, _}=A, Kx, _, B})
+ when K =:= Kx ->
+   {remove_el(Ka, A), Ka, Va, B};
+remove_el(K, {A, Kx, Vx, B})
+ when K  >  Kx ->
+   {A, Kx, Vx, remove_el(K, B)};
+remove_el(K, {A, Kx, Vx, B})
+ when K  <  Kx ->
+   {remove_el(K, A), Kx, Vx, B}.
 
 
 %%
@@ -285,7 +311,7 @@ drop_el(N, {A, K, V, B}) ->
    case drop_el(N, A) of
       {0, Ax} ->
          {0, {Ax, K, V, B}};
-      {M, Ax} ->
+      {M,_Ax} ->
          drop_el(M - 1, B)
    end.
 

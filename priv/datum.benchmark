@@ -15,17 +15,18 @@
 
 %%
 %% data structure(s)
-{struct,   stream}.
-{operations, [
-   {head,  1}
-  % ,{tail,  1}
-]}.
-
-% {struct,   bst}.
+% {struct,   stream}.
 % {operations, [
-%    {insert,  1}
-%   ,{lookup,  1}
+%    {head,  1}
+%   ,{tail,  1}
 % ]}.
+
+{struct,   bst}.
+{operations, [
+   {insert,  1}
+  ,{lookup,  1}
+  ,{remove,  1}
+]}.
 
 % {struct,   rbtree}.
 % {operations, [

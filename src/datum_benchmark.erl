@@ -62,6 +62,10 @@ run(lookup, KeyGen, _ValGen, {bst, S0}) ->
    _ = bst:lookup(KeyGen(), S0),
    {ok, {bst, S0}};
 
+run(remove, KeyGen, _ValGen, {bst, S0}) ->
+   S1 = bst:remove(KeyGen(), S0),
+   {ok, {bst, S1}};
+
 %%%------------------------------------------------------------------
 %%%
 %%% rbtree
