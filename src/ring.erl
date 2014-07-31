@@ -263,30 +263,36 @@ join(Key, Val, #ring{}=R) ->
 join(Addr, Key, Val, #ring{}=R) ->
    Keys = orddict:store(Addr, {Key, Val}, R#ring.keys),
    %% estimate Q hashes, they act as allocation token
-   join_token(hashes(R#ring.q, Key, R), {Key, Val}, R#ring{keys=Keys}).
+   join_token(hashes(R#ring.q, Key, R), Key, Val, R#ring{keys=Keys}).
 
-join_token([{I, Hash}|Tail], Value, #ring{}=R) ->
+join_token([{I, Hash}|Tail], Key, Val, #ring{}=R) ->
    %% allocate hash token from address space
    Addr = address({hash, Hash}, R),
    case where_is_it(Addr, R) of
-      %% shard unallocated
+      %% slot is not allocated
       {Shard, undefined} ->
-         join_token(Tail, Value, 
-            R#ring{tokens = bst:insert(Shard, {I, Addr, Value}, R#ring.tokens)}
+         join_token(Tail, Key, Val, 
+            R#ring{tokens = bst:insert(Shard, {I, Addr, {Key, Val}}, R#ring.tokens)}
          );
 
-      %% shard allocated, no conflict
+      %% slot is allocated by same key but new value joins
+      {Shard, {_, _, {Key, _}}} ->
+         join_token(Tail, Key, Val, 
+            R#ring{tokens = bst:insert(Shard, {I, Addr, {Key, Val}}, R#ring.tokens)}
+         );
+
+      %% slot allocated but new key has higher priority 
       {Shard, {X, Y, _}} when X =/= 0, Y > Addr ->
-         join_token(Tail, Value, 
-            R#ring{tokens = bst:insert(Shard, {I, Addr, Value}, R#ring.tokens)}
+         join_token(Tail, Key, Val, 
+            R#ring{tokens = bst:insert(Shard, {I, Addr, {Key, Val}}, R#ring.tokens)}
          );
 
-      %% shard allocated, previous owner has priority
+      %% slot is allocated, previous key has priority
       _ ->
-         join_token(Tail, Value, R)
+         join_token(Tail, Key, Val, R)
    end;
 
-join_token([], _Value, #ring{}=R) ->
+join_token([], _Key, _Val, #ring{}=R) ->
    R.
 
 %%

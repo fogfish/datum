@@ -192,8 +192,8 @@ map(_, ?NULL) ->
 scan(Fun, Acc0, {s, Head, Tail}) ->
 	Acc = Fun(Head, Acc0),
 	new(Acc, fun() -> scan(Fun, Acc, Tail()) end);
-scan(_, Acc0, ?NULL) ->
-	new(Acc0).
+scan(_, _Acc0, ?NULL) ->
+	new().
 
 %%
 %% partitions stream into two streams. The split behaves as if it is defined as 
@@ -255,9 +255,14 @@ takewhile(_, ?NULL) ->
 %% that is constructed  by repeatedly applying function to seed
 -spec(unfold/2 :: (any(), function()) -> datum:stream()).
 
-unfold(Head, Fun)
+unfold(Seed, Fun)
  when is_function(Fun) ->
-   new(Head, fun() -> unfold(Fun(Head), Fun) end).
+   case Fun(Seed) of
+      {Head, Tail} ->
+         new(Head, fun() -> unfold(Tail, Fun) end);
+      Head ->
+         new(Head)
+   end.
 
 
 %%

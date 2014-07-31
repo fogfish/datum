@@ -21,12 +21,12 @@
 %   ,{tail,  1}
 % ]}.
 
-{struct,   bst}.
-{operations, [
-   {insert,  1}
-  ,{lookup,  1}
-  ,{remove,  1}
-]}.
+% {struct,   bst}.
+% {operations, [
+%    {insert,  1}
+%   ,{lookup,  1}
+%   ,{remove,  1}
+% ]}.
 
 % {struct,   rbtree}.
 % {operations, [
