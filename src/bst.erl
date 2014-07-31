@@ -35,6 +35,7 @@
   ,take/2        %% O(log n)
   ,dropwhile/2   %% O(log n)
   ,drop/2        %% O(log n)  
+  ,list/1        %% O(n)
 ]).
 -type_export([tree/0]).
 
@@ -315,7 +316,16 @@ drop_el(N, {A, K, V, B}) ->
          drop_el(M - 1, B)
    end.
 
+%%
+%% 
+-spec(list/1 :: (tree()) -> list()).
 
+list(Tree) ->
+   foldr(
+      fun(Key, Val, Acc) -> [{Key, Val} | Acc] end,
+      [],
+      Tree
+   ).
 
 
 % iterator({nil, _, _, _} = T, As) ->
