@@ -312,9 +312,8 @@ leave(Key, #ring{}=R) ->
    leave(address(Key, R), R).
 
 leave_token([{_, Hash}|Tail], #ring{}=R) ->
-   Addr   = address({hash, Hash}, R),
-   {X, _} = whereis(Addr, R),
-   leave_token(Tail, R#ring{tokens=bst:insert(X, undefined, R#ring.tokens)});
+   {_, Key, _} = whereis(address({hash, Hash}, R), R),
+   leave_token(Tail, R#ring{tokens=bst:insert(Key, undefined, R#ring.tokens)});
 
 leave_token([], #ring{}=R) ->
    %% all existed nodes has to be re-joined

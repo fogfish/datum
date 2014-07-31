@@ -40,6 +40,7 @@
   ,take/2
   ,takewhile/2
   ,unfold/2
+  ,seed/2
   ,zip/1
   ,zip/2
   % utility
@@ -253,9 +254,14 @@ takewhile(_, ?NULL) ->
 %%
 %% the fundamental recursive stream constructor, returns newly-allocated stream
 %% that is constructed  by repeatedly applying function to seed
--spec(unfold/2 :: (any(), function()) -> datum:stream()).
+-spec(unfold/2  :: (any(), function()) -> datum:stream()).
+-spec(seed/2    :: (any(), function()) -> datum:stream()).
 
-unfold(Seed, Fun)
+unfold(Head, Fun)
+ when is_function(Fun) ->
+   new(Head, fun() -> unfold(Fun(Head), Fun) end).
+
+seed(Seed, Fun)
  when is_function(Fun) ->
    case Fun(Seed) of
       {Head, Tail} ->
@@ -263,7 +269,6 @@ unfold(Seed, Fun)
       Head ->
          new(Head)
    end.
-
 
 %%
 %% takes one or more input streams and returns a newly-allocated stream 
