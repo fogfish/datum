@@ -265,7 +265,7 @@ seed(Seed, Fun)
  when is_function(Fun) ->
    case Fun(Seed) of
       {Head, Tail} ->
-         new(Head, fun() -> unfold(Tail, Fun) end);
+         new(Head, fun() -> seed(Tail, Fun) end);
       Head ->
          new(Head)
    end.
