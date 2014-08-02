@@ -25,6 +25,7 @@
    new/0
   ,new/1
   ,size/1
+  ,n/1
   ,address/2
   ,address/1
   ,whereis/2
@@ -99,6 +100,13 @@ init([], R) ->
 
 size(#ring{}=R) ->
    length(R#ring.keys).
+
+%%
+%% number of replica
+-spec(n/1 :: (#ring{}) -> integer()).
+
+n(#ring{n=N}) ->
+   N.
 
 %%
 %% maps key into address on the ring
@@ -324,8 +332,7 @@ join_token([{I, Hash}|Tail], Key, #ring{}=R) ->
          );
 
       %% slot is allocated, previous key has priority
-      {Shard, {X, Y, K}} ->
-         % error_logger:error_msg("fuck => s=~p x=~p y=~p i=~p, a=~p ~p -> ~p~n", [Shard, X, Y, I, Addr, K, Key]),
+      _ ->
          join_token(Tail, Key, R)
    end;
 
