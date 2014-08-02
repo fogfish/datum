@@ -50,6 +50,7 @@ rint_test_() ->
         ,fun predecessors/1
         ,fun successors/1
         ,fun lookup/1
+        ,fun consistency/1
       ] 
    }.
 
@@ -120,9 +121,9 @@ whereis({Mod, Ring}) ->
 %%
 predecessors({Mod, Ring}) ->
    Key = <<"qazwsxedc">>,
-   {Addr, _, _} = Mod:whereis(Key, Ring),
+   {Addr,    _} = Mod:whereis(Key, Ring),
    {Head, Tail} = lists:splitwith(
-      fun({X, _, _}) -> X =/= Addr end, 
+      fun({X, _}) -> X =/= Addr end, 
       Mod:successors(?Q, 0, Ring) %% return shards
    ),
    ?_assert(
@@ -135,9 +136,9 @@ predecessors(_) ->
 %%
 successors({Mod, Ring}) ->
    Key  = <<"qazwsxedc">>,
-   {Addr, _, _} = Mod:whereis(Key, Ring),
+   {Addr,    _} = Mod:whereis(Key, Ring),
    {Head, Tail} = lists:splitwith(
-      fun({X, _, _}) -> X =/= Addr end, 
+      fun({X, _}) -> X =/= Addr end, 
       Mod:successors(?Q, 0, Ring) %% return shards
    ),
    ?_assert(
@@ -151,12 +152,19 @@ successors(_) ->
 lookup({Mod, Ring}) ->
    {Key, Pid} = lists:nth(random:uniform(length(?KEYS)), ?KEYS),
    List = lists:filter(
-      fun({_, X, _}) -> X =:= Key end,
+      fun({_, X}) -> X =:= Key end,
       Mod:successors(?Q, 0, Ring)
    ),
    ?_assertEqual(List, Mod:lookup(Key, Ring));
 lookup(_) ->
    [].
+
+%%
+%% 
+consistency({Mod, Ring}) ->
+   random:seed(os:timestamp()),
+   {Key, Pid} = lists:nth(random:uniform(length(?KEYS)), ?KEYS),
+   ?_assertEqual(Ring, Mod:join(Key, Pid, Mod:leave(Key, Ring))).
 
 
 

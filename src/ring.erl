@@ -34,6 +34,7 @@
   ,successors/3
   ,members/1
   ,lookup/2
+  ,get/2
   ,join/3
   ,leave/2
 ]).
@@ -130,8 +131,8 @@ address(#ring{}=R) ->
    lists:seq(Inc - 1, Top - 1, Inc).
 
 %%
-%% lookup key-value at address
--spec(whereis/2 :: (key() | addr(), #ring{}) -> {addr(), key(), val()}).
+%% lookup the key position on the ring
+-spec(whereis/2 :: (key() | addr(), #ring{}) -> {addr(), key()}).
 
 whereis(Addr, #ring{}=R)
  when is_integer(Addr) ->
@@ -151,8 +152,9 @@ where_is_it(Addr, #ring{}=R)
 %%
 %% return list of N - predecessors slots
 %% those N slots are claimed by hopefully distinct N nodes 
--spec(predecessors/2 :: (key() | addr(), #ring{}) -> [{addr(), key(), val()}]).
--spec(predecessors/3 :: (integer(), key() | addr(), #ring{}) -> [{addr(), key(), val()}]).
+%% [ {X,Y} || {_, X} <- ring:predecessors(3, 0, R), Y <- [ring:get(X, R)] ].
+-spec(predecessors/2 :: (key() | addr(), #ring{}) -> [{addr(), key()}]).
+-spec(predecessors/3 :: (integer(), key() | addr(), #ring{}) -> [{addr(), key()}]).
 
 predecessors(Key, #ring{}=R) ->
    predecessors(R#ring.n, Key, R).
@@ -186,8 +188,9 @@ predecessors(N, Key, Ring) ->
 %% 
 %% return list of N - successors slots
 %% those N slots are claimed by hopefully distinct N nodes 
--spec(successors/2 :: (key() | addr(), #ring{}) ->[{addr(), key(), val()}]).
--spec(successors/3 :: (integer(), key() | addr(), #ring{}) -> [{addr(), key(), val()}]).
+%% [ {X,Y} || {_, X} <- ring:successors(3, 0, R), Y <- [ring:get(X, R)] ].
+-spec(successors/2 :: (key() | addr(), #ring{}) ->[{addr(), key()}]).
+-spec(successors/3 :: (integer(), key() | addr(), #ring{}) -> [{addr(), key()}]).
 
 successors(Key, #ring{}=R) ->
    successors(R#ring.n, Key, R).
@@ -221,14 +224,14 @@ successors(N, Key, Ring) ->
 
 %%
 %% return list of ring members
--spec(members/1 :: (#ring{}) -> [key()]).
+-spec(members/1 :: (#ring{}) -> [{key(), val()}]).
 
 members(#ring{}=S) ->
    [X || {_, X} <- S#ring.keys].
 
 
 %%
-%% lookup key / shard (in contrast with whereis return actual shard)
+%% return list of addresses associated with given key
 -spec(lookup/2 :: (any() | function(), #ring{}) -> [{addr(), key(), val()}]).
 
 lookup(Addr, #ring{}=R)
@@ -239,8 +242,8 @@ lookup(Addr, #ring{}=R)
       {_, {Key0, _}} ->
          bst:foldr(
             fun
-            (X, {_, _, {Key, Val}}, Acc) when Key =:= Key0 -> 
-               [{X, Key, Val}|Acc]; 
+            (X, {_, _, Key}, Acc) when Key =:= Key0 -> 
+               [{X, Key}|Acc]; 
             (_, _, Acc) -> 
                Acc 
             end,
@@ -252,6 +255,22 @@ lookup(Addr, #ring{}=R)
 lookup(Key, #ring{}=R) ->
    lookup(address(Key, R), R).
 
+%%
+%% return value associated with given key
+-spec(get/2 :: (key(), #ring{}) -> val()).
+
+get(Addr, #ring{}=R)
+ when is_integer(Addr) ->
+   case lists:keyfind(Addr, 1, R#ring.keys) of
+      false ->
+         exit(badarg);
+      {_X, {_Key, Val}} ->
+         Val
+   end;
+
+get(Key, #ring{}=R) ->
+   ?MODULE:get(address(Key, R), R).
+
 
 %%
 %% join key-value to the ring
@@ -261,38 +280,56 @@ join(Key, Val, #ring{}=R) ->
    join(address(Key, R), Key, Val, R).
 
 join(Addr, Key, Val, #ring{}=R) ->
-   Keys = orddict:store(Addr, {Key, Val}, R#ring.keys),
-   %% estimate Q hashes, they act as allocation token
-   join_token(hashes(R#ring.q, Key, R), Key, Val, R#ring{keys=Keys}).
+   case lists:keyfind(Addr, 1, R#ring.keys) of
+      %% new key, update token allocation
+      false ->
+         join_token(hashes(R#ring.q, Key, R), Key, 
+            R#ring{
+               keys = orddict:store(Addr, {Key, Val}, R#ring.keys)
+            }
+         );
+      %% existed key update value only
+      _     ->
+         R#ring{
+            keys = orddict:store(Addr, {Key, Val}, R#ring.keys)
+         }
+   end.
 
-join_token([{I, Hash}|Tail], Key, Val, #ring{}=R) ->
+join_token([{I, Hash}|Tail], Key, #ring{}=R) ->
    %% allocate hash token from address space
    Addr = address({hash, Hash}, R),
    case where_is_it(Addr, R) of
       %% slot is not allocated
       {Shard, undefined} ->
-         join_token(Tail, Key, Val, 
-            R#ring{tokens = bst:insert(Shard, {I, Addr, {Key, Val}}, R#ring.tokens)}
+         join_token(Tail, Key,
+            R#ring{tokens = bst:insert(Shard, {I, Addr, Key}, R#ring.tokens)}
          );
 
-      %% slot is allocated by same key but new value joins
-      {Shard, {_, _, {Key, _}}} ->
-         join_token(Tail, Key, Val, 
-            R#ring{tokens = bst:insert(Shard, {I, Addr, {Key, Val}}, R#ring.tokens)}
+      %% claim master slot
+      {Shard, {X, _, _}} when X =/= 0, I =:= 0 ->
+         join_token(Tail, Key,
+            R#ring{tokens = bst:insert(Shard, {I, Addr, Key}, R#ring.tokens)}
+         );
+
+      %% slot collision, closest key wins
+      {Shard, {X, Y, _}} when X =:= I, Y > Addr ->
+         join_token(Tail, Key,
+            R#ring{tokens = bst:insert(Shard, {I, Addr, Key}, R#ring.tokens)}
          );
 
       %% slot allocated but new key has higher priority 
       {Shard, {X, Y, _}} when X =/= 0, Y > Addr ->
-         join_token(Tail, Key, Val, 
-            R#ring{tokens = bst:insert(Shard, {I, Addr, {Key, Val}}, R#ring.tokens)}
+         join_token(Tail, Key, 
+            R#ring{tokens = bst:insert(Shard, {I, Addr, Key}, R#ring.tokens)}
          );
 
       %% slot is allocated, previous key has priority
-      _ ->
-         join_token(Tail, Key, Val, R)
+      {Shard, {X, Y, K}} ->
+         % error_logger:error_msg("fuck => s=~p x=~p y=~p i=~p, a=~p ~p -> ~p~n", [Shard, X, Y, I, Addr, K, Key]),
+         join_token(Tail, Key, R)
    end;
 
-join_token([], _Key, _Val, #ring{}=R) ->
+join_token([], _Key, #ring{}=R) ->
    R.
 
 %%
@@ -304,111 +341,19 @@ leave(Addr, #ring{}=R)
    case lists:keytake(Addr, 1, R#ring.keys) of
       false ->
          R;
-      {value, {_, {Key, _}}, Keys} ->
-         leave_token(hashes(R#ring.q, Key, R), R#ring{keys=Keys})
+      {value, {_, {_Key, _}}, Keys} ->
+         %% re-join remaining keys to empty ring
+         lists:foldl(
+            fun({_, {Key, Val}}, Acc) ->
+               join(Key, Val, Acc)
+            end,
+            empty(R),
+            Keys
+         )
    end;
 
 leave(Key, #ring{}=R) ->
    leave(address(Key, R), R).
-
-leave_token([{_, Hash}|Tail], #ring{}=R) ->
-   {_, Key, _} = whereis(address({hash, Hash}, R), R),
-   leave_token(Tail, R#ring{tokens=bst:insert(Key, undefined, R#ring.tokens)});
-
-leave_token([], #ring{}=R) ->
-   %% all existed nodes has to be re-joined
-   %% unless there is smarter way to trace token/hash to previous allocation
-   lists:foldl(
-      fun({Addr, {Key, Val}}, Acc) ->
-         join(Addr, Key, Val, Acc)
-      end,
-      R,
-      R#ring.keys
-   ).
-
-%%%------------------------------------------------------------------
-%%%
-%%% token ring
-%%%
-%%%------------------------------------------------------------------   
-
-% %%
-% token_join(Addr, Node, #ring{size=0, keys=Master, tokens=Shards}=R) ->
-%    %% @todo:
-%    %%  * initial node allocation shall claim only it own tokens
-%    %%  * predecessor / successors shall take into account undefined node and return previous value
-%    %%  * list is not optimal for high number of shards > 100
-%    R#ring{
-%       size   = 1,
-%       keys = [{Addr, Node} | Master],
-%       tokens = [{X, Node} || {X, _} <- Shards] 
-%    };
-
-% token_join(Addr, Node, #ring{size=S, q=Q, keys=Master, tokens=Shards}=R) ->
-%    %T = tokens([Node | members(R)], R), %% give priority of shard to new node
-%    %% keep priority of shard to old node
-%    T = tokens(Q, members(R) ++ [Node], R), 
-%    L = lists:map(
-%       fun({X, N}) ->
-%          case lists:keyfind(X, 1, T) of
-%             false   -> {X, N};
-%             {_, NN} -> {X, NN}
-%          end
-%       end,
-%       Shards
-%    ),
-%    R#ring{
-%       size   = S + 1,
-%       keys = lists:keystore(Node, 2, Master, {Addr, Node}),
-%       tokens = L
-%    }.
-
- 
-% token_leave(Node, #ring{size=S, q=Q, keys=Master, tokens=Shards}=R) ->
-%    NShards = lists:filter(fun({_, N}) -> N =/= Node end, Shards),
-%    case tokens(2 * Q, lists:usort([X || {_, X} <- NShards]), R) of
-%       [] ->
-%          reset(R);
-%       T  ->
-%          % @todo: this is a quick fix to eliminate ring failure
-%          {_, Fallback} = hd(T),
-%          L = lists:map(
-%             fun
-%             ({X, N}) when N =:= Node ->
-%                case lists:keyfind(X, 1, T) of
-%                   false   -> {X, Fallback};
-%                   {_, NN} -> {X, NN}
-%                end;
-%             ({_, _}=X) -> X
-%             end,
-%             Shards
-%          ),
-%          R#ring{
-%             size   = S - 1,
-%             keys = lists:keydelete(Node, 2, Master),
-%             tokens = L
-%          }
-%    end.
-
-% %%
-% %% return list of N tokens for each node (ordered by token weight)
-% tokens(N, Nodes, Ring) ->
-%    lists:flatten(
-%       lists:map(
-%          fun(X) ->
-%             lists:map(
-%                fun(Node) ->
-%                   % {Shard,    _} = whereis(address(hash(X, Node), Ring), Ring),
-%                   % {Shard, Node}
-%                   ok
-%                end,
-%                Nodes
-%             )
-%          end,
-%          lists:seq(1, N)
-%       )
-%    ).
-
 
 %%%------------------------------------------------------------------
 %%%
@@ -427,14 +372,15 @@ empty(#ring{}=R) ->
    R#ring{
       size   = 0
      ,tokens = bst:build(address(R))
+     ,keys   = []
    }.
 
 %%
 %% return value associated with token
-value({Addr, {_, _, {Key, Val}}}) ->
-   {Addr, Key, Val};
+value({Addr, {_, _, Key}}) ->
+   {Addr, Key};
 value({Addr, undefined}) ->
-   {Addr, undefined, undefined}.
+   {Addr, undefined}.
 
 
 %%
@@ -442,10 +388,10 @@ value({Addr, undefined}) ->
 %% (throw list out when N node collected)
 accumulate(_, _, undefined, Acc) ->
    Acc;
-accumulate(N, Addr, {_, _, {Key, Val}}, Acc) 
+accumulate(N,  Addr, {_, _,  Key}, Acc) 
  when length(Acc) < N  ->
-   [{Addr, Key, Val}|Acc];
-accumulate(_, Addr, {_, _, {Key, Val}}, Acc) ->
+   [{Addr, Key}|Acc];
+accumulate(_, _Addr, {_, _, _Key}, Acc) ->
    throw(Acc).
 
 %%

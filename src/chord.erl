@@ -33,6 +33,7 @@
   ,members/1
   ,filter/2
   ,lookup/2
+  ,get/2
   ,join/3
   ,leave/2
 ]).
@@ -127,23 +128,24 @@ address(#ring{}=R) ->
    lists:seq(Inc - 1, Top - 1, Inc).
 
 %%
-%% lookup key-value at address
--spec(whereis/2 :: (key() | addr(), #ring{}) -> {addr(), key(), val()}).
+%% lookup the key position on the ring
+-spec(whereis/2 :: (key() | addr(), #ring{}) -> {addr(), key()}).
 
 whereis(Addr, #ring{}=R)
  when is_integer(Addr) ->
-   {X, {Key, Val}} = case lists:dropwhile(fun({Shard, _}) -> Shard < Addr end, R#ring.keys) of
+   {X, {Key, _Val}} = case lists:dropwhile(fun({Shard, _}) -> Shard < Addr end, R#ring.keys) of
       []   -> hd(R#ring.keys);
       List -> hd(List)
    end,
-   {X, Key, Val};
+   {X, Key};
 whereis(Key, #ring{}=R) ->
    whereis(address(Key, R), R).
 
 %%
 %% return list of predecessors 
--spec(predecessors/2 :: (key() | addr(), #ring{}) -> [{addr(), key(), val()}]).
--spec(predecessors/3 :: (integer(), key() | addr(), #ring{}) -> [{addr(), key(), val()}]).
+%% [ {X,Y} || {_, X} <- ring:predecessors(3, 0, R), Y <- [ring:get(X, R)] ].
+-spec(predecessors/2 :: (key() | addr(), #ring{}) -> [{addr(), key()}]).
+-spec(predecessors/3 :: (integer(), key() | addr(), #ring{}) -> [{addr(), key()}]).
 
 predecessors(Key, #ring{}=R) ->
    predecessors(R#ring.n, Key, R).
@@ -162,15 +164,16 @@ predecessors(N,  Addr, #ring{}=R)
       _ ->
          lists:reverse(Head) ++ lists:reverse(Tail)
    end,
-   [{X, Key, Val} || {X, {Key, Val}} <- List];
+   [{X, Key} || {X, {Key,_Val}} <- List];
 
 predecessors(N, Key, Ring) ->
    predecessors(N, address(Key, Ring), Ring).
 
 %% 
 %% return list of successors
--spec(successors/2 :: (key() | addr(), #ring{}) ->[{addr(), key(), val()}]).
--spec(successors/3 :: (integer(), key() | addr(), #ring{}) -> [{addr(), key(), val()}]).
+%% [ {X,Y} || {_, X} <- ring:successors(3, 0, R), Y <- [ring:get(X, R)] ].
+-spec(successors/2 :: (key() | addr(), #ring{}) ->[{addr(), key()}]).
+-spec(successors/3 :: (integer(), key() | addr(), #ring{}) -> [{addr(), key()}]).
 
 successors(Key, #ring{}=R) ->
    successors(R#ring.n, Key, R).
@@ -188,14 +191,14 @@ successors(N, Addr, #ring{}=R)
       _ ->
          Tail ++ Head
    end,
-   [{X, Key, Val} || {X, {Key, Val}} <- List];
+   [{X, Key} || {X, {Key,_Val}} <- List];
 
 successors(N, Key, Ring) ->
    successors(N, address(Key, Ring), Ring).
 
 %%
 %% return list of ring members
--spec(members/1 :: (#ring{}) -> [key()]).
+-spec(members/1 :: (#ring{}) -> [{key(), val()}]).
 
 members(#ring{}=S) ->
    [X || {_, X} <- S#ring.keys].
@@ -212,20 +215,37 @@ filter(Fun, #ring{}=R) ->
    }.
 
 %%
-%% lookup key / shard (in contrast with whereis return actual shard)
--spec(lookup/2 :: (key() | addr(), #ring{}) -> [{addr(), key(), val()}]).
+%% return list of addresses associated with given key
+-spec(lookup/2 :: (key() | addr(), #ring{}) -> [{addr(), key()}]).
 
 lookup(Addr, #ring{}=R)
  when is_integer(Addr) ->
    case lists:keyfind(Addr, 1, R#ring.keys) of
       false ->
          [];
-      {X, {Key, Val}} ->
-         [{X, Key, Val}]
+      {Addr, {Key, _Val}} ->
+         [{Addr, Key}]
    end;
 
 lookup(Key, #ring{}=R) ->
    lookup(address(Key, R), R).
+
+%%
+%% return value associated with given key
+-spec(get/2 :: (key(), #ring{}) -> val()).
+
+get(Addr, #ring{}=R)
+ when is_integer(Addr) ->
+   case lists:keyfind(Addr, 1, R#ring.keys) of
+      false ->
+         exit(badarg);
+      {_X, {_Key, Val}} ->
+         Val
+   end;
+
+get(Key, #ring{}=R) ->
+   ?MODULE:get(address(Key, R), R).
+
 
 
 %%
