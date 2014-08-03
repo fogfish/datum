@@ -397,7 +397,12 @@ accumulate(_, _, undefined, Acc) ->
    Acc;
 accumulate(N,  Addr, {_, _,  Key}, Acc) 
  when length(Acc) < N  ->
-   [{Addr, Key}|Acc];
+   case lists:keyfind(Key, 2, Acc) of
+      false ->
+         [{Addr, Key}|Acc];
+      _     ->
+         Acc
+   end;
 accumulate(_, _Addr, {_, _, _Key}, Acc) ->
    throw(Acc).
 
