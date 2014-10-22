@@ -95,7 +95,7 @@ init([], R) ->
    empty(R).
 
 %%
-%% number of nodes
+%% number of ring members
 -spec(size/1 :: (#ring{}) -> integer()).
 
 size(#ring{}=R) ->
@@ -171,6 +171,8 @@ predecessors(_, _Addr, #ring{keys=[]}) ->
    [];
 predecessors(N,  Addr, #ring{}=R)
  when is_integer(Addr) ->
+   %% @todo: - fix performance for ring with small number of nodes
+   %%          full shard table scan is performed to accumulate N shards
    {Head, Tail} = bst:splitwith(fun(Shard, _) -> Shard < Addr end, R#ring.tokens),
    List = (
       catch bst:foldr(
@@ -240,7 +242,7 @@ members(#ring{}=S) ->
 
 %%
 %% return list of addresses associated with given key
--spec(lookup/2 :: (any() | function(), #ring{}) -> [{addr(), key(), val()}]).
+-spec(lookup/2 :: (any() | function(), #ring{}) -> [{addr(), key()}]).
 
 lookup(Addr, #ring{}=R)
  when is_integer(Addr) ->

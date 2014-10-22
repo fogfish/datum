@@ -23,6 +23,7 @@
    new/0
   ,new/1
   ,size/1
+  ,n/1
   ,address/2
   ,address/1
   ,whereis/2
@@ -96,6 +97,13 @@ init([], R) ->
 
 size(#ring{}=R) ->
    length(R#ring.keys).
+
+%%
+%% number of replica
+-spec(n/1 :: (#ring{}) -> integer()).
+
+n(#ring{n=N}) ->
+   N.
 
 %%
 %% maps key into address on the ring

@@ -41,12 +41,12 @@
 %   ,{successors,    1}
 % ]}.
 
-% {struct,   ring}.
-% {operations, [
-%    {whereis,       1}
-%   ,{predecessors,  1}
-%   ,{successors,    1}
-% ]}.
+{struct,   ring}.
+{operations, [
+   % {whereis,       1}
+   {predecessors,  1}
+  ,{successors,    1}
+]}.
 
 % {struct,   dict}.
 % {operations, [
