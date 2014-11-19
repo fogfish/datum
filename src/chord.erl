@@ -226,33 +226,27 @@ filter(Fun, #ring{}=R) ->
 %% return list of addresses associated with given key
 -spec(lookup/2 :: (key() | addr(), #ring{}) -> [{addr(), key()}]).
 
-lookup(Addr, #ring{}=R)
- when is_integer(Addr) ->
+lookup(Key, #ring{}=R) ->
+   Addr = address(Key, R),
    case lists:keyfind(Addr, 1, R#ring.keys) of
       false ->
          [];
       {Addr, {Key, _Val}} ->
          [{Addr, Key}]
-   end;
-
-lookup(Key, #ring{}=R) ->
-   lookup(address(Key, R), R).
+   end.
 
 %%
 %% return value associated with given key
 -spec(get/2 :: (key(), #ring{}) -> val()).
 
-get(Addr, #ring{}=R)
- when is_integer(Addr) ->
+get(Key, #ring{}=R) ->
+   Addr = address(Key, R),
    case lists:keyfind(Addr, 1, R#ring.keys) of
       false ->
          exit(badarg);
       {_X, {_Key, Val}} ->
          Val
-   end;
-
-get(Key, #ring{}=R) ->
-   ?MODULE:get(address(Key, R), R).
+   end.
 
 
 
