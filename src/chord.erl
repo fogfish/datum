@@ -32,8 +32,9 @@
   ,predecessors/2
   ,predecessors/3
   ,members/1
+  ,stats/1
   ,filter/2
-  ,lookup/2
+  ,whois/2
   ,get/2
   ,join/3
   ,leave/2
@@ -212,6 +213,21 @@ members(#ring{}=S) ->
    [X || {_, X} <- S#ring.keys].
 
 %%
+%% return list of ring key and ring allocation in percentage
+-spec(stats/1 :: (#ring{}) -> [{key(), float()}]).
+
+stats(#ring{keys=[]}) ->
+   [];
+stats(#ring{keys=[{Addr0, _}|_]=Keys}=Ring) ->
+   Top = ringtop(Ring),
+   stats(lists:reverse(Keys), Top + Addr0, Top).
+
+stats([{Addr, {Key, _}}|Tail], Prev, Top) ->
+   [{Key, 100 * (Prev - Addr) / Top} | stats(Tail, Addr, Top)];
+stats([], _Prev, _Top) ->
+   [].
+
+%%
 %% filter
 -spec(filter/2 :: (function(), #ring{}) -> #ring{}).
 
@@ -224,9 +240,9 @@ filter(Fun, #ring{}=R) ->
 
 %%
 %% return list of addresses associated with given key
--spec(lookup/2 :: (key() | addr(), #ring{}) -> [{addr(), key()}]).
+-spec(whois/2 :: (key() | addr(), #ring{}) -> [{addr(), key()}]).
 
-lookup(Key, #ring{}=R) ->
+whois(Key, #ring{}=R) ->
    Addr = address(Key, R),
    case lists:keyfind(Addr, 1, R#ring.keys) of
       false ->

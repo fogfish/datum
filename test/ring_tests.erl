@@ -31,7 +31,7 @@ chord_test_() ->
         ,fun whereis/1
         ,fun predecessors/1
         ,fun successors/1
-        ,fun lookup/1
+        ,fun whois/1
       ] 
    }.
 
@@ -49,7 +49,7 @@ rint_test_() ->
         ,fun whereis/1
         ,fun predecessors/1
         ,fun successors/1
-        ,fun lookup/1
+        ,fun whois/1
         ,fun consistency/1
       ] 
    }.
@@ -149,14 +149,14 @@ successors(_) ->
 
 %%
 %%
-lookup({Mod, Ring}) ->
+whois({Mod, Ring}) ->
    {Key, Pid} = lists:nth(random:uniform(length(?KEYS)), ?KEYS),
    List = lists:filter(
       fun({_, X}) -> X =:= Key end,
       Mod:successors(?Q, 0, Ring)
    ),
-   ?_assertEqual(List, Mod:lookup(Key, Ring));
-lookup(_) ->
+   ?_assertEqual(List, Mod:whois(Key, Ring));
+whois(_) ->
    [].
 
 %%

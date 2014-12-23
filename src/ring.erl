@@ -14,11 +14,12 @@
 %%   limitations under the License.
 %%
 %% @description
-%%   consistent hashing - token ring. Each node claims about S/N shards (S number
-%%   of shards, N number of nodes). The shard to node allocation is controlled
-%%   by token. Ring is a consistent hashing schema on ring modulo 2^m
-%%   The key space is divided into equally sized shards.
-%%   Shards are claimed and release by nodes. 
+%%   consistent hashing using tokens ring. 
+%%
+%%   The ring is a consistent hashing schema on ring modulo 2^m,
+%%   it is divided on equally sized Q shards. Each key claims 
+%%   about Q/N shards (Q number of shards, N number of keys/nodes). 
+%%   The shard allocation algorithm uses token approach to bind shard to key.
 -module(ring).
 
 -export([
@@ -34,7 +35,7 @@
   ,successors/2
   ,successors/3
   ,members/1
-  ,lookup/2
+  ,whois/2
   ,get/2
   ,join/3
   ,leave/2
@@ -55,6 +56,12 @@
   ,keys   = []        :: [{addr(), {key(), val()}}]
 }).
 
+%% token
+-record(t, {
+   h      = -1        :: integer()    % hash generation
+  ,addr   = undefined :: integer()    % ring address of hash generation 
+  ,key    = undefined :: any()        % key claiming shard
+}).
 
 %%
 %% create new token ring
@@ -144,11 +151,12 @@ address(#ring{}=R) ->
 
 whereis(Addr, #ring{}=R)
  when is_integer(Addr) ->
-   value(where_is_it(Addr, R));
+   {Addr0, T} = lookup(Addr, R),
+   {Addr0, T#t.key};
 whereis(Key, #ring{}=R) ->
    whereis(address(Key, R), R).
    
-where_is_it(Addr, #ring{}=R)
+lookup(Addr, #ring{}=R)
  when is_integer(Addr) ->
    case bst:dropwhile(fun(Shard, _) -> Shard < Addr end, R#ring.tokens) of
       nil  -> 
@@ -169,11 +177,9 @@ predecessors(Key, #ring{}=R) ->
 
 predecessors(_, _Addr, #ring{keys=[]}) ->
    [];
-predecessors(N,  Addr, #ring{}=R)
+predecessors(N,  Addr, #ring{tokens = Tokens})
  when is_integer(Addr) ->
-   %% @todo: - fix performance for ring with small number of nodes
-   %%          full shard table scan is performed to accumulate N shards
-   {Head, Tail} = bst:splitwith(fun(Shard, _) -> Shard < Addr end, R#ring.tokens),
+   {Head, Tail} = bst:splitwith(fun(Addr0, _) -> Addr0 < Addr end, Tokens),
    List = (
       catch bst:foldr(
          fun(Key, Val, Acc) -> 
@@ -207,9 +213,9 @@ successors(Key, #ring{}=R) ->
 
 successors(_,_Addr, #ring{keys=[]}) ->
    [];
-successors(N, Addr, #ring{}=R)
+successors(N, Addr, #ring{tokens = Tokens})
  when is_integer(Addr) ->
-   {Head, Tail} = bst:splitwith(fun(Shard, _) -> Shard < Addr end, R#ring.tokens),
+   {Head, Tail} = bst:splitwith(fun(Addr0, _) -> Addr0 < Addr end, Tokens),
    List = (
       catch bst:foldl(
          fun(Key, Val, Acc) -> 
@@ -242,23 +248,23 @@ members(#ring{}=S) ->
 
 %%
 %% return list of addresses associated with given key
--spec(lookup/2 :: (any() | function(), #ring{}) -> [{addr(), key()}]).
+-spec(whois/2 :: (any() | function(), #ring{}) -> [{addr(), key()}]).
 
-lookup(Key, #ring{}=R) ->
+whois(Key, #ring{keys = Keys, tokens = Tokens}=R) ->
    Addr = address(Key, R),
-   case lists:keyfind(Addr, 1, R#ring.keys) of
+   case lists:keyfind(Addr, 1, Keys) of
       false ->
          [];
       {_, {Key0, _}} ->
          bst:foldr(
             fun
-            (X, {_, _, Key}, Acc) when Key =:= Key0 -> 
-               [{X, Key}|Acc]; 
+            (X, #t{key = Key1}, Acc) when Key1 =:= Key0 -> 
+               [{X, Key1}|Acc]; 
             (_, _, Acc) -> 
                Acc 
             end,
             [],
-            R#ring.tokens
+            Tokens
          )
    end.
 
@@ -283,14 +289,16 @@ get(Key, #ring{}=R) ->
 join(Key, Val, #ring{}=R) ->
    join(address(Key, R), Key, Val, R).
 
-join(Addr, Key, Val, #ring{}=R) ->
+join(Addr, Key, Val, #ring{q = Q, keys = Keys}=R) ->
    case lists:keyfind(Addr, 1, R#ring.keys) of
       %% new key, update token allocation
       false ->
-         join_token(hashes(R#ring.q, Key, R), Key, 
-            R#ring{
-               keys = orddict:store(Addr, {Key, Val}, R#ring.keys)
-            }
+         repair(
+            join_token(hashes(Q, Key, R), Key, 
+               R#ring{
+                  keys = orddict:store(Addr, {Key, Val}, Keys)
+               }
+            )
          );
       %% existed key update value only
       _     ->
@@ -299,41 +307,76 @@ join(Addr, Key, Val, #ring{}=R) ->
          }
    end.
 
-join_token([{I, Hash}|Tail], Key, #ring{}=R) ->
+join_token([{I, Hash}|Tail], Key, #ring{tokens = Tokens}=R) ->
    %% allocate hash token from address space
    Addr = address({hash, Hash}, R),
-   case where_is_it(Addr, R) of
-      %% slot is not allocated
-      {Shard, undefined} ->
+   case lookup(Addr, R) of
+      %% slot is not allocated to any one
+      {Addr0, #t{addr = undefined}} ->
          join_token(Tail, Key,
-            R#ring{tokens = bst:insert(Shard, {I, Addr, Key}, R#ring.tokens)}
+            R#ring{tokens = bst:insert(Addr0, #t{h = I, addr = Addr, key = Key}, Tokens)}
          );
 
-      %% claim master slot
-      {Shard, {X, _, _}} when X =/= 0, I =:= 0 ->
+      %% Key own master shard, claim it unconditionally
+      {Addr0, #t{h = X}} when X =/= 0, I =:= 0 ->
          join_token(Tail, Key,
-            R#ring{tokens = bst:insert(Shard, {I, Addr, Key}, R#ring.tokens)}
+            R#ring{tokens = bst:insert(Addr0, #t{h = I, addr = Addr, key = Key}, Tokens)}
          );
 
-      %% slot collision, closest key wins
-      {Shard, {X, Y, _}} when X =:= I, Y > Addr ->
+      %% Key collides with allocated shard, smaller address wins
+      {Addr0, #t{h = X, addr =Y}} when X =:= I, Y > Addr ->
          join_token(Tail, Key,
-            R#ring{tokens = bst:insert(Shard, {I, Addr, Key}, R#ring.tokens)}
+            R#ring{tokens = bst:insert(Addr0, #t{h = I, addr = Addr, key = Key}, Tokens)}
          );
 
-      %% slot allocated but new key has higher priority 
-      {Shard, {X, Y, _}} when X =/= 0, Y > Addr ->
+      %% Key collides with allocated shard, smaller address wins
+      %% @todo: evaluate role of N-hash generation on allocation
+      {Addr0, #t{h = X, addr = Y}} when X =/= 0, Y > Addr ->
          join_token(Tail, Key, 
-            R#ring{tokens = bst:insert(Shard, {I, Addr, Key}, R#ring.tokens)}
+            R#ring{tokens = bst:insert(Addr0, #t{h = I, addr = Addr, key = Key}, Tokens)}
          );
 
-      %% slot is allocated, previous key has priority
+      %% shard is allocated, previous key has priority
       _ ->
          join_token(Tail, Key, R)
    end;
 
 join_token([], _Key, #ring{}=R) ->
    R.
+
+%%
+%% repair ring, N-hashes set do not claim all shards
+%% some tokens collides to one shard, thus ring has unallocated shards 
+%% repair operation allocates these empty shards to keys in consistent manner
+repair(#ring{tokens = Tokens}=R) ->
+   R#ring{
+      tokens = refit(reset(Tokens))
+   }.
+
+%% reset previously repaired shards
+reset(Tokens) ->
+   bst:map(
+      fun(Addr, #t{h = -1}) -> {Addr, #t{}}; (Addr, T) -> {Addr, T} end,
+      Tokens
+   ).
+   
+refit(Tokens) ->
+   refit(
+      bst:splitwith(fun(_, #t{key = Key}) -> Key =/= undefined end, Tokens),
+      Tokens
+   ).
+
+refit({{t,nil}, _}, Tokens) ->
+   %% head shard is not allocated, we need to take name of last one
+   Tokens;
+refit({_, {t,nil}}, Tokens) ->
+   %% refit loop is completed
+   Tokens;
+refit({A, B}, Tokens) ->
+   {_, #t{key=Key}} = bst:max(A),
+   {Addr, _} = bst:min(B),
+   refit(bst:insert(Addr, #t{key=Key}, Tokens)).
+
 
 %%
 %% leave node from ring
@@ -374,36 +417,21 @@ ringtop(#ring{}=R) ->
 empty(#ring{}=R) ->
    R#ring{
       size   = 0
-     ,tokens = bst:build(address(R))
+     ,tokens = bst:build([{Addr, #t{}} || Addr <- address(R)])
      ,keys   = []
    }.
 
 %%
-%% return value associated with token
-value({Addr, {_, _, Key}}) ->
-   {Addr, Key};
-value({Addr, undefined}) ->
-   {Addr, undefined}.
-
-
-%%
 %% accumulate N nodes to list 
 %% (throw list out when N node collected)
-accumulate(_, _, undefined, Acc) ->
-   Acc;
-accumulate(N,  Addr, {_, _,  Key}, Acc) 
+accumulate(N,  Addr, #t{key = Key}, Acc) 
  when length(Acc) < N  ->
-   case lists:keyfind(Key, 2, Acc) of
-      false ->
-         [{Addr, Key}|Acc];
-      _     ->
-         Acc
-   end;
-accumulate(_, _Addr, {_, _, _Key}, Acc) ->
+   [{Addr, Key} | Acc];
+accumulate(_, _Addr, _T, Acc) ->
    throw(Acc).
 
 %%
-%% return N hashes, derived from address
+%% return N generation hashes, derived from key
 hashes(N, Key, #ring{}=R) ->
    Token = R#ring.q - N,
    Hash  = crypto:hash(R#ring.hash, s(Key)),
@@ -416,7 +444,6 @@ hashes(N, Acc,  Key, #ring{}=R) ->
    Token = R#ring.q - N,
    Hash  = crypto:hash(R#ring.hash, [s(Key), Hash0]),
    hashes(N - 1, [{Token,Hash}|Acc], Key, R).
-
 
 s(X)
  when is_binary(X) ->
