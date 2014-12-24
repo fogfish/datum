@@ -158,7 +158,7 @@ whereis(Key, #ring{}=R) ->
    
 lookup(Addr, #ring{}=R)
  when is_integer(Addr) ->
-   case bst:dropwhile(fun(Shard, _) -> Shard < Addr end, R#ring.tokens) of
+   case bst:dropwhile(fun(Shard) -> Shard < Addr end, R#ring.tokens) of
       nil  -> 
          bst:min(R#ring.tokens);
       Tree -> 
@@ -179,7 +179,7 @@ predecessors(_, _Addr, #ring{keys=[]}) ->
    [];
 predecessors(N,  Addr, #ring{tokens = Tokens})
  when is_integer(Addr) ->
-   {Head, Tail} = bst:splitwith(fun(Addr0, _) -> Addr0 < Addr end, Tokens),
+   {Head, Tail} = bst:splitwith(fun(Addr0) -> Addr0 < Addr end, Tokens),
    List = (
       catch bst:foldr(
          fun(Key, Val, Acc) -> 
@@ -215,7 +215,7 @@ successors(_,_Addr, #ring{keys=[]}) ->
    [];
 successors(N, Addr, #ring{tokens = Tokens})
  when is_integer(Addr) ->
-   {Head, Tail} = bst:splitwith(fun(Addr0, _) -> Addr0 < Addr end, Tokens),
+   {Head, Tail} = bst:splitwith(fun(Addr0) -> Addr0 < Addr end, Tokens),
    List = (
       catch bst:foldl(
          fun(Key, Val, Acc) -> 
@@ -348,34 +348,30 @@ join_token([], _Key, #ring{}=R) ->
 %% repair ring, N-hashes set do not claim all shards
 %% some tokens collides to one shard, thus ring has unallocated shards 
 %% repair operation allocates these empty shards to keys in consistent manner
-repair(#ring{tokens = Tokens}=R) ->
-   R#ring{
-      tokens = refit(reset(Tokens))
-   }.
-
-%% reset previously repaired shards
-reset(Tokens) ->
-   bst:map(
-      fun(Addr, #t{h = -1}) -> {Addr, #t{}}; (Addr, T) -> {Addr, T} end,
-      Tokens
-   ).
-   
-refit(Tokens) ->
-   refit(
-      bst:splitwith(fun(_, #t{key = Key}) -> Key =/= undefined end, Tokens),
-      Tokens
-   ).
-
-refit({{t,nil}, _}, Tokens) ->
-   %% head shard is not allocated, we need to take name of last one
-   Tokens;
-refit({_, {t,nil}}, Tokens) ->
-   %% refit loop is completed
-   Tokens;
-refit({A, B}, Tokens) ->
-   {_, #t{key=Key}} = bst:max(A),
-   {Addr, _} = bst:min(B),
-   refit(bst:insert(Addr, #t{key=Key}, Tokens)).
+repair(#ring{tokens = Tokens0}=R) ->
+   {Tkns, _} = bst:mapfoldl(
+      fun(_, #t{h = H, key = Key}=T, Acc) ->
+         case H of
+            -1 ->
+               {T#t{key = Acc}, Acc};
+            _  ->
+               {T, Key}
+         end
+      end,
+      undefined,
+      Tokens0
+   ),
+   Tokens = case bst:min(Tkns) of
+      {_, #t{key = undefined}} ->
+         {_, #t{key = Key}} = bst:max(Tkns),
+         bst:map(
+            fun(_, #t{key = undefined}=T) -> T#t{key = Key}; (_, T) -> T end, 
+            Tkns
+         );
+      _ ->
+         Tkns
+   end,
+   R#ring{tokens = Tokens}.
 
 
 %%

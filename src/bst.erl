@@ -29,7 +29,9 @@
   ,max/1         %% O(log n)
   ,map/2         %% O(n)
   ,foldl/3       %% O(n)
+  ,mapfoldl/3    %% O(n)
   ,foldr/3       %% O(n)
+  ,mapfoldr/3    %% O(n)
   ,splitwith/2   %% O(log n)
   ,takewhile/2   %% O(log n)
   ,take/2        %% O(log n)
@@ -196,8 +198,7 @@ map(Fun, {t, T}) ->
 map_el(_Fun, ?NULL) ->
    ?NULL;
 map_el(Fun, {A, K, V, B}) ->
-   {Kx, Vx} = Fun(K, V),
-   {map_el(Fun, A), Kx, Vx, map_el(Fun, B)}.
+   {map_el(Fun, A), K, Fun(K, V), map_el(Fun, B)}.
 
 
 %%
@@ -213,6 +214,23 @@ foldl_el(Fun, Acc0, {A, K, V, B}) ->
    foldl_el(Fun, Fun(K, V, foldl_el(Fun, Acc0, A)), B).
 
 %%
+%% map and fold function over tree
+-spec(mapfoldl/3 :: (function(), any(), datum:tree()) -> {datum:tree(), any()}).
+
+mapfoldl(Fun, Acc0, {t, T}) ->
+   {Tx, Acc} = mapfoldl_el(Fun, Acc0, T),
+   {{t, Tx}, Acc}.
+
+mapfoldl_el(_Fun, Acc0, ?NULL) ->
+   {?NULL, Acc0};
+mapfoldl_el(Fun, Acc0, {A, K, V, B}) ->
+   {Ax, AccA} = mapfoldl_el(Fun, Acc0, A),
+   {Vx, AccK} = Fun(K, V, AccA),
+   {Bx, AccB} = mapfoldl_el(Fun, AccK, B),
+   {{Ax, K, Vx, Bx}, AccB}.
+
+
+%%
 %% fold function over tree 
 -spec(foldr/3 :: (function(), any(), datum:tree()) -> any()).
 
@@ -225,7 +243,25 @@ foldr_el(Fun, Acc0, {A, K, V, B}) ->
    foldr_el(Fun, Fun(K, V, foldr_el(Fun, Acc0, B)), A).
 
 %%
-%% split
+%% map and fold function over tree
+-spec(mapfoldr/3 :: (function(), any(), datum:tree()) -> {datum:tree(), any()}).
+
+mapfoldr(Fun, Acc0, {t, T}) ->
+   {Tx, Acc} = mapfoldr_el(Fun, Acc0, T),
+   {{t, Tx}, Acc}.
+
+mapfoldr_el(_Fun, Acc0, ?NULL) ->
+   {?NULL, Acc0};
+mapfoldr_el(Fun, Acc0, {A, K, V, B}) ->
+   {Bx, AccB} = mapfoldl_el(Fun, Acc0, B),
+   {Vx, AccK} = Fun(K, V, AccB),
+   {Ax, AccA} = mapfoldl_el(Fun, AccK, A),
+   {{Ax, K, Vx, Bx}, AccA}.
+
+%%
+%% split tree on left and right according to predicate function.
+%% the predicate function returns true for leftist keys and false otherwise. 
+%% the function behaves as follows: {takewhile(...), dropwhile(...)}
 -spec(splitwith/2 :: (function(), datum:tree()) -> {datum:tree(), datum:tree()}).
 
 splitwith(Fun, {t, T}) ->
@@ -236,7 +272,7 @@ splitwith_el(_Fun, ?NULL) ->
    {?NULL, ?NULL};
 
 splitwith_el(Fun, {A, K, V, B}) ->
-   case Fun(K, V) of
+   case Fun(K) of
       false ->
          {Ax, Bx} = splitwith_el(Fun, A),
          {Ax, {Bx, K, V, B}};
@@ -246,7 +282,7 @@ splitwith_el(Fun, {A, K, V, B}) ->
    end.
 
 %%
-%%
+%% takes elements from tree while predicate function return true
 -spec(takewhile/2 :: (function(), datum:tree()) -> datum:tree()).
 
 takewhile(Fun, {t, T}) ->
@@ -256,7 +292,7 @@ takewhile_el(_Fun, ?NULL) ->
    ?NULL;
 
 takewhile_el(Fun, {A, K, V, B}) ->
-   case Fun(K, V) of
+   case Fun(K) of
       false ->
          takewhile_el(Fun, A);
       true  ->
@@ -282,7 +318,7 @@ take_el(N, {A, K, V, B}) ->
    end.
 
 %%
-%%
+%% drops elements from tree while predicate function return true
 -spec(dropwhile/2 :: (function(), tree()) -> tree()).
 
 dropwhile(Fun, {t, T}) ->
@@ -292,7 +328,7 @@ dropwhile_el(_Fun, ?NULL) ->
    ?NULL;
 
 dropwhile_el(Fun, {A, K, V, B}) ->
-   case Fun(K, V) of
+   case Fun(K) of
       false ->
          {dropwhile_el(Fun, A), K, V, B};
       true  ->
