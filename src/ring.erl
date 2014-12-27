@@ -55,7 +55,7 @@
    m      =   8       :: integer()    % ring modulo
   ,n      =   3       :: integer()    % number of replica   
   ,q      =   8       :: integer()    % number of ranges (shards)
-  ,hash   = md5       :: atom()       % hash algorithm
+  ,hash   = sha       :: atom()       % hash algorithm (md5, sha)
   ,size   =   0       :: integer()    % number of nodes
   ,tokens = undefined :: datum:tree() % token table
   ,keys   = []        :: [{addr(), {key(), val()}}]
@@ -257,15 +257,15 @@ members(#ring{}=S) ->
 i(#ring{tokens=Tokens}) ->
    bst:foldr(fun i/3, [], Tokens).
 
-i(_, #t{h = -1, key = Key}, Acc) ->
-   orddict:update_counter(Key, 1,
-      orddict:update_counter(undefined, 1, Acc)
+i(_, #t{h  = -1, key = Key}, Acc) -> 
+   orddict:update_counter(undefined, 1,
+      orddict:update_counter(Key, 1, Acc)
    );
-i(_, #t{key = Key}, Acc) -> 
+i(_, #t{key=Key}, Acc) -> 
    orddict:update_counter(Key, 1, Acc).
 
 %%
-%% dump ring allocation
+%% dump ring
 -spec(dump/1 :: (#ring{}) -> [{addr(), key()}]).
 
 dump(#ring{tokens=Tokens}) ->
@@ -320,7 +320,7 @@ get(Key, #ring{}=R) ->
 join(Key, Val, #ring{}=R) ->
    join(address(Key, R), Key, Val, R).
 
-join(Addr, Key, Val, #ring{q = Q, keys = Keys}=R) ->
+join(Addr, Key, Val, #ring{keys = Keys}=R) ->
    case lists:keyfind(Addr, 1, R#ring.keys) of
       %% new key, update token allocation
       false ->
@@ -460,8 +460,12 @@ accumulate(_, _Addr, _T, Acc) ->
 %%
 %% return N generation hashes, derived from key
 %% the function ensure that there is N-shard distance
-hashes(Key, #ring{q=Q, n=N, hash=Mthd}=Ring) ->
-   naddr(nhash(lists:seq(0, Q), Mthd, s(Key)), Ring).
+hashes(Key, #ring{q=Q, hash=Mthd}=Ring) ->
+   List = lists:sort(
+      fun({_, A}, {_, B}) -> A =< B end, 
+      naddr(nhash(lists:seq(0, 2 * Q), Mthd, s(Key)), Ring)
+   ),
+   nfilter(List, Ring).
 
 nhash([I|Tail], Mthd, Key) ->
    Hash = crypto:hash(Mthd, Key),
@@ -477,6 +481,16 @@ naddr([{I, Hash}|Tail], Ring) ->
    [{I, Addr} | naddr(Tail, Ring)];
 naddr([], _Ring) ->
    [].
+
+nfilter([{I, Addr}|T], #ring{n = N, q = Q}=Ring) ->
+   {Addr0, _} = lookup(Addr, Ring),
+   Skip = Addr0 + N * (ringtop(Ring) div Q),
+   Tail = lists:dropwhile(fun({_, X}) -> X < Skip end, T),
+   [{I, Addr} | nfilter(Tail, Ring)];
+
+nfilter([], _Ring) ->
+   [].
+
 
 s(X)
  when is_binary(X) ->
