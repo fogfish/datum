@@ -35,10 +35,15 @@
   ,successors/2
   ,successors/3
   ,members/1
+  ,i/1
+  ,dump/1
   ,whois/2
   ,get/2
   ,join/3
   ,leave/2
+
+  ,hashes/2
+  ,lookup/2
 ]).
 
 -type(key()  :: any()).
@@ -245,6 +250,32 @@ successors(N, Key, Ring) ->
 members(#ring{}=S) ->
    [X || {_, X} <- S#ring.keys].
 
+%%
+%% return ring statistic
+-spec(i/1 :: (#ring{}) -> [{key(), integer()}]).
+
+i(#ring{tokens=Tokens}) ->
+   bst:foldr(fun i/3, [], Tokens).
+
+i(_, #t{h = -1, key = Key}, Acc) ->
+   orddict:update_counter(Key, 1,
+      orddict:update_counter(undefined, 1, Acc)
+   );
+i(_, #t{key = Key}, Acc) -> 
+   orddict:update_counter(Key, 1, Acc).
+
+%%
+%% dump ring allocation
+-spec(dump/1 :: (#ring{}) -> [{addr(), key()}]).
+
+dump(#ring{tokens=Tokens}) ->
+   bst:foldr(fun dump/3, [], Tokens).
+
+dump(Addr, #t{h  = -1}, Acc) -> 
+   [{Addr, undefined} | Acc];
+dump(Addr, #t{key=Key}, Acc) -> 
+   [{Addr, Key} | Acc].
+
 
 %%
 %% return list of addresses associated with given key
@@ -294,7 +325,7 @@ join(Addr, Key, Val, #ring{q = Q, keys = Keys}=R) ->
       %% new key, update token allocation
       false ->
          repair(
-            join_token(hashes(Q, Key, R), Key, 
+            join_token(hashes(Key, R), Key, 
                R#ring{
                   keys = orddict:store(Addr, {Key, Val}, Keys)
                }
@@ -307,9 +338,8 @@ join(Addr, Key, Val, #ring{q = Q, keys = Keys}=R) ->
          }
    end.
 
-join_token([{I, Hash}|Tail], Key, #ring{tokens = Tokens}=R) ->
+join_token([{I, Addr}|Tail], Key, #ring{tokens = Tokens}=R) ->
    %% allocate hash token from address space
-   Addr = address({hash, Hash}, R),
    case lookup(Addr, R) of
       %% slot is not allocated to any one
       {Addr0, #t{addr = undefined}} ->
@@ -329,9 +359,10 @@ join_token([{I, Hash}|Tail], Key, #ring{tokens = Tokens}=R) ->
             R#ring{tokens = bst:insert(Addr0, #t{h = I, addr = Addr, key = Key}, Tokens)}
          );
 
-      %% Key collides with allocated shard, smaller address wins
+      %% Key collides with allocated shard, smaller hash wins
       %% @todo: evaluate role of N-hash generation on allocation
-      {Addr0, #t{h = X, addr = Y}} when X =/= 0, Y > Addr ->
+      % {Addr0, #t{h = X, addr = Y}} when X =/= 0, Y > Addr ->
+      {Addr0, #t{h = X, addr = _}} when X > I ->
          join_token(Tail, Key, 
             R#ring{tokens = bst:insert(Addr0, #t{h = I, addr = Addr, key = Key}, Tokens)}
          );
@@ -428,18 +459,24 @@ accumulate(_, _Addr, _T, Acc) ->
 
 %%
 %% return N generation hashes, derived from key
-hashes(N, Key, #ring{}=R) ->
-   Token = R#ring.q - N,
-   Hash  = crypto:hash(R#ring.hash, s(Key)),
-   hashes(N - 1, [{Token, Hash}], Key, R).
+%% the function ensure that there is N-shard distance
+hashes(Key, #ring{q=Q, n=N, hash=Mthd}=Ring) ->
+   naddr(nhash(lists:seq(0, Q), Mthd, s(Key)), Ring).
 
-hashes(0, Acc, _Addr, #ring{}) ->
-   lists:reverse(Acc);
-hashes(N, Acc,  Key, #ring{}=R) ->
-   {_, Hash0} = hd(Acc),
-   Token = R#ring.q - N,
-   Hash  = crypto:hash(R#ring.hash, [s(Key), Hash0]),
-   hashes(N - 1, [{Token,Hash}|Acc], Key, R).
+nhash([I|Tail], Mthd, Key) ->
+   Hash = crypto:hash(Mthd, Key),
+   [{I, Hash} | nhash(Tail, Hash, Mthd, Key)].
+nhash([I|Tail], Hash0, Mthd, Key) ->
+   Hash = crypto:hash(Mthd, [Key, Hash0]),
+   [{I, Hash} | nhash(Tail, Hash, Mthd, Key)];
+nhash([], _Hash0, _Mthd, _Key) ->
+   [].
+
+naddr([{I, Hash}|Tail], Ring) ->
+   Addr = address({hash, Hash}, Ring),
+   [{I, Addr} | naddr(Tail, Ring)];
+naddr([], _Ring) ->
+   [].
 
 s(X)
  when is_binary(X) ->
@@ -453,5 +490,8 @@ s(X)
 s(X)
  when is_atom(X) ->
    erlang:list_to_binary(erlang:atom_to_list(X)).
+
+
+
 
 
