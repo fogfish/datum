@@ -39,7 +39,6 @@
   ,drop/2        %% O(log n)  
   ,list/1        %% O(n)
 ]).
--type_export([tree/0]).
 
 -define(NULL,   nil).
 
@@ -230,7 +229,7 @@ mapfoldl_el(Fun, Acc0, {A, K, V, B}) ->
    {{Ax, K, Vx, Bx}, AccB}.
 
 
-%%
+%% 
 %% fold function over tree 
 -spec(foldr/3 :: (function(), any(), datum:tree()) -> any()).
 
