@@ -206,6 +206,8 @@ ht_join(Node, Nodes,  H, #n{hash = Hash}=T) ->
 foldl(Fun, Acc, {t, T}) ->
    ht_foldl(Fun, Acc, T).
 
+ht_foldl(_Fun, Acc0, ?NULL) ->
+   Acc0;
 ht_foldl(Fun, Acc0, #l{leafs = Leafs}) ->
    lists:foldl(Fun, Acc0, Leafs);
 ht_foldl(Fun, Acc0, #n{nodes = Nodes}) ->
@@ -219,6 +221,8 @@ ht_foldl(Fun, Acc0, #n{nodes = Nodes}) ->
 foldr(Fun, Acc, {t, T}) ->
    ht_foldr(Fun, Acc, T).
 
+ht_foldr(_Fun, Acc0, ?NULL) ->
+   Acc0;
 ht_foldr(Fun, Acc0, #l{leafs = Leafs}) ->
    lists:foldr(Fun, Acc0, Leafs);
 ht_foldr(Fun, Acc0, #n{nodes = Nodes}) ->
