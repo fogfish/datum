@@ -233,13 +233,7 @@ hash(T) ->
    {hash, -1, foldl(fun(X, Acc) -> gb_sets:add(h(X), Acc) end, gb_sets:new(), T)}.
 
 hash(L, {t, T}) ->
-   Hashes = ht_hash(L, T),
-   case gb_sets:is_empty(Hashes) of
-      true  ->
-         undefined;
-      false ->
-         {hash, L, Hashes}
-   end.
+   {hash, L, ht_hash(L, T)}.
 
 ht_hash(_, ?NULL) ->
    gb_sets:new();
@@ -254,10 +248,12 @@ ht_hash(_, Acc0, #l{}) ->
 
 %%
 %% evict subtrees that matches a signature
--spec(evict/2 :: (sign(), datum:tree()) -> datum:tree()).
+-spec(evict/2 :: (sign(), datum:tree()) -> {ok | go, datum:tree()}).
 
-evict({hash, L, Hashes}, {t, T}) ->
-   {t, ht_evict(L, Hashes, T)}.
+evict({hash, L, {0,nil}}, {t, T}) ->
+   {ok, {t, T}};
+evict({hash, L,  Hashes}, {t, T}) ->
+   {go, {t, ht_evict(L, Hashes, T)}}.
 
 ht_evict(0, Hashes, #n{hash = Hash}=T) ->
    case gb_sets:is_member(Hash, Hashes) of
@@ -315,20 +311,39 @@ ht_diff(_, {t, nil}=A, B) ->
    {A, B};
 ht_diff(_, A, {t, nil}=B) ->
    {A, B};
-ht_diff(L, A, B) ->
-   case {hash(L, A), hash(L, B)} of
-      %% bottom of tree is reached, evict leaves
-      {undefined, _} ->
-         I = diff(hash(A), hash(B)),
-         {evict(I, A), evict(I, B)};
-      %% bottom of tree is reached, evict leaves
-      {_, undefined} ->
-         I = diff(hash(A), hash(B)),
-         {evict(I, A), evict(I, B)};
-      {HA, HB} ->
-         I = diff(HA, HB),
-         ht_diff(L + 1, evict(I, A), evict(I, B))
+ht_diff(L, A0, B0) ->
+   case evict(hash(L, A0), B0) of
+      {ok, B1} ->
+         {_,  A2} = evict(hash(B1), A0),
+         {_,  B2} = evict(hash(A0), B1),
+         {A2, B2};
+
+      {go, B1} ->
+         case evict(hash(L, B1), A0) of
+            {ok, A1} ->
+               {_, A2} = evict(hash(B1), A1),
+               {_, B2} = evict(hash(A1), B1),
+               {A2, B2};
+
+            {go, A1} ->
+               ht_diff(L + 1, A1, B1)
+         end
    end.
+
+
+   % case {hash(L, A), hash(L, B)} of
+   %    %% bottom of tree is reached, evict leaves
+   %    {undefined, _} ->
+   %       I = diff(hash(A), hash(B)),
+   %       {evict(I, A), evict(I, B)};
+   %    %% bottom of tree is reached, evict leaves
+   %    {_, undefined} ->
+   %       I = diff(hash(A), hash(B)),
+   %       {evict(I, A), evict(I, B)};
+   %    {HA, HB} ->
+   %       I = diff(HA, HB),
+   %       ht_diff(L + 1, evict(I, A), evict(I, B))
+   % end.
 
 %%
 %%
