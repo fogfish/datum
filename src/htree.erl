@@ -141,6 +141,9 @@ lookup(E, {t, T}) ->
 ht_lookup(H, E, T) ->
    ht_lookup(1, H, E, T).
 
+ht_lookup(_, _, _, ?NULL) ->
+   undefined;
+   
 ht_lookup(_, H, E, #l{leafs = Leafs}) ->
    case lists:member(E, Leafs) of
       false ->
