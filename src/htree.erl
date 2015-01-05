@@ -263,6 +263,8 @@ ht_hash(_, Acc0, #l{}) ->
 evict({hash, L, Hashes}, {t, T}) ->
    {t, ht_evict(L, Hashes, T)}.
 
+ht_evict(_,_Hashes, ?NULL) ->
+   ?NULL;
 ht_evict(0, Hashes, #n{hash = Hash}=T) ->
    case gb_sets:is_member(Hash, Hashes) of
       true  ->
