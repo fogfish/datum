@@ -14,13 +14,13 @@
 %%   limitations under the License.
 %%
 %% @description
-%%   hash tree (merkle tree)
+%%   hash tree - functional data structure for large set reconciliation 
 -module(htree).
 
 -export([
    new/0
   ,build/1
-  ,insert/2
+  ,insert/3
   ,lookup/2
   ,remove/2
   ,foldl/3
@@ -53,13 +53,15 @@
 
 %%
 %% data types
--type(tree()     :: {l | n, binary(), integer(), [tree() | element()]} | ?NULL).
+-type(leaf()     :: [{key(), val()}]).   %% leaf node container
+-type(inner()    :: [tree()]).           %% tree node container   
+-type(tree()     :: {n, hash(), integer(), inner() | leaf()} | ?NULL).
 -type(hash()     :: binary()).
--type(element()  :: any()).
+-type(key()      :: any()).
+-type(val()      :: any()).
 -type(sign()     :: {hash, integer(), [hash()]}).
 
 %% tree nodes
--record(l, {hash, uid = 0, leafs = []}).
 -record(n, {hash, uid = 0, nodes = []}).
 
 %%
@@ -71,136 +73,126 @@ new()  ->
 
 %%
 %% build tree from data type
--spec(build/1 :: ([element()]) -> datum:tree()).
+-spec(build/1 :: ([{key(), val()}]) -> datum:tree()).
 
 build(List) ->
-   lists:foldl(fun insert/2, new(), List).
+   lists:foldl(
+      fun({Key, Val}, Acc) -> insert(Key, Val, Acc) end, 
+      new(), 
+      List
+   ).
 
 %%
 %% insert element to hash tree
--spec(insert/2 :: (element(), datum:tree()) -> datum:tree()).
+-spec(insert/3 :: (key(), val(), datum:tree()) -> datum:tree()).
 
-insert(E, {t, T}) ->
-   case ht_insert(h(E), E, T) of
+insert(K, V, {t, T}) ->
+   {_, Tx} = ht_insert(K, V, T),
+   {t, Tx}.
+
+ht_insert(K, V, ?NULL) ->
+   ht_insert(K, V, #n{});
+ht_insert(K, V, T) ->
+   ht_insert(1, fhash(K), K, V, T).
+
+ht_insert(_, H, K, V, ?NULL) ->
+   %% insert new leaf node
+   {H, {K, V}};
+ht_insert(_, _, K, V, {K,_}) ->
+   %% update existing leaf node
+   {undefined, {K, V}};
+ht_insert(L, H, K, V, #n{hash = Hash, nodes = Nodes}=T) ->
+   {value, N, NN} = ht_select(uid(L, H), K, Nodes),   %% peek next child on path
+   {Hx, Nx} = ht_insert(L + 1, H, K, V, N),           %% insert key/val
+   {Hx, ht_split(L, T#n{hash = hadd(Hx, Hash), nodes = [Nx | NN]})}.
+
+%%
+%% select node on path
+ht_select(_, _, []) ->
+   {value, ?NULL, []};
+ht_select(I, _, [#n{  } | _]=NN) ->
+   case lists:keytake(I, #n.uid, NN) of
       false ->
-         {t, T};
-      X ->
-         {t, X}
-   end.
-
-ht_insert(H, E, T) ->
-   ht_insert(1, H, E, T).
-
-ht_insert(_, H, E, ?NULL) ->
-   #l{hash = H, leafs = [E]};
-ht_insert(L, H, E, #l{hash = Hash, leafs = Leafs}=T) ->
-   case lists:member(E, Leafs) of
-      false ->
-         ht_split(L, T#l{hash = hadd(H, Hash), leafs = [E|Leafs]});
-      true  ->
-         false
+         {value, #n{uid=I}, NN};
+      Value ->
+         Value
    end;
-ht_insert(L, H, E, #n{hash = Hash, nodes = Nodes}=T) ->
-   {N, NN} = ht_select(L, H, Nodes),
-   case ht_insert(L + 1, H, E, N) of
+ht_select(_, K, [{_, _} | _]=NN) ->
+   case lists:keytake(K, 1, NN) of
       false ->
-         false;
-      Node  ->
-         T#n{hash = hadd(H, Hash), nodes = [Node | NN]}
+         {value, ?NULL, NN};
+      Value ->
+         Value
    end.
 
-
-ht_split(L, #l{uid = Uid, leafs = Leafs})
- when length(Leafs) > ?CONFIG_HTREE_CAPACITY ->
-   lists:foldr(
-      fun(K, Acc) -> ht_insert(L, h(K), K, Acc) end,
-      #n{uid = Uid},
-      Leafs
-   );
+%%
+%% split leaf node
+ht_split(L, #n{nodes = [{_, _} | _]=Nodes}=T)
+ when length(Nodes) > ?CONFIG_HTREE_CAPACITY ->
+   X = lists:foldr(
+      fun({K, V}, Acc) ->
+         H = fhash(K),
+         I = uid(L, H),
+         {value, N, NN} = case lists:keytake(I, #n.uid, Acc) of
+            false ->
+               {value, #n{uid=I}, Acc};
+            Value ->
+               Value
+         end,
+         {_,   Nx} = ht_insert(L + 1, H, K, V, N), 
+         [Nx | NN]
+      end,
+      [],
+      Nodes
+   ),
+   T#n{nodes = X};
 ht_split(_, T) ->
    T.
 
-%%
-%% select and create node
-ht_select(L, Hash, Nodes) ->
-   I = uid(L, Hash),
-   case lists:keytake(I, #n.uid, Nodes) of
-      {value, N, NN} -> 
-         {N, NN};
-      false          ->
-         {#l{uid=I}, Nodes}
-   end.
 
 %%
 %% lookup element
--spec(lookup/2 :: (element(), datum:tree()) -> hash() | undefined).
+-spec(lookup/2 :: (key(), datum:tree()) -> val() | undefined).
 
-lookup(E, {t, T}) ->
-   ht_lookup(h(E), E, T).
+lookup(K, {t, T}) ->
+   ht_lookup(K, T).
 
-ht_lookup(H, E, T) ->
-   ht_lookup(1, H, E, T).
+ht_lookup(K, T) ->
+   ht_lookup(1, fhash(K), K, T).
 
 ht_lookup(_, _, _, ?NULL) ->
    undefined;
-   
-ht_lookup(_, H, E, #l{leafs = Leafs}) ->
-   case lists:member(E, Leafs) of
-      false ->
-         undefined;
-      true  ->
-         H
-   end;
-ht_lookup(L, H, E, #n{nodes = Nodes}) ->
-   I = uid(L, H),
-   case lists:keyfind(I, #n.uid, Nodes) of
-      false ->
-         undefined;
-      Node  ->
-         ht_lookup(L + 1, H, E, Node)
-   end.
+ht_lookup(_, _, K, {K,V}) ->
+   V;
+ht_lookup(L, H, K, #n{nodes = Nodes}) ->
+   {value, N, _} = ht_select(uid(L, H), K, Nodes),
+   ht_lookup(L + 1, H, K, N).
 
 %%
 %% remove element
--spec(remove/2 :: (element(), datum:tree()) -> datum:tree()).
+-spec(remove/2 :: (key(), datum:tree()) -> datum:tree()).
 
-remove(E, {t, T}) ->
-   case ht_remove(h(E), E, T) of
-      false ->
-         {t, T};
-      X     ->
-         {t, X}
+remove(K, {t, T}) ->
+   {_, Tx} = ht_remove(K, T),
+   {t, Tx}.
+
+ht_remove(K, T) ->
+   ht_remove(1, fhash(K), K, T).
+
+ht_remove(_, _, _, ?NULL) ->
+   {undefined, ?NULL};
+ht_remove(_, H, K, {K,_}) ->
+   {H, ?NULL};
+ht_remove(L, H, K, #n{hash = Hash, nodes = Nodes}=T) ->
+   {value, N, NN} = ht_select(uid(L, H), K, Nodes),   %% peek next child on path
+   case {ht_remove(L + 1, H, K, N), NN} of
+      {{Hx, ?NULL}, []} ->
+         {Hx, ?NULL};
+      {{Hx, ?NULL},  _} ->
+         {Hx, T#n{hash = hsub(Hx, Hash), nodes = NN}};
+      {{Hx,    Nx},  _} ->
+         {Hx, T#n{hash = hsub(Hx, Hash), nodes = [Nx | NN]}}
    end.
-
-ht_remove(H, E, T) ->
-   ht_remove(1, H, E, T).
-
-ht_remove(_, _, _, #l{leafs = []}) ->
-   ?NULL;
-ht_remove(_, _, E, #l{leafs = [E]}) ->
-   ?NULL;
-ht_remove(_, H, E, #l{hash = Hash, leafs = Leafs}=T) ->
-   case lists:member(E, Leafs) of
-      true  ->
-         T#l{hash = hsub(H, Hash), leafs = lists:delete(E, Leafs)};
-      false ->
-         false
-   end;
-ht_remove(L, H, E, #n{nodes = Nodes}=T) ->
-   {N, NN} = ht_select(L, H, Nodes),
-   case ht_remove(L + 1, H, E, N) of
-      false ->
-         false;
-      Node  ->
-         ht_join(Node, NN, H, T)
-   end.
-
-ht_join(?NULL, [], _H, _T) ->
-   ?NULL;
-ht_join(?NULL, Nodes, H, #n{hash = Hash}=T) ->
-   T#n{hash = hsub(H, Hash), nodes = Nodes};
-ht_join(Node, Nodes,  H, #n{hash = Hash}=T) ->
-   T#n{hash = hsub(H, Hash), nodes = [Node | Nodes]}.
 
 %%
 %% fold function over tree 
@@ -211,11 +203,10 @@ foldl(Fun, Acc, {t, T}) ->
 
 ht_foldl(_Fun, Acc0, ?NULL) ->
    Acc0;
-ht_foldl(Fun, Acc0, #l{leafs = Leafs}) ->
-   lists:foldl(Fun, Acc0, Leafs);
+ht_foldl(Fun, Acc0,  {K,V}) ->
+   Fun(K, V, Acc0);
 ht_foldl(Fun, Acc0, #n{nodes = Nodes}) ->
    lists:foldl(fun(X, Acc) -> ht_foldl(Fun, Acc, X) end, Acc0, Nodes).
-
 
 %%
 %% fold function over tree 
@@ -226,18 +217,18 @@ foldr(Fun, Acc, {t, T}) ->
 
 ht_foldr(_Fun, Acc0, ?NULL) ->
    Acc0;
-ht_foldr(Fun, Acc0, #l{leafs = Leafs}) ->
-   lists:foldr(Fun, Acc0, Leafs);
+ht_foldr(Fun, Acc0,  {K,V}) ->
+   Fun(K, V, Acc0);
 ht_foldr(Fun, Acc0, #n{nodes = Nodes}) ->
    lists:foldr(fun(X, Acc) -> ht_foldr(Fun, Acc, X) end, Acc0, Nodes).
 
 %%
-%% return list of element signatures (intermediate signatures) 
+%% return list of signatures at level 
 -spec(hash/1 :: (datum:tree()) -> sign()).
 -spec(hash/2 :: (integer(), datum:tree()) -> sign() | undefined).
 
 hash(T) ->
-   {hash, -1, foldl(fun(X, Acc) -> gb_sets:add(h(X), Acc) end, gb_sets:new(), T)}.
+   {hash, -1, foldl(fun(X, _, Acc) -> gb_sets:add(fhash(X), Acc) end, gb_sets:new(), T)}.
 
 hash(L, {t, T}) ->
    Hashes = ht_hash(L, T),
@@ -256,7 +247,7 @@ ht_hash(0, Acc,  #n{hash  = Hash}) ->
    gb_sets:add(Hash, Acc);
 ht_hash(L, Acc0, #n{nodes = Nodes}) ->
    lists:foldl(fun(X, Acc) -> ht_hash(L - 1, Acc, X) end, Acc0, Nodes);
-ht_hash(_, Acc0, #l{}) ->
+ht_hash(_, Acc0, _) ->
    Acc0.
 
 %%
@@ -275,15 +266,15 @@ ht_evict(0, Hashes, #n{hash = Hash}=T) ->
       false ->
          T
    end;
-ht_evict(L, Hashes, #l{leafs = Leafs}=T)
+ht_evict(L, Hashes, {K, _}=T)
  when L < 0 ->
-   case [E || E <- Leafs, not gb_sets:is_member(h(E), Hashes)] of
-      [] ->
+   case gb_sets:is_member(fhash(K), Hashes) of
+      true  ->
          ?NULL;
-      X  ->
-         T#l{leafs = X}
+      false ->
+         T
    end;
-ht_evict(_,_Hashes, #l{}=T) ->
+ht_evict(_,_Hashes, {_, _}=T) ->
    T;
 ht_evict(L, Hashes, #n{nodes = Nodes}=T) ->
    case ht_evict_bits(L, Hashes, Nodes) of
@@ -342,7 +333,7 @@ ht_diff(L, A, B) ->
 %%
 %%
 list(T) ->
-   foldr(fun(X, Acc) -> [X|Acc] end, [], T).
+   foldr(fun(K, V, Acc) -> [{K,V}|Acc] end, [], T).
 
 
 %%%------------------------------------------------------------------
@@ -353,17 +344,18 @@ list(T) ->
 
 %%
 %% calculate node identity (offset) at level L
+uid(0, _) -> 0;
 uid(L, Hash) ->
    Skip = (L - 1) * ?CONFIG_HTREE_WIDTH,
    <<_:Skip, Val:?CONFIG_HTREE_WIDTH, _/bitstring>> = Hash,
    Val. 
 
 %%
-%% calculate hash
-h(X)
+%% hash function
+fhash(X)
  when is_binary(X) ->
    ?HASH(X);
-h(X) ->
+fhash(X) ->
    ?HASH(erlang:term_to_binary(X)).
 
 %%
