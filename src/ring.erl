@@ -69,6 +69,11 @@
 }).
 
 %%
+%% ring feature: do not allow to claim neighbor tokens
+% -define(CONFIG_NFILTER, true).
+
+
+%%
 %% create new token ring
 %%
 %% Options:
@@ -482,6 +487,10 @@ naddr([{I, Hash}|Tail], Ring) ->
 naddr([], _Ring) ->
    [].
 
+-ifndef(CONFIG_NFILTER).
+nfilter(List, _Ring) ->
+   List.
+-else.
 nfilter([{I, Addr}|T], #ring{n = N, q = Q}=Ring) ->
    {Addr0, _} = lookup(Addr, Ring),
    Skip = Addr0 + N * (ringtop(Ring) div Q),
@@ -490,6 +499,7 @@ nfilter([{I, Addr}|T], #ring{n = N, q = Q}=Ring) ->
 
 nfilter([], _Ring) ->
    [].
+-endif.
 
 
 s(X)
