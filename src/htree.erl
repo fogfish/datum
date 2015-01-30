@@ -307,7 +307,7 @@ diff({hash, LA, HA}, {hash, LB, HB})
  when LA =:= LB ->
    {hash, LA, gb_sets:intersection(HA, HB)};
 diff({hash, LA,  _}, {hash, LB,  _}) ->
-   {hash, erlang:min(LA, LB), []};
+   {hash, erlang:min(LA, LB), gb_sets:new()};
 diff({t, _}=A, {t, _}=B) ->
    ht_diff(0, A, B).
 
