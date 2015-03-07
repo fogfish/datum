@@ -25,6 +25,7 @@
   ,remove/2
   ,foldl/3
   ,foldr/3
+  ,foreach/2
   ,hash/1
   ,hash/2
   ,evict/2
@@ -221,6 +222,21 @@ ht_foldr(Fun, Acc0,  {K,V}) ->
    Fun(K, V, Acc0);
 ht_foldr(Fun, Acc0, #n{nodes = Nodes}) ->
    lists:foldr(fun(X, Acc) -> ht_foldr(Fun, Acc, X) end, Acc0, Nodes).
+
+%%
+%% apply side-effect function to each element 
+-spec(foreach/2 :: (function(), datum:tree()) -> ok).
+
+foreach(Fun, {t, T}) ->
+   ht_foreach(Fun, T).
+
+ht_foreach(_Fun, ?NULL) ->
+   ok;
+ht_foreach(Fun,  {K,V}) ->
+   Fun(K, V);
+ht_foreach(Fun, #n{nodes = Nodes}) ->
+   lists:foreach(fun(X) -> ht_foreach(Fun, X) end, Nodes).
+
 
 %%
 %% return list of signatures at level 
