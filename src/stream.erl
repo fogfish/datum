@@ -47,7 +47,8 @@
   ,list/1
   ,list/2
   ,prefix/1
-  ,prefix/2  
+  ,prefix/2
+  ,unique/1
   ,is_empty/1
   ,build/1
 ]).
@@ -324,6 +325,16 @@ prefix(Pred, Acc, {s, Head, Tail}=Stream) ->
    end;
 prefix(_Fun, Acc, ?NULL) ->
    {lists:reverse(Acc), ?NULL}.
+
+%%
+%% remove duplicated elements
+-spec(unique/1 :: (datum:stream()) -> datum:stream()).
+
+unique({s, Head, _}=Stream) ->
+   stream:new(Head, fun() -> unique(dropwhile(fun(X) -> X =:= Head end, Stream)) end);
+unique({}) ->
+   stream:new().
+
 
 %%
 %% check if stream is empty
