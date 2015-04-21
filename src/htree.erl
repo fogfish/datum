@@ -88,23 +88,23 @@ build(List) ->
 -spec(insert/3 :: (key(), val(), datum:tree()) -> datum:tree()).
 
 insert(K, V, {t, T}) ->
-   {_, Tx} = ht_insert(K, V, T),
+   {_, Tx} = ht_insert(fhash(K), V, T),
    {t, Tx}.
 
-ht_insert(K, V, ?NULL) ->
-   ht_insert(K, V, #n{});
-ht_insert(K, V, T) ->
-   ht_insert(1, fhash(K), K, V, T).
+ht_insert(H, V, ?NULL) ->
+   ht_insert(H, V, #n{});
+ht_insert(H, V, T) ->
+   ht_insert(1, H, V, T).
 
-ht_insert(_, H, K, V, ?NULL) ->
+ht_insert(_, H, V, ?NULL) ->
    %% insert new leaf node
-   {H, {K, V}};
-ht_insert(_, _, K, V, {K,_}) ->
+   {H, {H, V}};
+ht_insert(_, H, V, {H, _}) ->
    %% update existing leaf node
-   {undefined, {K, V}};
-ht_insert(L, H, K, V, #n{hash = Hash, nodes = Nodes}=T) ->
-   {value, N, NN} = ht_select(uid(L, H), K, Nodes),   %% peek next child on path
-   {Hx, Nx} = ht_insert(L + 1, H, K, V, N),           %% insert key/val
+   {undefined, {H, V}};
+ht_insert(L, H, V, #n{hash = Hash, nodes = Nodes}=T) ->
+   {value, N, NN} = ht_select(uid(L, H), H, Nodes),   %% peek next child on path
+   {Hx, Nx} = ht_insert(L + 1, H, V, N),           %% insert key/val
    {Hx, ht_split(L, T#n{hash = hadd(Hx, Hash), nodes = [Nx | NN]})}.
 
 %%
@@ -118,8 +118,8 @@ ht_select(I, _, [#n{  } | _]=NN) ->
       Value ->
          Value
    end;
-ht_select(_, K, [{_, _} | _]=NN) ->
-   case lists:keytake(K, 1, NN) of
+ht_select(_, H, [{_, _} | _]=NN) ->
+   case lists:keytake(H, 1, NN) of
       false ->
          {value, ?NULL, NN};
       Value ->
@@ -131,8 +131,7 @@ ht_select(_, K, [{_, _} | _]=NN) ->
 ht_split(L, #n{nodes = [{_, _} | _]=Nodes}=T)
  when length(Nodes) > ?CONFIG_HTREE_CAPACITY ->
    X = lists:foldr(
-      fun({K, V}, Acc) ->
-         H = fhash(K),
+      fun({H, V}, Acc) ->
          I = uid(L, H),
          {value, N, NN} = case lists:keytake(I, #n.uid, Acc) of
             false ->
@@ -140,7 +139,7 @@ ht_split(L, #n{nodes = [{_, _} | _]=Nodes}=T)
             Value ->
                Value
          end,
-         {_,   Nx} = ht_insert(L + 1, H, K, V, N), 
+         {_,   Nx} = ht_insert(L + 1, H, V, N), 
          [Nx | NN]
       end,
       [],
@@ -156,37 +155,37 @@ ht_split(_, T) ->
 -spec(lookup/2 :: (key(), datum:tree()) -> val() | undefined).
 
 lookup(K, {t, T}) ->
-   ht_lookup(K, T).
+   ht_lookup(fhash(K), T).
 
-ht_lookup(K, T) ->
-   ht_lookup(1, fhash(K), K, T).
+ht_lookup(H, T) ->
+   ht_lookup(1, H, T).
 
-ht_lookup(_, _, _, ?NULL) ->
+ht_lookup(_, _, ?NULL) ->
    undefined;
-ht_lookup(_, _, K, {K,V}) ->
+ht_lookup(_, H, {H,V}) ->
    V;
-ht_lookup(L, H, K, #n{nodes = Nodes}) ->
-   {value, N, _} = ht_select(uid(L, H), K, Nodes),
-   ht_lookup(L + 1, H, K, N).
+ht_lookup(L, H, #n{nodes = Nodes}) ->
+   {value, N, _} = ht_select(uid(L, H), H, Nodes),
+   ht_lookup(L + 1, H, N).
 
 %%
 %% remove element
 -spec(remove/2 :: (key(), datum:tree()) -> datum:tree()).
 
 remove(K, {t, T}) ->
-   {_, Tx} = ht_remove(K, T),
+   {_, Tx} = ht_remove(fhash(K), T),
    {t, Tx}.
 
-ht_remove(K, T) ->
-   ht_remove(1, fhash(K), K, T).
+ht_remove(H, T) ->
+   ht_remove(1, H, T).
 
-ht_remove(_, _, _, ?NULL) ->
+ht_remove(_, _, ?NULL) ->
    {undefined, ?NULL};
-ht_remove(_, H, K, {K,_}) ->
+ht_remove(_, H, {H,_}) ->
    {H, ?NULL};
-ht_remove(L, H, K, #n{hash = Hash, nodes = Nodes}=T) ->
-   {value, N, NN} = ht_select(uid(L, H), K, Nodes),   %% peek next child on path
-   case {ht_remove(L + 1, H, K, N), NN} of
+ht_remove(L, H, #n{hash = Hash, nodes = Nodes}=T) ->
+   {value, N, NN} = ht_select(uid(L, H), H, Nodes),   %% peek next child on path
+   case {ht_remove(L + 1, H, N), NN} of
       {{Hx, ?NULL}, []} ->
          {Hx, ?NULL};
       {{Hx, ?NULL},  _} ->
@@ -204,8 +203,8 @@ foldl(Fun, Acc, {t, T}) ->
 
 ht_foldl(_Fun, Acc0, ?NULL) ->
    Acc0;
-ht_foldl(Fun, Acc0,  {K,V}) ->
-   Fun(K, V, Acc0);
+ht_foldl(Fun, Acc0,  {_,V}) ->
+   Fun(V, Acc0);
 ht_foldl(Fun, Acc0, #n{nodes = Nodes}) ->
    lists:foldl(fun(X, Acc) -> ht_foldl(Fun, Acc, X) end, Acc0, Nodes).
 
@@ -218,8 +217,8 @@ foldr(Fun, Acc, {t, T}) ->
 
 ht_foldr(_Fun, Acc0, ?NULL) ->
    Acc0;
-ht_foldr(Fun, Acc0,  {K,V}) ->
-   Fun(K, V, Acc0);
+ht_foldr(Fun, Acc0,  {H, V}) ->
+   Fun(H, V, Acc0);
 ht_foldr(Fun, Acc0, #n{nodes = Nodes}) ->
    lists:foldr(fun(X, Acc) -> ht_foldr(Fun, Acc, X) end, Acc0, Nodes).
 
@@ -232,8 +231,8 @@ foreach(Fun, {t, T}) ->
 
 ht_foreach(_Fun, ?NULL) ->
    ok;
-ht_foreach(Fun,  {K,V}) ->
-   Fun(K, V);
+ht_foreach(Fun,  {H,V}) ->
+   Fun(H, V);
 ht_foreach(Fun, #n{nodes = Nodes}) ->
    lists:foreach(fun(X) -> ht_foreach(Fun, X) end, Nodes).
 
@@ -244,7 +243,7 @@ ht_foreach(Fun, #n{nodes = Nodes}) ->
 -spec(hash/2 :: (integer(), datum:tree()) -> sign() | undefined).
 
 hash(T) ->
-   {hash, -1, foldl(fun(X, _, Acc) -> gb_sets:add(fhash(X), Acc) end, gb_sets:new(), T)}.
+   {hash, -1, foldl(fun(H, _, Acc) -> gb_sets:add(H, Acc) end, gb_sets:new(), T)}.
 
 hash(L, {t, T}) ->
    Hashes = ht_hash(L, T),
@@ -282,9 +281,9 @@ ht_evict(0, Hashes, #n{hash = Hash}=T) ->
       false ->
          T
    end;
-ht_evict(L, Hashes, {K, _}=T)
+ht_evict(L, Hashes, {H, _}=T)
  when L < 0 ->
-   case gb_sets:is_member(fhash(K), Hashes) of
+   case gb_sets:is_member(H, Hashes) of
       true  ->
          ?NULL;
       false ->
@@ -349,7 +348,7 @@ ht_diff(L, A, B) ->
 %%
 %%
 list(T) ->
-   foldr(fun(K, V, Acc) -> [{K,V}|Acc] end, [], T).
+   foldr(fun(_, V, Acc) -> [V|Acc] end, [], T).
 
 
 %%%------------------------------------------------------------------
@@ -360,7 +359,8 @@ list(T) ->
 
 %%
 %% calculate node identity (offset) at level L
-uid(0, _) -> 0;
+uid(0, _) -> 
+   0;
 uid(L, Hash) ->
    Skip = (L - 1) * ?CONFIG_HTREE_WIDTH,
    <<_:Skip, Val:?CONFIG_HTREE_WIDTH, _/bitstring>> = Hash,
