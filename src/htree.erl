@@ -203,8 +203,8 @@ foldl(Fun, Acc, {t, T}) ->
 
 ht_foldl(_Fun, Acc0, ?NULL) ->
    Acc0;
-ht_foldl(Fun, Acc0,  {_,V}) ->
-   Fun(V, Acc0);
+ht_foldl(Fun, Acc0,  {H,V}) ->
+   Fun(H, V, Acc0);
 ht_foldl(Fun, Acc0, #n{nodes = Nodes}) ->
    lists:foldl(fun(X, Acc) -> ht_foldl(Fun, Acc, X) end, Acc0, Nodes).
 
@@ -217,7 +217,7 @@ foldr(Fun, Acc, {t, T}) ->
 
 ht_foldr(_Fun, Acc0, ?NULL) ->
    Acc0;
-ht_foldr(Fun, Acc0,  {H, V}) ->
+ht_foldr(Fun, Acc0,  {H,V}) ->
    Fun(H, V, Acc0);
 ht_foldr(Fun, Acc0, #n{nodes = Nodes}) ->
    lists:foldr(fun(X, Acc) -> ht_foldr(Fun, Acc, X) end, Acc0, Nodes).
