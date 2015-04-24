@@ -35,6 +35,7 @@
   ,foreach/2
   ,map/2
   ,scan/3
+  ,scanwith/3
   ,split/2
   ,splitwith/2
   ,take/2
@@ -190,12 +191,20 @@ map(_, ?NULL) ->
 %% accumulates the partial folds of an input stream into a newly-allocated
 %% output stream
 -spec(scan/3 :: (function(), any(), datum:stream()) -> datum:stream()).
+-spec(scanwith/3 :: (function(), any(), datum:stream()) -> datum:stream()).
 
 scan(Fun, Acc0, {s, Head, Tail}) ->
 	Acc = Fun(Head, Acc0),
 	new(Acc, fun() -> scan(Fun, Acc, Tail()) end);
 scan(_, _Acc0, ?NULL) ->
 	new().
+
+scanwith(Fun, Acc0, {s, Head, Tail}) ->
+   Acc = Fun(Head, Acc0),
+   new(Acc, fun() -> scanwith(Fun, Acc, Tail()) end);
+scanwith(Fun, Acc0, ?NULL) ->
+   Acc = Fun(eos, Acc0),
+   new(Acc).
 
 %%
 %% partitions stream into two streams. The split behaves as if it is defined as 
