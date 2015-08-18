@@ -28,9 +28,13 @@
   ,enq/2
   ,deq/1
 
+   % utility interface
   ,is_empty/1
   ,length/1
   ,dropwhile/2
+  ,takewhile/2
+  ,splitwith/2
+  ,list/1
 ]).
 
 %%
@@ -124,6 +128,49 @@ dropwhile(Pred, {q, _N, _Tail, _Head}=Q) ->
 
 dropwhile(_,  {}) ->
    q:new().
+
+%%
+%% takewhile head of queue
+-spec(takewhile/2 :: (function(), datum:q()) -> datum:q()).
+
+takewhile(Pred, Queue) ->
+   takewhile(Pred, new(), Queue).
+
+takewhile(Pred, Acc, {q, _N, _Tail, _Head}=Q) ->
+   {Head, Tail} = deq(Q),
+   case Pred(Head) of
+      true  -> takewhile(Pred, enq(Head, Acc), Tail); 
+      false -> Acc
+   end;
+
+takewhile(_,  Acc, {}) ->
+   Acc.
+
+%%
+%% partitions queue into two queues according to predicate.
+%% The splitwith/2 behaves as if it is defined as consequent 
+%% takewhile(Pred, Queue), dropwhile(Pred, Queue)
+-spec(splitwith/2 :: (function(), datum:q()) -> {datum:q(), datum:q()}).
+
+splitwith(Pred, Queue) ->
+   splitwith(Pred, new(), Queue).
+
+splitwith(Pred, Acc, {q, _N, _Tail, _Head}=Q) ->
+   {Head, Tail} = deq(Q),
+   case Pred(Head) of
+      true  -> splitwith(Pred, enq(Head, Acc), Tail); 
+      false -> {Acc, Q}
+   end;
+
+splitwith(_,  Acc, {}) ->
+   {Acc, new()}.
+
+%%
+%%
+-spec(list/1 :: (datum:q()) -> list()).
+
+list({q, _, Tail, Head}) ->
+   Head ++ lists:reverse(Tail, []).
 
 %%%------------------------------------------------------------------
 %%%

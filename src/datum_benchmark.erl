@@ -6,7 +6,7 @@
 
 -define(N,    512).
 -define(RING, [
-   {m,     16}
+   {m,     64}
   ,{q,   4096}
   ,{n,      3}
   ,{hash, sha}
