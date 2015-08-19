@@ -188,7 +188,9 @@ splitwith(_,  Acc, {}) ->
 -spec(list/1 :: (datum:q()) -> list()).
 
 list({q, _, Tail, Head}) ->
-   Head ++ lists:reverse(Tail, []).
+   Head ++ lists:reverse(Tail, []);
+list(?NULL) ->
+   [].
 
 %%%------------------------------------------------------------------
 %%%
