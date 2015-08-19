@@ -16,7 +16,6 @@
 %% @description
 %%   heap ordered tree - each element at node is no large then elements at its children
 -module(heap).
-
 -include("datum.hrl").
 
 -export([
@@ -25,6 +24,10 @@
   ,tail/1     %% O(log n)
   ,insert/3   %% O(log n)
   ,size/1     %% O(1)
+   % utility interface
+  ,dropwhile/2
+  ,takewhile/2
+  ,splitwith/2
   ,list/1     %% O(n)
 ]).
 
@@ -73,6 +76,57 @@ size({h, Size, _}) ->
    Size;
 size(_) ->
    0.
+
+%%
+%% dropwhile head of heap
+-spec(dropwhile/2 :: (function(), datum:heap()) -> datum:heap()).
+
+dropwhile(Pred, {h, _, _} = Heap) ->
+   {Key, _} = head(Heap),
+   case Pred(Key) of
+      true  -> dropwhile(Pred, tail(Heap)); 
+      false -> Heap
+   end;
+
+dropwhile(_,  ?NULL) ->
+   new().
+
+%%
+%% takewhile head of heap
+-spec(takewhile/2 :: (function(), datum:heap()) -> datum:heap()).
+
+takewhile(Pred, Heap) ->
+   takewhile(Pred, new(), Heap).
+
+takewhile(Pred, Acc, {h, _, _} = Heap) ->
+   {Key, Val} = head(Heap),
+   case Pred(Key) of
+      true  -> takewhile(Pred, insert(Key, Val, Acc), tail(Heap)); 
+      false -> Acc
+   end;
+
+takewhile(_,  Acc, ?NULL) ->
+   Acc.
+
+%%
+%% partitions heap into two heaps according to predicate.
+%% The splitwith/2 behaves as if it is defined as consequent 
+%% takewhile(Pred, Queue), dropwhile(Pred, Queue)
+-spec(splitwith/2 :: (function(), datum:q()) -> {datum:q(), datum:q()}).
+
+splitwith(Pred, Queue) ->
+   splitwith(Pred, new(), Queue).
+
+splitwith(Pred, Acc, {h, _, _} = Heap) ->
+   {Key, Val} = head(Heap),
+   case Pred(Key) of
+      true  -> splitwith(Pred, insert(Key, Val, Acc), tail(Heap)); 
+      false -> {Acc, Heap}
+   end;
+
+splitwith(_,  Acc, ?NULL) ->
+   {Acc, new()}.
+
 
 %%
 %% return list of elements
