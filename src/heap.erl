@@ -81,15 +81,15 @@ size(_) ->
 %% dropwhile head of heap
 -spec(dropwhile/2 :: (function(), datum:heap()) -> datum:heap()).
 
+dropwhile(_Pred, {h, _, ?NULL} = Heap) ->
+   Heap;
 dropwhile(Pred, {h, _, _} = Heap) ->
    {Key, _} = head(Heap),
    case Pred(Key) of
       true  -> dropwhile(Pred, tail(Heap)); 
       false -> Heap
-   end;
+   end.
 
-dropwhile(_,  ?NULL) ->
-   new().
 
 %%
 %% takewhile head of heap
@@ -98,15 +98,15 @@ dropwhile(_,  ?NULL) ->
 takewhile(Pred, Heap) ->
    takewhile(Pred, new(), Heap).
 
+takewhile(_Pred,  Acc,  {h, _, ?NULL}) ->
+   Acc;
 takewhile(Pred, Acc, {h, _, _} = Heap) ->
    {Key, Val} = head(Heap),
    case Pred(Key) of
       true  -> takewhile(Pred, insert(Key, Val, Acc), tail(Heap)); 
       false -> Acc
-   end;
+   end.
 
-takewhile(_,  Acc, ?NULL) ->
-   Acc.
 
 %%
 %% partitions heap into two heaps according to predicate.
@@ -117,16 +117,14 @@ takewhile(_,  Acc, ?NULL) ->
 splitwith(Pred, Queue) ->
    splitwith(Pred, new(), Queue).
 
+splitwith(_Pred, Acc, {h, _, ?NULL} = Heap) ->
+   {Acc, Heap};
 splitwith(Pred, Acc, {h, _, _} = Heap) ->
    {Key, Val} = head(Heap),
    case Pred(Key) of
       true  -> splitwith(Pred, insert(Key, Val, Acc), tail(Heap)); 
       false -> {Acc, Heap}
-   end;
-
-splitwith(_,  Acc, ?NULL) ->
-   {Acc, new()}.
-
+   end.
 
 %%
 %% return list of elements
