@@ -232,25 +232,25 @@ takewhile(Pred, Acc, {q, _N, _Tail, _Head}=Q) ->
       false -> Acc
    end;
 
-takewhile(_,  Acc, {}) ->
+takewhile(_,  Acc, ?NULL) ->
    Acc.
 
 %%
 %% partitions queue into two queues.
 -spec(split/2 :: (function(), datum:q()) -> {datum:q(), datum:q()}).
 
-split(X, {q, N, Tail, Head})
- when X =< erlang:length(Head) ->
-   {A, B} = lists:split(X, Head),
-   {q:new(A), {q, N - X, Tail, B}};
-   
-split(X, {q, N, Tail, Head})
- when X < N ->
-   {A, B} = lists:split(erlang:length(Tail) - (X - erlang:length(Head)), Tail),
-   { {q, X, B, Head}, q:new(lists:reverse(A)) };
-   
-split(_, Queue) ->
-   {Queue, q:new()}.
+split(X, {q, N, _, _} = Queue)
+ when X >= N ->
+   {Queue, new()};
+
+split(N, Queue) ->
+   split(N, new(), Queue).
+
+split(0, Acc, Queue) ->
+   {Acc, Queue};
+split(N, Acc, Queue) ->
+   {Head, Tail} = deq(Queue),
+   split(N - 1, enq(Head, Acc), Tail).
 
 
 %%
@@ -269,7 +269,7 @@ splitwith(Pred, Acc, {q, _N, _Tail, _Head}=Q) ->
       false -> {Acc, Q}
    end;
 
-splitwith(_,  Acc, {}) ->
+splitwith(_,  Acc, ?NULL) ->
    {Acc, new()}.
 
 %%
