@@ -243,6 +243,9 @@ split(X, {q, N, _, _} = Queue)
  when X >= N ->
    {Queue, new()};
 
+split(_, ?NULL) ->
+   {new(), new()};
+
 split(N, Queue) ->
    split(N, new(), Queue).
 
