@@ -361,6 +361,8 @@ is_empty(_) ->
 build([]) ->
    new();
 build([Head|Tail]) ->
-   new(Head, fun() -> build(Tail) end).
-
+   new(Head, fun() -> build(Tail) end);
+build(X)
+ when is_integer(X) ->
+   new(X, fun() -> build(X + 1) end).
 
