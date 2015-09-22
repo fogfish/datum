@@ -274,10 +274,10 @@ unfold(Head, Fun)
 seed(Seed, Fun)
  when is_function(Fun) ->
    case Fun(Seed) of
+      {eos,  Head} ->
+         new(Head);
       {Head, Tail} ->
-         new(Head, fun() -> seed(Tail, Fun) end);
-      Head ->
-         new(Head)
+         new(Head, fun() -> seed(Tail, Fun) end)
    end.
 
 %%
