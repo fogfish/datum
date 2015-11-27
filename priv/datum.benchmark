@@ -41,17 +41,25 @@
 %   ,{successors,    1}
 % ]}.
 
-{struct,   ring}.
+%{struct,   ring}.
+%{operations, [
+%  % {whereis,       1}
+%  {predecessors,  1}
+% ,{successors,    1}
+%]}.
+
+{struct,   lens}.
 {operations, [
-  % {whereis,       1}
-  {predecessors,  1}
- ,{successors,    1}
+   {get,   1}
+  ,{put,   1}
 ]}.
 
+
+
 % {struct,   dict}.
-% {operations, [
-%    {store,   1}
-%   ,{find,    1}
+%  {operations, [
+%     {store,   1}
+%    ,{find,    1}
 % ]}.
 
 % {struct,   gb_trees}.
@@ -60,3 +68,8 @@
 %    ,{lookup,  1}
 % ]}.
 
+% {struct,   tuple}.
+% {operations, [
+%    {get,   1}
+%   ,{put,   1}
+% ]}.

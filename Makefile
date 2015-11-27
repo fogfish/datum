@@ -20,7 +20,7 @@ TEST?= priv/${APP}.benchmark
 S3   =
 
 ## root path to benchmark framework
-BB     = ../basho_bench
+BB     = ../../../github/basho_bench
 SSHENV = /tmp/ssh-agent.conf
  
 ## erlang flags

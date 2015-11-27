@@ -28,11 +28,14 @@ init(bst)    ->  {bst,    bst:new()};
 init(rbtree) ->  {rbtree, rbtree:new()};
 init(chord)  ->  {chord,  ring(chord)};
 init(ring)   ->  {ring,   ring(ring)};
+init(lens)   ->  {lens,   erlang:make_tuple(?N, <<>>)};
 
 %%
 %% erlang built-in data types
 init(dict)     -> {dict,  dict:new()};
-init(gb_trees) -> {gb_trees, gb_trees:empty()}.
+init(gb_trees) -> {gb_trees, gb_trees:empty()};
+init(tuple)    -> {tuple, erlang:make_tuple(?N, <<>>)}. 
+
 
 %%%------------------------------------------------------------------
 %%%
@@ -40,7 +43,7 @@ init(gb_trees) -> {gb_trees, gb_trees:empty()}.
 %%%
 %%%------------------------------------------------------------------
 
-run(head, _KeyGen, ValGen, {stream, S0}) ->
+run(head, _KeyGen, _ValGen, {stream, S0}) ->
    _ = stream:head(S0),
    {ok, {stream, S0}};
 
@@ -118,6 +121,26 @@ run(successors,   _KeyGen, ValGen, {ring, S0}) ->
 
 %%%------------------------------------------------------------------
 %%%
+%%% lens
+%%%
+%%%------------------------------------------------------------------
+
+run(put, KeyGen, ValGen,  {lens, S0}) ->
+   L   = lens:new(KeyGen() rem ?N + 1),
+   % L   = lens:new(tuple, KeyGen() rem ?N + 1),
+   Val = ValGen(),
+   S1  = lens:put(L, Val, S0),
+   {ok, {lens, S1}};
+
+run(get, KeyGen, _ValGen, {lens, S0}) ->
+   L = lens:new(KeyGen() rem ?N + 1),
+   % L = lens:new(tuple, KeyGen() rem ?N + 1),
+   _ = lens:get(L, S0),
+   {ok, {lens, S0}};
+
+
+%%%------------------------------------------------------------------
+%%%
 %%% dict
 %%%
 %%%------------------------------------------------------------------
@@ -142,7 +165,7 @@ run(enter, KeyGen, ValGen, {gb_trees, S0}) ->
 
 run(lookup, KeyGen, _ValGen, {gb_trees, S0}) ->
    _ = gb_trees:lookup(KeyGen(), S0),
-   {ok, {gb_trees, S0}}.
+   {ok, {gb_trees, S0}};
 
 
 % run(create, KeyGen, ValGen, {bloom, S0}) ->
@@ -160,6 +183,24 @@ run(lookup, KeyGen, _ValGen, {gb_trees, S0}) ->
 % run(lookup, KeyGen, ValGen, {bloom, S0}) ->
 %    bloom:lookup(KeyGen(), S0),
 %    {ok, {bloom, S0}}.
+
+%%%------------------------------------------------------------------
+%%%
+%%% tuple
+%%%
+%%%------------------------------------------------------------------
+
+run(put, KeyGen, ValGen,  {tuple, S0}) ->
+   Key = KeyGen() rem ?N + 1,
+   Val = ValGen(),
+   S1  = erlang:setelement(Key, S0, Val),
+   {ok, {tuple, S1}};
+
+run(get, KeyGen, _ValGen, {tuple, S0}) ->
+   Key = KeyGen() rem ?N + 1,
+   _ = erlang:element(Key, S0),
+   {ok, {tuple, S0}}.
+
 
 
 %%%------------------------------------------------------------------

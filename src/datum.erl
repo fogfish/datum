@@ -27,6 +27,7 @@
 -type(stream() :: {s, any(), function()}).
 -type(tree()   :: {t, any()}).
 -type(heap()   :: {h, integer(), any()}).
+-type(lens()   :: {l, function(), function(), function()}).
 
 -type(ring()   :: tuple()).
 
@@ -36,11 +37,12 @@
   ,tree/0
   ,heap/0
   ,ring/0
+  ,lens/0
 ]).
 
 %%
 %%
--spec(typeof/1 :: (any()) -> q | stream | tree | heap | undefined).
+-spec(typeof/1 :: (any()) -> q | stream | tree | heap | lens | undefined).
 
 typeof(X)
  when is_tuple(X) ->
@@ -53,6 +55,7 @@ type(q) -> q;
 type(s) -> stream;
 type(h) -> heap;
 type(t) -> tree;
+type(l) -> lens;
 type(_) -> undefined.
 
 
