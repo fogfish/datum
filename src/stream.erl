@@ -35,7 +35,6 @@
 -export([
    '++'/2
   ,'++'/1
-  ,constant/1
   ,drop/2
   ,dropwhile/2
   ,dropwhile/3
@@ -58,7 +57,8 @@
 %%
 %% stream utility
 -export([
-   list/1
+   constant/1
+  ,list/1
   ,list/2
   ,prefix/1
   ,prefix/2
@@ -66,6 +66,10 @@
   ,is_empty/1
   ,build/1
 ]).
+
+%%
+%% inline stream primitives
+-compile({inline,[new/0, new/1, new/2, head/1, tail/1]}).
 
 %%%------------------------------------------------------------------
 %%%
@@ -132,27 +136,14 @@ tail(_) ->
 
 
 %%
-%% takes list of elements and returns a newly-allocated stream composed of 
-%% list elements, repeating them in succession forever.
--spec(constant/1 :: (list()) -> datum:stream()).
-
-constant(List) -> 
-	constant([], List).
-
-constant([Head|Tail], List) ->
-	new(Head, fun() -> constant(Tail, List) end);
-constant([], [Head|Tail]=List) ->
-	new(Head, fun() -> constant(Tail, List) end).
-
-%%
 %% returns the suffix of the input stream that starts at the next element after
 %% the first n elements.
 -spec(drop/2 :: (integer(), datum:stream()) -> datum:stream()).
 
 drop(0, Stream) ->
    Stream;
-drop(N, {s, _Head, Tail}) ->
-  drop(N - 1, Tail());
+drop(N, {s, _, _} = Stream) ->
+  drop(N - 1, tail(Stream));
 drop(_, ?NULL) ->
 	?NULL.
 
@@ -349,6 +340,20 @@ zip(A, B) ->
 %%% stream utility
 %%%
 %%%------------------------------------------------------------------
+
+%%
+%% takes list of elements and returns a newly-allocated stream composed of 
+%% list elements, repeating them in succession forever.
+-spec(constant/1 :: (list()) -> datum:stream()).
+
+constant(List) -> 
+   constant([], List).
+
+constant([Head|Tail], List) ->
+   new(Head, fun() -> constant(Tail, List) end);
+constant([], [Head|Tail]=List) ->
+   new(Head, fun() -> constant(Tail, List) end).
+
 
 %%
 %% returns a newly-allocated list containing stream elements
