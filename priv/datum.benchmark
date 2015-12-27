@@ -48,19 +48,17 @@
 % ,{successors,    1}
 %]}.
 
-{struct,   lens}.
-{operations, [
-   {get,   1}
-  ,{put,   1}
-]}.
-
-
-
-% {struct,   dict}.
-%  {operations, [
-%     {store,   1}
-%    ,{find,    1}
+% {struct,   lens}.
+% {operations, [
+%    {get,   1}
+%   ,{put,   1}
 % ]}.
+
+{struct,   dict}.
+{operations, [
+    {store,   1}
+   % ,{find,    1}
+]}.
 
 % {struct,   gb_trees}.
 % {operations, [

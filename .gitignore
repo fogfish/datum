@@ -5,6 +5,7 @@
 *.dump
 *.tag.gz
 *.tgz
+test.*
 .eunit/
 tests/
 ebin/

@@ -71,7 +71,7 @@ put({l, _, Fun, _}, Val, X) ->
    Fun(Val, X).
 
 %%
-%% 
+%% @todo: apply(Fun, Key, T) ->
 apply({l, _, _, Fun}, Fxx, X) ->
    Fun(Fxx, X).
 

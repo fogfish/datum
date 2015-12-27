@@ -1,70 +1,70 @@
-##  
+## @author     Dmitry Kolesnikov, <dmkolesnikov@gmail.com>
+## @copyright  (c) 2012 - 2014 Dmitry Kolesnikov. All Rights Reserved
 ##
-## targets:
-##    make all [APP=...]
-##    make rel [APP=...] [config=vars.config]
-##    make pkg [APP=...] [config=vars.config]
-##    make run
-##    make test
+## @description
+##   Makefile to build and release Erlang applications using standard development tools
 ##
-.PHONY: test rel deps all pkg
+## @version 0.9.2
 
-## application name
-ROOT = `pwd`
+#####################################################################
+##
+## application config
+##
+#####################################################################
 PREFIX ?= /usr/local
 APP ?= $(notdir $(CURDIR))
-ARCH = $(shell uname -m)
-PLAT = $(shell uname -s)
-TAG  = ${ARCH}.${PLAT}
-TEST?= priv/${APP}.benchmark
-S3   =
+ARCH?= $(shell uname -m)
+PLAT?= $(shell uname -s)
+VSN ?= $(shell test -z "`git status --porcelain`" && git describe --tags --long | sed -e 's/-g[0-9a-f]*//' | sed -e 's/-0//' || echo "`git describe --abbrev=0 --tags`-SNAPSHOT")
+REL  = ${APP}-${VSN}
+PKG  = ${REL}+${ARCH}.${PLAT}
+TEST?= ${APP}
+S3  ?=
+VMI ?= fogfish/erlang
+NET ?= lo0
 
 ## root path to benchmark framework
-BB     = ../../../github/basho_bench
+BB     = ../basho_bench
 SSHENV = /tmp/ssh-agent.conf
- 
-## erlang flags
+COOKIE?= nocookie
+
+## erlang flags (make run only)
+ROOT   = `pwd`
+ADDR   = $(shell ifconfig ${NET} | sed -En 's/.*inet (addr:)?(([0-9]*\.){3}[0-9]*).*/\2/p')
 EFLAGS = \
-	-name ${APP}@127.0.0.1 \
-	-setcookie nocookie \
-	-pa ./ebin \
-	-pa deps/*/ebin \
-	-pa apps/*/ebin \
+	-name ${APP}@${ADDR} \
+	-setcookie ${COOKIE} \
+	-pa ${ROOT}/ebin \
+	-pa ${ROOT}/deps/*/ebin \
+	-pa ${ROOT}/apps/*/ebin \
+	-pa ${ROOT}/rel/files \
+	-pa ${ROOT}/priv \
 	-kernel inet_dist_listen_min 32100 \
 	-kernel inet_dist_listen_max 32199 \
 	+P 1000000 \
 	+K true +A 160 -sbt ts
 
-## application release
-ifeq ($(wildcard rel/reltool.config),) 
-	REL =
-	VSN =
-	TAR =
-	PKG =
-else
-	REL  = $(shell cat rel/reltool.config | sed -n 's/{target_dir,.*\"\(.*\)\"}./\1/p')
-	VSN  = $(shell echo ${REL} | sed -n 's/.*-\(.*\)/\1/p')
-ifeq (${VSN},)
-	VSN  = $(shell cat rel/reltool.config | sed -n 's/.*{rel,.*\".*\",.*\"\(.*\)\".*/\1/p')
-endif
-ifeq (${config},)
-	RFLAGS  =	
-	VARIANT =
-else
-	VARIANT = $(addprefix ., $(notdir $(basename ${config})))
-	RFLAGS  = target_dir=${REL}${VARIANT} overlay_vars=${ROOT}/${config}
-endif
-	TAR = ${REL}${VARIANT}.${TAG}.tgz
-	PKG = ${REL}${VARIANT}.${TAG}.bundle
-endif
-
 ## self-extracting bundle wrapper
-BUNDLE_INIT = PREFIX=${PREFIX}\nREL=${PREFIX}/${REL}${VARIANT}\nAPP=${APP}\nVSN=${VSN}\nLINE=\`grep -a -n 'BUNDLE:\x24' \x240\`\ntail -n +\x24(( \x24{LINE\x25\x25:*} + 1)) \x240 | gzip -vdc - | tar -C ${PREFIX} -xvf - > /dev/null\n
+BUNDLE_INIT = PREFIX=${PREFIX}\nREL=${PREFIX}/${REL}\nAPP=${APP}\nVSN=${VSN}\nLINE=\`grep -a -n 'BUNDLE:\x24' \x240\`\ntail -n +\x24(( \x24{LINE\x25\x25:*} + 1)) \x240 | gzip -vdc - | tar -C ${PREFIX} -xvf - > /dev/null\n
 BUNDLE_FREE = exit\nBUNDLE:\n
+BUILDER = FROM ${VMI}\nRUN mkdir ${APP}\nCOPY . ${APP}/\nRUN cd ${APP} && make && make rel\n
+CTRUN   = \
+	-module(test). \
+	-export([run/1]). \
+	run(Spec) -> \
+   	{ok, Test} = file:consult(Spec), \
+   	case lists:keyfind(node, 1, Test) of \
+      	false -> ct:run_test([{spec, Spec}]); \
+         true  -> ct_master:run(Spec) \
+   	end, \
+		erlang:halt().
 
+
+#####################################################################
 ##
 ## build
 ##
+#####################################################################
 all: rebar deps compile
 
 compile:
@@ -74,93 +74,148 @@ deps:
 	@./rebar get-deps
 
 clean:
-	@./rebar clean ; \
-	rm -rf test.*-temp-data ; \
-	rm -rf tests ; \
-	rm -rf log ; \
-	rm -f  *.${TAG}.tgz ; \
-	rm -f  *.${TAG}.bundle
-
+	@./rebar clean ;\
+	rm -rf test.*-temp-data ;\
+	rm -rf tests ;\
+	rm -rf log ;\
+	rm -Rf rel/${APP}-* ;\
+	rm -f  *.tgz ;\
+	rm -f  *.bundle ;\
+	rm -f test.erl 
 
 distclean: clean 
 	@./rebar delete-deps
 
-test: all
+##
+## execute unit test
+unit: all
 	@./rebar skip_deps=true eunit
 
+##
+## execute common test and terminate node
+test: ebin/test.beam
+	@mkdir -p /tmp/test/${APP} ;\
+	erl ${EFLAGS} -run test run test/${TEST}.config
+
+ebin/test.beam: test.erl
+	erlc -o ebin $<
+
+test.erl:
+	echo "${CTRUN}" > $@
+
+##
+##
 docs:
 	@./rebar skip_deps=true doc
 
+#####################################################################
 ##
-## release
+## release 
 ##
-ifneq (${REL},)
-rel: 
-	@./rebar generate ${RFLAGS}; \
-	cd rel ; tar -zcf ../${TAR} ${REL}${VARIANT}/; cd -
+#####################################################################
+rel: ${PKG}.tgz
 
-pkg: rel/deploy.sh rel
-	@printf "${BUNDLE_INIT}"  > ${PKG} ; \
-	cat  rel/deploy.sh       >> ${PKG} ; \
-	printf  "${BUNDLE_FREE}" >> ${PKG} ; \
-	cat  ${TAR}              >> ${PKG} ; \
-	chmod ugo+x  ${PKG}
+## assemble VM release
+ifeq (${PLAT},$(shell uname -s))
+${PKG}.tgz:
+	@./rebar generate target_dir=${REL} ;\
+	test -d rel/${REL} && tar -C rel -zcf $@ ${REL} ;\
+	test -f $@ && echo "==> tarball: $@"
+else
+${PKG}.tgz: .git/dockermake
+	@docker build --file=$< --force-rm=true	--tag=build/${APP}:latest . ;\
+	I=`docker create build/${APP}:latest` ;\
+	docker cp $$I:/${APP}/$@ $@ ;\
+	docker rm -f $$I ;\
+	docker rmi build/${APP}:latest ;\
+	rm $< ;\
+	test -f $@ && echo "==> tarball: $@"
 
-${PKG}: pkg
-
-s3: ${PKG}
-	aws s3 cp ${PKG} ${S3}/${APP}-latest${VARIANT}.${TAG}.bundle
-
+.git/dockermake:
+	@echo "${BUILDER}" > $@
 endif
 
+
+#####################################################################
+##
+## package / bundle
+##
+#####################################################################
+pkg: ${PKG}.tgz ${PKG}.bundle
+
+${PKG}.bundle: rel/deploy.sh
+	@printf "${BUNDLE_INIT}" > $@ ;\
+	cat $<  >> $@ ;\
+	printf  "${BUNDLE_FREE}" >> $@ ;\
+	cat  ${PKG}.tgz >> $@ ;\
+	chmod ugo+x $@ ;\
+	rm -f ${APP}-latest+${ARCH}.${PLAT}.bundle ;\
+	ln -s ${PKG} ${APP}-latest+${ARCH}.${PLAT}.bundle ;\
+	echo "==> bundle: $@"
+
+## copy 'package' to s3
+s3: ${PKG}.bundle
+	aws s3 cp $< ${S3}/$<
+
+s3-latest: ${PKG}.bundle
+	aws s3 cp $< ${S3}/${APP}-latest${VARIANT}.bundle
+
+#####################################################################
 ##
 ## deploy
 ##
+#####################################################################
 ifneq (${host},)
 ${SSHENV}:
+	@echo "==> ssh: config keys" ;\
 	ssh-agent -s > ${SSHENV}
 
-node: ${SSHENV}
+node: ${PKG}.bundle ${SSHENV}
+	@echo "==> deploy: ${host}" ;\
 	. ${SSHENV} ;\
 	k=`basename ${pass}` ;\
 	l=`ssh-add -l | grep $$k` ;\
 	if [ -z "$$l" ] ; then \
 		ssh-add ${pass} ;\
 	fi ;\
-	rsync -cav --rsh=ssh --progress ${PKG} ${host}:${PKG} ;\
-	ssh -t ${host} "sudo sh ./${PKG}"
-
+	rsync -cav --rsh=ssh --progress $< ${host}:$< ;\
+	ssh -t ${host} "sudo sh ./$<"
 endif
 
+#####################################################################
 ##
 ## debug
 ##
+#####################################################################
 run:
 	@erl ${EFLAGS}
 
 benchmark:
-	$(BB)/basho_bench -N bb@127.0.0.1 -C nocookie ${TEST}
-	$(BB)/priv/summary.r -i tests/current
+	@echo "==> benchmark: ${TEST}" ;\
+	$(BB)/basho_bench -N bb@127.0.0.1 -C nocookie priv/${TEST}.benchmark ;\
+	$(BB)/priv/summary.r -i tests/current ;\
 	open tests/current/summary.png
 
-ifneq (${REL},)
-start: 
-	@./rel/${REL}${VARIANT}/bin/${APP} start
+start: ${PKG}.tgz
+	@./rel/${REL}/bin/${APP} start
 
-stop:
-	@./rel/${REL}${VARIANT}/bin/${APP} stop
+stop: ${PKG}.tgz
+	@./rel/${REL}/bin/${APP} stop
 
-console: 
-	@./rel/${REL}${VARIANT}/bin/${APP} console
+console: ${PKG}.tgz
+	@./rel/${REL}/bin/${APP} console
 
-attach:
-	@./rel/${REL}${VARIANT}/bin/${APP} attach
-endif
+attach: ${PKG}.tgz
+	@./rel/${REL}/bin/${APP} attach
 
+#####################################################################
 ##
 ## dependencies
 ##
+#####################################################################
 rebar:
-	@curl -O https://raw.githubusercontent.com/wiki/basho/rebar/rebar ; \
+	@curl -L -O https://github.com/rebar/rebar/wiki/rebar ; \
 	chmod ugo+x rebar
+
+.PHONY: test rel deps all pkg 
 

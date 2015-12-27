@@ -13,19 +13,28 @@
 %%   See the License for the specific language governing permissions and
 %%   limitations under the License.
 %%
-%% @description
+%% @doc
 %%   streams or lazy lists are a sequential data structure that contains 
-%%   on demand computed elements. This module follows Scheme interface 
-%%   see http://srfi.schemers.org/srfi-41/srfi-41.html
+%%   on demand computed elements. Erlang implementation derived from
+%%   scheme stream interface @see http://srfi.schemers.org/srfi-41/srfi-41.html
 -module(stream).
 -include("datum.hrl").
 
+%%
+%% stream primitives - abstract data type 
 -export([
    new/0
   ,new/1
   ,new/2
   ,head/1
   ,tail/1
+]).
+
+%%
+%% stream interface
+-export([
+   '++'/2
+  ,'++'/1
   ,constant/1
   ,drop/2
   ,dropwhile/2
@@ -44,8 +53,12 @@
   ,seed/2
   ,zip/1
   ,zip/2
-  % utility
-  ,list/1
+]).
+
+%%
+%% stream utility
+-export([
+   list/1
   ,list/2
   ,prefix/1
   ,prefix/2
@@ -54,8 +67,15 @@
   ,build/1
 ]).
 
+%%%------------------------------------------------------------------
+%%%
+%%% stream primitives
+%%%
+%%%------------------------------------------------------------------
+
 %%
-%% creates a newly allocated stream
+%% creates a newly allocated stream containing stream head and promise.
+%% the promise is recursive, it returns new stream pair when evaluated.
 -spec(new/0 :: () -> datum:stream()).
 -spec(new/1 :: (any()) -> datum:stream()).
 -spec(new/2 :: (any(), function()) -> datum:stream()).
@@ -69,7 +89,7 @@ new(Head, Fun)
    {s, Head, Fun}.
 
 %%
-%% head element of stream
+%% takes stream and return head element of stream
 -spec(head/1 :: (datum:stream()) -> any()).
 
 head({s, Head, _}) ->
@@ -78,13 +98,38 @@ head(_) ->
    exit(badarg).
 
 %%
-%% stream tail
+%% force stream promise and return new stream (evaluates tail of stream).
 -spec(tail/1 :: (datum:stream()) -> datum:stream()).
 
 tail({s, _, Fun}) ->
 	Fun();
 tail(_) ->
    {}.
+
+%%%------------------------------------------------------------------
+%%%
+%%% stream interface
+%%%
+%%%------------------------------------------------------------------
+
+%%
+%% concatenate streams, returns newly-allocated stream composed of elements
+%% copied from input streams (in order of input). 
+-spec('++'/2 :: (datum:stream(), datum:stream()) -> datum:stream()).
+-spec('++'/1 :: ([datum:stream()]) -> datum:stream()).
+
+'++'(?NULL, StreamB) ->
+   StreamB;
+'++'(StreamA, ?NULL) ->
+   StreamA;
+'++'(StreamA, StreamB) ->
+   new(head(StreamA), fun() -> '++'(tail(StreamA), StreamB) end).
+
+'++'([A,B|T]) ->
+   '++'(['++'(A,B)|T]);
+'++'([T]) ->
+   T.
+
 
 %%
 %% takes list of elements and returns a newly-allocated stream composed of 
@@ -299,8 +344,14 @@ zip(A, B) ->
 	zip([A, B]).
 
 
+%%%------------------------------------------------------------------
+%%%
+%%% stream utility
+%%%
+%%%------------------------------------------------------------------
+
 %%
-%% return list of stream elements
+%% returns a newly-allocated list containing stream elements
 -spec(list/1 :: (datum:stream()) -> list()).
 -spec(list/2 :: (integer(), datum:stream()) -> list()).
 
@@ -355,7 +406,8 @@ is_empty(_) ->
    false.
 
 %%
-%% build stream from data type
+%% takes an object of Erlang data type are returns a newly-allocated stream
+%%   list() -> stream contains the objects in the list. 
 -spec(build/1 :: (any()) -> datum:stream()).
 
 build([]) ->
