@@ -24,7 +24,7 @@ VMI ?= fogfish/erlang
 NET ?= lo0
 
 ## root path to benchmark framework
-BB     = ../basho_bench
+BB     = ../../dev/basho_bench
 SSHENV = /tmp/ssh-agent.conf
 COOKIE?= nocookie
 
