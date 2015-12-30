@@ -289,16 +289,17 @@ takewhile(Pred, {s, _, _} = Stream) ->
 takewhile(_, ?NULL) ->
    ?NULL.
 
+
 %%
-%% the fundamental recursive infinite stream constructor, returns newly-allocated stream.
-%% it contains seed as its first element and applies function to each element in turn 
-%% to determine the next element. Use takewhile/2 to limit stream
--spec(unfold/2  :: (_, function()) -> datum:stream()).
+%% the fundamental recursive infinite stream constructor. 
+%% it applies a function to each previous seed element in turn
+%% to determine the next element.
+-spec(unfold/2 :: (function(), _) -> datum:stream()).
 
-unfold(Seed, Fun)
+unfold(Fun, Seed)
  when is_function(Fun) ->
-   new(Seed, fun() -> unfold(Fun(Seed), Fun) end).
-
+   {Head, Next} = Fun(Seed),
+   new(Head, fun() -> unfold(Fun, Next) end).
 
 %%
 %% takes one or more input streams and returns a newly-allocated stream 

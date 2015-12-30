@@ -34,7 +34,7 @@
 %%
 %% stream algorithm
 -export([
-   prime/1
+   prime/1, union/1, join/1
 ]).
 
 %%
@@ -67,7 +67,7 @@ groups() ->
          [reverse, cycle]}
 
      ,{algorithm,  [parallel],
-         [prime]}
+         [prime, union, join]}
    ].
 
 %%%----------------------------------------------------------------------------   
@@ -195,12 +195,12 @@ takewhile(_Config) ->
    ).
 
 unfold(_Config) ->
-   ?prefix([0, 1, 4, 9, 16, 25, 36, 49, 64, 81],
+   ?prefix([1, 4, 9, 16, 25, 36, 49, 64, 81],
       stream:map(
          fun(X) -> X * X end,
          stream:takewhile(
             fun(X) -> X < 10 end,
-            stream:unfold(0, fun(X) -> X + 1 end)
+            stream:unfold(fun(X) -> {X + 1, X + 1} end, 0)
          )
       )
    ).
@@ -270,5 +270,66 @@ sieve(Prime, Stream) ->
       end
    ).
 
+%%
+%% union of ordered streams - combine streams in order of heads 
+%% returns newly allocated stream in which elements are ordered by key
+union(_Config) ->
+   ?prefix([{1,a}, {2,d}, {3,b}, {4,c}, {5,e}, {6,g}],
+      stream:unfold(fun sunion/1, [
+         stream:build([{2,d}, {6,g}]),
+         stream:build([{1,a}, {5,e}]),
+         stream:build([{3,b}, {4,c}])
+      ])
+   ).
 
+sunion(Streams) ->
+   % sort each stream using its head. 
+   case sortby(1, Streams) of
+      [Head|Tail] ->
+         % the lowest head contributes to output stream,
+         % the stream with lowest head is evaluated to next position
+         % all remaining streams are seeded to next iteration
+         {stream:head(Head), [stream:tail(Head)|Tail]};
+      _     ->
+         {undefined, []}
+   end.
 
+sortby(N, Streams) ->
+   lists:sort(
+      fun(A, B) -> 
+         erlang:element(N, stream:head(A)) =< erlang:element(N, stream:head(B)) 
+      end,
+      [X || X <- Streams, X =/= {}]
+   ).
+
+%%
+%% takes one or more input streams and returns a newly-allocated
+%% stream in which each element is a joined by key
+join(_Config) ->
+   ?prefix([{1,[a,d]}, {3,[b,g]}, {4,[c,e]}],
+      stream:unfold(fun sjoin/1, [
+         stream:build([{1,d}, {3,g}]),
+         stream:build([{1,a}, {4,e}]),
+         stream:build([{3,b}, {4,c}])
+      ])
+   ).
+
+sjoin(Streams) ->
+   % sort each stream using its head. 
+   case sortby(1, Streams) of
+      [H| _] = List ->
+         % the key element of lowest stream is attractor,
+         % it splits stream to its that share same key 
+         Key = erlang:element(1, stream:head(H)),
+         {Head, Tail} = lists:splitwith(
+            fun(X) -> erlang:element(1, stream:head(X)) =:= Key end,
+            List
+         ),
+         % the streams with same key are used to build new head
+         Hd  = {Key, lists:sort([erlang:element(2, stream:head(X)) || X <- Head])},
+         % remaining stream and its re-evaluated siblings are contribute to next iteration
+         Seed= lists:foldl(fun(X, Acc) -> [stream:tail(X) | Acc] end, Tail, Head),
+         {Hd, Seed};
+      _     ->
+         {undefined, []}
+   end.
