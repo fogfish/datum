@@ -33,6 +33,7 @@
 %%   There are other approaches to implement lens for Erlang
 %%   * https://github.com/jlouis/erl-lenses by Jesper Louis Andersen
 %%   * http://www.cs.otago.ac.nz/staffpriv/ok/lens.erl by Richard A. O'Keefe
+%%
 -module(lens).
 
 %%
@@ -99,7 +100,7 @@ nget(#{get := Ln}, S) ->
 -spec nput(naive(), a(), s()) -> s().
 
 nput(Ln, Val, S) ->
-   apply(Ln, fun(_) -> Val end, S).
+   napply(Ln, fun(_) -> Val end, S).
 
 -spec napply(naive(), fun( (a()) -> a() ), s()) -> s().
 
@@ -154,7 +155,7 @@ naive_apply(Key, Fun, X)
 naive_apply(Key, Fun, X)
  when is_list(X) ->
    {value, Val, List} = lists:keytake(Key, 1, X),
-   [Fun(Val) | List].
+   [{Key, Fun(Val)} | List].
 
 %%%------------------------------------------------------------------
 %%%
@@ -174,7 +175,7 @@ naive_apply(Key, Fun, X)
 %%
 %% Note: there is a good tutorial about type classes and functors  
 %% http://learnyouahaskell.com/making-our-own-types-and-typeclasses#the-functor-typeclass
-%%
+%% http://scalaz.github.io/scalaz/scalaz-2.9.1-6.0.2/doc.sxr/scalaz/Functor.scala.html
 %% 
 %% Functors do not exists in Erlang, Let's define one with minimal (no) runtime overhead.
 %% Let's skip all details on the design decision about the function definition below. 
@@ -376,7 +377,7 @@ tuple(I) ->
 
 map(Key) ->
    fun(Fun, Map) ->
-      fmap(fun(X) -> map:put(Key, X, Map) end, Fun(map:get(Key, Map)))
+      fmap(fun(X) -> maps:put(Key, X, Map) end, Fun(maps:get(Key, Map)))
    end.
 
 % map_get_fun(Pred, X) ->
@@ -391,8 +392,8 @@ map(Key) ->
 
 keylist({N, Key}) -> 
    fun(Fun, List) ->
-      {value, H, T} = lists:keytake(Key, N, List),
-      fmap(fun(X) -> [X|T] end, Fun(H))
+      {value, H, _} = lists:keytake(Key, N, List),
+      fmap(fun(X) -> lists:keystore(Key, N, List, X) end, Fun(H))
    end;
 
 keylist(Key) ->
