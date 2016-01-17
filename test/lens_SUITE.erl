@@ -46,7 +46,11 @@
 
 %%
 %% pure lens interface
--export([hd/1, tl/1, t1/1, t2/1, t3/1, tuple/1, map/1]).
+-export([
+   hd/1, tl/1, list/1, 
+   t1/1, t2/1, t3/1, tuple/1, tuple_pred/1, 
+   map/1, map_pred/1
+]).
 
 %%
 %% compose lenses
@@ -70,7 +74,9 @@ groups() ->
          [naive_type_map, naive_type_tuple]}
 
      ,{pure,  [parallel], 
-         [hd, tl, t1, t2, t3, tuple, map]}
+         [hd, tl, list, 
+          t1, t2, t3, tuple, tuple_pred,
+          map, map_pred]}
 
      ,{compose, [parallel], 
          [c, apply2, apply3, apply4, apply5, apply6, apply7]}
@@ -156,6 +162,12 @@ tl(_Config) ->
    Y  = [1|e],
    ?LAWS(Ln, X, Y).
 
+list(_Config) ->
+   Ln = lens:list(fun erlang:is_atom/1),
+   X  = [1, 2, a, 3, 4],
+   Y  = [1, 2, e, 3, 4],
+   ?LAWS(Ln, X, Y).
+
 t1(_Config) ->
    Ln = fun lens:t1/2,
    X  = {1, 2, 3},
@@ -179,10 +191,22 @@ tuple(_Config) ->
    X  = {1, 2, 3, 4},
    Y  = {1, 2, 3, e},
    ?LAWS(Ln, X, Y).
-   
+
+tuple_pred(_Config) ->
+   Ln = lens:tuple(fun erlang:is_atom/1),
+   X  = {1, 2, a, 3, 4},
+   Y  = {1, 2, e, 3, 4},
+   ?LAWS(Ln, X, Y).
+      
 map(_Config) ->
    Ln = lens:map(b),
    X  = #{a => 1, b => 2, c => 3},
+   Y  = #{a => 1, b => e, c => 3},
+   ?LAWS(Ln, X, Y).
+
+map_pred(_Config) ->
+   Ln = lens:map(fun({_, X}) -> erlang:is_atom(X) end),
+   X  = #{a => 1, b => a, c => 3},
    Y  = #{a => 1, b => e, c => 3},
    ?LAWS(Ln, X, Y).
 

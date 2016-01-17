@@ -22,8 +22,9 @@
 %%
 %% @see
 %% 
-%%   The lens implementation is partially base on Haskell lens library, and 
-%%   references
+%%   This library implements lens using approaches on Haskell lens library, and 
+%%   techniques references by
+%%
 %%   * Combinators for Bi-Directional Tree Transformations: 
 %%     A Linguistic Approach to the View Update Problem by J. Nathan Foster et al.
 %%     http://repository.upenn.edu/cgi/viewcontent.cgi?article=1044&context=cis_reports
@@ -46,7 +47,7 @@
 
 %%
 %% lenses  
--export([hd/2, tl/2 ]).
+-export([hd/2, tl/2, list/1]).
 -export([t1/2, t2/2, t3/2, tuple/1]).
 -export([map/1]).
 -export([keylist/1]).
@@ -164,9 +165,9 @@ naive_apply(Key, Fun, X)
 %%%------------------------------------------------------------------
 
 %%
-%% The used lens structure is not scalable when you need to expends with new primitives or
-%% support new data types. You either grow it by implementing various flavors of getters 
-%% and setters or extend module to support new data types.
+%% Previously used lens structure is not scalable when you need to expends with 
+%% new primitives or support new data types. You either grow it by implementing 
+%% various flavors of getters and setters or extend module to support new data types.
 %%
 %% van Laarhoven lens generalization solves the problem, the proposal to use functor
 %% to implement `get`, `put`, `apply`, etc. The lens is defined as 
@@ -180,8 +181,9 @@ naive_apply(Key, Fun, X)
 %% Functors do not exists in Erlang, Let's define one with minimal (no) runtime overhead.
 %% Let's skip all details on the design decision about the function definition below. 
 %% In the nutshell, various Erlang native containers (tuple, function, etc) are evaluated.
-%% The list shown best performance. There is not any intent to generalize application wide
-%% functor concept, it is made only to support lens implementation.
+%% The list shown best performance. There is not any intent to generalize functor concept 
+%% to Erlang application, it is made to support only lens implementation.
+%%
 -type f(F) :: [atom()|F].
 -spec fmap( fun((a()) -> _), f(a()) ) -> f(_).     
 
@@ -226,7 +228,7 @@ fmap(_,   [const|_] = X) ->
 
 apply(Ln, Fun, S) ->
    % @todo: The failing lenses are not handled properly if focus is not exists
-   %        They can return or handle `Omega` term. It is not clear how to 
+   %        They can return or handle `Omega` term. It is not clear how to init
    %        a new container from nothing. The further investigation is required.
    tl( Ln(fun(X) -> fmap(Fun, id(X)) end, S) ).
 
@@ -244,7 +246,12 @@ get(Ln, S) ->
    tl( Ln(fun(X) -> fmap(undefined, const(X)) end, S) ).
 
 %%
+%% The `put` is defined as 
+%% Given a lens() that focuses on a() inside of s(), and
+%% value a() and instance of object s(). It returns modified 
+%% s() by setting a new value to focus point of the lens,  
 %% The `put` is `over` using `const` function.
+%%
 -spec put(lens(), a(), s()) -> s().
 
 put(Ln, A, S) ->
@@ -298,10 +305,6 @@ put(Ln, A, S) ->
 %%
 
 %%
-%% @todo: How to use predicate function as a selector?
-%%        How to select 'all' (Is this feasible)?
-
-%%
 %% 
 -spec hd(fun( (_) -> f(_) ), list() ) -> f(list()).
 
@@ -315,17 +318,18 @@ hd(Fun, [H|T]) ->
 tl(Fun, [H|T]) ->
    fmap(fun(X) -> [H|X] end, Fun(T)).
 
-% list_get_fun(Pred, [H|T]) ->
-%    case Pred(H) of
-%       true  -> H;
-%       false -> list_get_fun(Pred, T)
-%    end.
+%%
+%% The list function takes a predicate and focuses the leftmost element 
+%% of the structure matching the predicate
+-spec list(function()) -> fun( (fun( (_) -> f(_) ), tuple() ) -> f(tuple()) ).
 
-% list_apply_fun(Pred, Fun, [H|T]) ->
-%    case Pred(H) of
-%       true  -> [Fun(H)|T];
-%       false -> [H|list_apply_fun(Pred, Fun, T)]
-%    end.
+list(Pred)
+ when is_function(Pred) ->
+   fun(Fun, List) ->
+      {H, [I|T]} = lists:splitwith(fun(X) -> not Pred(X) end, List),
+      fmap(fun(X) -> H ++ [X|T] end, Fun(I))
+   end.
+
 
 %%
 %%
@@ -352,39 +356,41 @@ t3(Fun, Term) ->
 %%
 -spec tuple(integer()) -> fun( (fun( (_) -> f(_) ), tuple() ) -> f(tuple()) ).
 
-tuple(I) -> 
+tuple(I)
+ when is_integer(I) -> 
    fun(Fun, Term) ->
+      fmap(fun(X) -> erlang:setelement(I, Term, X) end, Fun(erlang:element(I, Term)))
+   end;
+
+tuple(Pred)
+ when is_function(Pred) ->
+   fun(Fun, Term) ->
+      I = tuple_find(Pred, 1, Term),
       fmap(fun(X) -> erlang:setelement(I, Term, X) end, Fun(erlang:element(I, Term)))
    end.
 
-% tuple_get_fun(Pred, I, X) ->
-%    H = erlang:element(I, X),
-%    case Pred(H) of
-%       true  -> H;
-%       false -> tuple_get_fun(Pred, I + 1, X)
-%    end.  
-
-% tuple_apply_fun(Pred, Fun, I, X) ->
-%    H = erlang:element(I, X),
-%    case Pred(H) of
-%       true  -> erlang:setelement(I, X, Fun(H));
-%       false -> tuple_put_fun(Pred, Fun, I + 1, X)
-%    end.
+tuple_find(Pred, I, Term) ->
+   case Pred( erlang:element(I, Term) ) of
+      true  -> I;
+      false -> tuple_find(Pred, I + 1, Term)
+   end.
 
 %%
 %%
 -spec map(_) -> fun( (fun( (_) -> f(_) ), map() ) -> f(map()) ).
 
-map(Key) ->
+map(Key)
+ when not is_function(Key) ->
    fun(Fun, Map) ->
       fmap(fun(X) -> maps:put(Key, X, Map) end, Fun(maps:get(Key, Map)))
-   end.
+   end;
 
-% map_get_fun(Pred, X) ->
-%    list_get_fun(Pred, maps:to_list(X)).
-%
-% map_apply_fun(Pred, Fun, X) ->
-%    maps:from_list(list_apply_fun(Pred, Fun, maps:to_list(X))).
+map(Pred)
+ when is_function(Pred) ->
+   fun(Fun, Map) ->
+      {_, [{Key, _} | _]} = lists:splitwith(fun(X) -> not Pred(X) end, maps:to_list(Map)),
+      fmap(fun(X) -> maps:put(Key, X, Map) end, Fun(maps:get(Key, Map)))      
+   end.
 
 %%
 %%
@@ -399,15 +405,6 @@ keylist({N, Key}) ->
 keylist(Key) ->
    keylist({1, Key}).
 
-% keylist_get_key(N, Key, X) ->
-%    case lists:keyfind(Key, N, X) of
-%       false -> exit(badarg);
-%       H     -> H
-%    end.
-
-% keylist_apply_key(Key, Fun, X) ->
-%    {value, H, T} = ,
-%    [Fun(H) | T].
 
 
 %%%------------------------------------------------------------------
