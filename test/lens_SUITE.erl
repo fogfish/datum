@@ -49,7 +49,8 @@
 -export([
    hd/1, tl/1, list/1, 
    t1/1, t2/1, t3/1, tuple/1, tuple_pred/1, 
-   map/1, map_pred/1, map_default/1
+   map/1, map_pred/1, map_default/1,
+   pair/1, pair_default/1
 ]).
 
 %%
@@ -76,7 +77,8 @@ groups() ->
      ,{pure,  [parallel], 
          [hd, tl, list, 
           t1, t2, t3, tuple, tuple_pred,
-          map, map_pred, map_default]}
+          map, map_pred, map_default,
+          pair, pair_default]}
 
      ,{compose, [parallel], 
          [c, apply2, apply3, apply4, apply5, apply6, apply7]}
@@ -142,13 +144,15 @@ naive_type_list(_Config) ->
 %%%----------------------------------------------------------------------------   
 
 %% Ln - lens, X - original data, Y - expected PutPut data set
--define(LAWS(Ln, X, Y),
+-define(LAWS(Ln, A, B, C),
    begin
-      X  = lens:put(Ln,    lens:get(Ln, X), X),
-      d  = lens:get(Ln,    lens:put(Ln, d, X)),
-      Y  = lens:put(Ln, e, lens:put(Ln, d, X))
+      B  = lens:put(Ln,    lens:get(Ln, A), A),
+      d  = lens:get(Ln,    lens:put(Ln, d, A)),
+      C  = lens:put(Ln, e, lens:put(Ln, d, A))
    end
 ).
+-define(LAWS(Ln, A, B), ?LAWS(Ln, A, A, B)).
+
 
 hd(_Config) ->
    Ln = lens:hd(),
@@ -213,10 +217,36 @@ map_pred(_Config) ->
 map_default(_Config) ->
    Ln = lens:map(b, 2),
    X  = #{a => 1, c => 3},
+   X1 = #{a => 1, b => 2, c => 3},
    Y  = #{a => 1, b => e, c => 3},
-   #{a := 1, b := 2, c := 3}  = lens:put(Ln, lens:get(Ln, X), X),
-   d  = lens:get(Ln,    lens:put(Ln, d, X)),
-   Y  = lens:put(Ln, e, lens:put(Ln, d, X)).
+   ?LAWS(Ln, X, X1, Y).   
+
+% keylist(_Config) ->
+%    Ln = lens:keylist(b),
+%    X  = [{a, 1}, {b, 2}, {c, 3}],
+%    Y  = [{a, 1}, {b, e}, {c, 3}],
+%    ?LAWS(Ln, X, Y).
+
+% keylist_default(_Config) ->
+%    Ln = lens:keylist(b, 2),
+%    X  = [{a, 1}, {c, 3}],
+%    X1 = [{a, 1}, {c, 3}, {b, 2}],
+%    Y  = [{a, 1}, {c, 3}, {b, e}],
+%    ?LAWS(Ln, X, X1, Y).
+   
+pair(_Config) ->
+   Ln = lens:pair(b),
+   X  = [{a, 1}, {b, 2}, {c, 3}],
+   Y  = [{a, 1}, {b, e}, {c, 3}],
+   ?LAWS(Ln, X, Y).
+
+pair_default(_Config) ->
+   Ln = lens:pair(b, 2),
+   X  = [{a, 1}, {c, 3}],
+   X1 = [{a, 1}, {c, 3}, {b, 2}],
+   Y  = [{a, 1}, {c, 3}, {b, e}],
+   ?LAWS(Ln, X, X1, Y).
+
 
 %%%----------------------------------------------------------------------------   
 %%%

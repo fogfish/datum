@@ -50,7 +50,7 @@
 -export([hd/0, tl/0, list/1]).
 -export([t1/0, t2/0, t3/0, tuple/1]).
 -export([map/1, map/2]).
--export([keylist/1, keylist/2]).
+-export([keylist/1, keylist/2, pair/1, pair/2]).
 
 %%
 %% lens utility
@@ -188,7 +188,8 @@ naive_apply(Key, Fun, X)
 -spec fmap( fun((a()) -> _), f(a()) ) -> f(_).     
 
 %% van Laarhoven lens type
--type lens() :: fun( (fun( (a()) -> f(a()) ), s() ) -> f(s()) ).
+-type lens(A, S) :: fun( (fun( (A) -> f(A) ), S) -> f(S) ).
+-type lens()     :: lens(a(), s()).
 
 
 %% Implementation of lenses requires two type of functors
@@ -304,10 +305,11 @@ put(Ln, A, S) ->
 %% The utility section covers aspects of lens composition and building a complex
 %% applications.
 %%
+-type pred() :: fun((_) -> true | false).
 
 %%
 %% focus head of list
--spec hd() -> fun( (fun( (_) -> f(_) ), tuple() ) -> f(tuple()) ).
+-spec hd() -> lens(_, list()).
 
 hd() ->
    fun(Fun, [H|T]) ->
@@ -317,7 +319,7 @@ hd() ->
 
 %%
 %% focus tail of list
--spec tl() -> fun( (fun( (_) -> f(_) ), tuple() ) -> f(tuple()) ).
+-spec tl() -> lens(list(), list()).
 
 tl() ->
    fun(Fun, [H|T]) ->
@@ -327,7 +329,7 @@ tl() ->
 %%
 %% The list function takes a predicate and focuses the leftmost element 
 %% of the structure matching the predicate
--spec list(function()) -> fun( (fun( (_) -> f(_) ), tuple() ) -> f(tuple()) ).
+-spec list( pred() ) -> lens(_, list()).
 
 list(Pred)
  when is_function(Pred) ->
@@ -339,7 +341,7 @@ list(Pred)
 
 %%
 %% focus fist tuple element
--spec t1() -> fun( (fun( (_) -> f(_) ), tuple() ) -> f(tuple()) ).
+-spec t1() -> lens(_, tuple()).
 
 t1() ->
    fun(Fun, Term) ->
@@ -348,7 +350,7 @@ t1() ->
 
 %%
 %% focus second tuple element
--spec t2() -> fun( (fun( (_) -> f(_) ), tuple() ) -> f(tuple()) ).
+-spec t2() -> lens(_, tuple()).
 
 t2() ->
    fun(Fun, Term) ->
@@ -357,7 +359,7 @@ t2() ->
 
 %%
 %% focus third tuple element
--spec t3() -> fun( (fun( (_) -> f(_) ), tuple() ) -> f(tuple()) ).
+-spec t3() -> lens(_, tuple()).
 
 t3() ->
    fun(Fun, Term) ->
@@ -366,7 +368,7 @@ t3() ->
    
 %%
 %% focuses tuple element using either index or predicate function
--spec tuple(integer() | function()) -> fun( (fun( (_) -> f(_) ), tuple() ) -> f(tuple()) ).
+-spec tuple(integer() | pred()) -> lens(_, tuple()).
 
 tuple(I)
  when is_integer(I) -> 
@@ -389,8 +391,8 @@ tuple_find(Pred, I, Term) ->
 
 %%
 %% focuses map element using key or predicate function.
--spec map(_) -> fun( (fun( (_) -> f(_) ), map() ) -> f(map()) ).
--spec map(_, _) -> fun( (fun( (_) -> f(_) ), map() ) -> f(map()) ).
+-spec map(_) -> lens(_, map()).
+-spec map(_, _) -> lens(_, map()).
 
 map(Key)
  when not is_function(Key) ->
@@ -412,9 +414,9 @@ map(Key, Default)
    end.
 
 %%
-%% focuses pair / tuple in keylist.
--spec keylist(_) -> fun( (fun( (_) -> f(_) ), list() ) -> f(list()) ).
--spec keylist(_, _) -> fun( (fun( (_) -> f(_) ), list() ) -> f(list()) ).
+%% focuses tuple in keylist.
+-spec keylist(_) -> lens(_, [tuple()]).
+-spec keylist(_, _) -> lens(_, [tuple()]).
 
 keylist({N, Key}) -> 
    fun(Fun, List) ->
@@ -437,6 +439,26 @@ keylist({N, Key}, Default) ->
 
 keylist(Key, Default) ->
    keylist({1, Key}, Default).
+
+%%
+%% focuses pair value
+-spec pair(_) -> lens(_, [{_, _}]).
+-spec pair(_, _) -> lens(_, [{_, _}]).
+
+pair(Key) -> 
+   fun(Fun, List) ->
+      {value, {_, Val}, _} = lists:keytake(Key, 1, List),
+      fmap(fun(X) -> lists:keystore(Key, 1, List, {Key, X}) end, Fun(Val))
+   end.
+
+pair(Key, Default) ->
+   fun(Fun, List) ->
+      Val = case lists:keytake(Key, 1, List) of
+         false -> Default;
+         {value, {_, V}, _} -> V
+      end,
+      fmap(fun(X) -> lists:keystore(Key, 1, List, {Key, X}) end, Fun(Val))
+   end.
 
 
 %%%------------------------------------------------------------------
