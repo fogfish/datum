@@ -49,7 +49,7 @@
 -export([
    hd/1, tl/1, list/1, 
    t1/1, t2/1, t3/1, tuple/1, tuple_pred/1, 
-   map/1, map_pred/1
+   map/1, map_pred/1, map_default/1
 ]).
 
 %%
@@ -76,7 +76,7 @@ groups() ->
      ,{pure,  [parallel], 
          [hd, tl, list, 
           t1, t2, t3, tuple, tuple_pred,
-          map, map_pred]}
+          map, map_pred, map_default]}
 
      ,{compose, [parallel], 
          [c, apply2, apply3, apply4, apply5, apply6, apply7]}
@@ -151,13 +151,13 @@ naive_type_list(_Config) ->
 ).
 
 hd(_Config) ->
-   Ln = fun lens:hd/2,
+   Ln = lens:hd(),
    X  = [1, 2, 3],
    Y  = [e, 2, 3],
    ?LAWS(Ln, X, Y).
 
 tl(_Config) ->
-   Ln = fun lens:tl/2,
+   Ln = lens:tl(),
    X  = [1, 2, 3],
    Y  = [1|e],
    ?LAWS(Ln, X, Y).
@@ -169,19 +169,19 @@ list(_Config) ->
    ?LAWS(Ln, X, Y).
 
 t1(_Config) ->
-   Ln = fun lens:t1/2,
+   Ln = lens:t1(),
    X  = {1, 2, 3},
    Y  = {e, 2, 3},
    ?LAWS(Ln, X, Y).
 
 t2(_Config) ->
-   Ln = fun lens:t2/2,
+   Ln = lens:t2(),
    X  = {1, 2, 3},
    Y  = {1, e, 3},
    ?LAWS(Ln, X, Y).
 
 t3(_Config) ->
-   Ln = fun lens:t3/2,
+   Ln = lens:t3(),
    X  = {1, 2, 3},
    Y  = {1, 2, e},
    ?LAWS(Ln, X, Y).
@@ -210,6 +210,14 @@ map_pred(_Config) ->
    Y  = #{a => 1, b => e, c => 3},
    ?LAWS(Ln, X, Y).
 
+map_default(_Config) ->
+   Ln = lens:map(b, 2),
+   X  = #{a => 1, c => 3},
+   Y  = #{a => 1, b => e, c => 3},
+   #{a := 1, b := 2, c := 3}  = lens:put(Ln, lens:get(Ln, X), X),
+   d  = lens:get(Ln,    lens:put(Ln, d, X)),
+   Y  = lens:put(Ln, e, lens:put(Ln, d, X)).
+
 %%%----------------------------------------------------------------------------   
 %%%
 %%% compose lenses
@@ -223,8 +231,8 @@ c(_Config) ->
    ?LAWS(Ln, X, Y).
 
 apply2(_Config) ->
-   Ln1 = fun lens:hd/2,
-   Ln2 = fun lens:t1/2,
+   Ln1 = lens:hd(),
+   Ln2 = lens:t1(),
    X   = [{1,2}],
    Y   = [{e,2}],  
    X = lens:put(Ln1, Ln2,    lens:get(Ln1, Ln2, X), X),
@@ -232,9 +240,9 @@ apply2(_Config) ->
    Y = lens:put(Ln1, Ln2, e, lens:put(Ln1, Ln2, d, X)).
 
 apply3(_Config) ->
-   Ln1 = fun lens:tl/2,
-   Ln2 = fun lens:hd/2,
-   Ln3 = fun lens:t1/2,
+   Ln1 = lens:tl(),
+   Ln2 = lens:hd(),
+   Ln3 = lens:t1(),
    X   = [head, {1,2}],
    Y   = [head, {e,2}],  
    X = lens:put(Ln1, Ln2, Ln3,    lens:get(Ln1, Ln2, Ln3, X), X),
@@ -242,10 +250,10 @@ apply3(_Config) ->
    Y = lens:put(Ln1, Ln2, Ln3, e, lens:put(Ln1, Ln2, Ln3, d, X)).
 
 apply4(_Config) ->
-   Ln1 = fun lens:tl/2,
-   Ln2 = fun lens:hd/2,
-   Ln3 = fun lens:t1/2,
-   Ln4 = fun lens:hd/2,
+   Ln1 = lens:tl(),
+   Ln2 = lens:hd(),
+   Ln3 = lens:t1(),
+   Ln4 = lens:hd(),
    X   = [a, {[1],2}],
    Y   = [a, {[e],2}],  
    X = lens:put(Ln1, Ln2, Ln3, Ln4,    lens:get(Ln1, Ln2, Ln3, Ln4, X), X),
@@ -253,11 +261,11 @@ apply4(_Config) ->
    Y = lens:put(Ln1, Ln2, Ln3, Ln4, e, lens:put(Ln1, Ln2, Ln3, Ln4, d, X)).
 
 apply5(_Config) ->
-   Ln1 = fun lens:tl/2,
-   Ln2 = fun lens:hd/2,
-   Ln3 = fun lens:t1/2,
-   Ln4 = fun lens:hd/2,
-   Ln5 = fun lens:t1/2,
+   Ln1 = lens:tl(),
+   Ln2 = lens:hd(),
+   Ln3 = lens:t1(),
+   Ln4 = lens:hd(),
+   Ln5 = lens:t1(),
    X   = [a, {[{1, 2}],2}],
    Y   = [a, {[{e, 2}],2}],  
    X = lens:put(Ln1, Ln2, Ln3, Ln4, Ln5,    lens:get(Ln1, Ln2, Ln3, Ln4, Ln5, X), X),
@@ -265,12 +273,12 @@ apply5(_Config) ->
    Y = lens:put(Ln1, Ln2, Ln3, Ln4, Ln5, e, lens:put(Ln1, Ln2, Ln3, Ln4, Ln5, d, X)).
 
 apply6(_Config) ->
-   Ln1 = fun lens:tl/2,
-   Ln2 = fun lens:hd/2,
-   Ln3 = fun lens:t1/2,
-   Ln4 = fun lens:hd/2,
-   Ln5 = fun lens:t1/2,
-   Ln6 = fun lens:hd/2,
+   Ln1 = lens:tl(),
+   Ln2 = lens:hd(),
+   Ln3 = lens:t1(),
+   Ln4 = lens:hd(),
+   Ln5 = lens:t1(),
+   Ln6 = lens:hd(),
    X   = [a, {[{[1], 2}],2}],
    Y   = [a, {[{[e], 2}],2}],  
    X = lens:put(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6,    lens:get(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6, X), X),
@@ -278,13 +286,13 @@ apply6(_Config) ->
    Y = lens:put(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6, e, lens:put(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6, d, X)).
 
 apply7(_Config) ->
-   Ln1 = fun lens:tl/2,
-   Ln2 = fun lens:hd/2,
-   Ln3 = fun lens:t1/2,
-   Ln4 = fun lens:hd/2,
-   Ln5 = fun lens:t1/2,
-   Ln6 = fun lens:hd/2,
-   Ln7 = fun lens:t1/2,
+   Ln1 = lens:tl(),
+   Ln2 = lens:hd(),
+   Ln3 = lens:t1(),
+   Ln4 = lens:hd(),
+   Ln5 = lens:t1(),
+   Ln6 = lens:hd(),
+   Ln7 = lens:t1(),
    X   = [a, {[{[{1}], 2}],2}],
    Y   = [a, {[{[{e}], 2}],2}],  
    X = lens:put(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6, Ln7,    lens:get(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6, Ln7, X), X),

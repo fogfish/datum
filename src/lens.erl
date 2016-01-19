@@ -47,10 +47,10 @@
 
 %%
 %% lenses  
--export([hd/2, tl/2, list/1]).
--export([t1/2, t2/2, t3/2, tuple/1]).
--export([map/1]).
--export([keylist/1]).
+-export([hd/0, tl/0, list/1]).
+-export([t1/0, t2/0, t3/0, tuple/1]).
+-export([map/1, map/2]).
+-export([keylist/1, keylist/2]).
 
 %%
 %% lens utility
@@ -245,6 +245,7 @@ apply(Ln, Fun, S) ->
 get(Ln, S) ->
    tl( Ln(fun(X) -> fmap(undefined, const(X)) end, S) ).
 
+
 %%
 %% The `put` is defined as 
 %% Given a lens() that focuses on a() inside of s(), and
@@ -305,18 +306,23 @@ put(Ln, A, S) ->
 %%
 
 %%
-%% 
--spec hd(fun( (_) -> f(_) ), list() ) -> f(list()).
+%% focus head of list
+-spec hd() -> fun( (fun( (_) -> f(_) ), tuple() ) -> f(tuple()) ).
 
-hd(Fun, [H|T]) ->
-   fmap(fun(X) -> [X|T] end, Fun(H)).
+hd() ->
+   fun(Fun, [H|T]) ->
+      fmap(fun(X) -> [X|T] end, Fun(H))
+   end.
+
 
 %%
-%%
--spec tl(fun( (list()) -> f(list()) ), list() ) -> f(list()).
+%% focus tail of list
+-spec tl() -> fun( (fun( (_) -> f(_) ), tuple() ) -> f(tuple()) ).
 
-tl(Fun, [H|T]) ->
-   fmap(fun(X) -> [H|X] end, Fun(T)).
+tl() ->
+   fun(Fun, [H|T]) ->
+      fmap(fun(X) -> [H|X] end, Fun(T))
+   end.
 
 %%
 %% The list function takes a predicate and focuses the leftmost element 
@@ -332,29 +338,35 @@ list(Pred)
 
 
 %%
-%%
--spec t1(fun( (_) -> f(_) ), tuple() ) -> f(tuple()).
+%% focus fist tuple element
+-spec t1() -> fun( (fun( (_) -> f(_) ), tuple() ) -> f(tuple()) ).
 
-t1(Fun, Term) ->
-   fmap(fun(X) -> erlang:setelement(1, Term, X) end, Fun(erlang:element(1, Term))).
-
-%%
-%%
--spec t2(fun( (_) -> f(_) ), tuple() ) -> f(tuple()).
-
-t2(Fun, Term) ->
-   fmap(fun(X) -> erlang:setelement(2, Term, X) end, Fun(erlang:element(2, Term))).
+t1() ->
+   fun(Fun, Term) ->
+      fmap(fun(X) -> erlang:setelement(1, Term, X) end, Fun(erlang:element(1, Term)))
+   end.
 
 %%
-%%
--spec t3(fun( (_) -> f(_) ), tuple() ) -> f(tuple()).
+%% focus second tuple element
+-spec t2() -> fun( (fun( (_) -> f(_) ), tuple() ) -> f(tuple()) ).
 
-t3(Fun, Term) ->
-   fmap(fun(X) -> erlang:setelement(3, Term, X) end, Fun(erlang:element(3, Term))).
+t2() ->
+   fun(Fun, Term) ->
+      fmap(fun(X) -> erlang:setelement(2, Term, X) end, Fun(erlang:element(2, Term)))
+   end.
+
+%%
+%% focus third tuple element
+-spec t3() -> fun( (fun( (_) -> f(_) ), tuple() ) -> f(tuple()) ).
+
+t3() ->
+   fun(Fun, Term) ->
+      fmap(fun(X) -> erlang:setelement(3, Term, X) end, Fun(erlang:element(3, Term)))
+   end.
    
 %%
-%%
--spec tuple(integer()) -> fun( (fun( (_) -> f(_) ), tuple() ) -> f(tuple()) ).
+%% focuses tuple element using either index or predicate function
+-spec tuple(integer() | function()) -> fun( (fun( (_) -> f(_) ), tuple() ) -> f(tuple()) ).
 
 tuple(I)
  when is_integer(I) -> 
@@ -376,8 +388,9 @@ tuple_find(Pred, I, Term) ->
    end.
 
 %%
-%%
+%% focuses map element using key or predicate function.
 -spec map(_) -> fun( (fun( (_) -> f(_) ), map() ) -> f(map()) ).
+-spec map(_, _) -> fun( (fun( (_) -> f(_) ), map() ) -> f(map()) ).
 
 map(Key)
  when not is_function(Key) ->
@@ -392,9 +405,16 @@ map(Pred)
       fmap(fun(X) -> maps:put(Key, X, Map) end, Fun(maps:get(Key, Map)))      
    end.
 
+map(Key, Default)
+ when not is_function(Key) ->
+   fun(Fun, Map) ->
+      fmap(fun(X) -> maps:put(Key, X, Map) end, Fun(maps:get(Key, Map, Default)))
+   end.
+
 %%
-%%
+%% focuses pair / tuple in keylist.
 -spec keylist(_) -> fun( (fun( (_) -> f(_) ), list() ) -> f(list()) ).
+-spec keylist(_, _) -> fun( (fun( (_) -> f(_) ), list() ) -> f(list()) ).
 
 keylist({N, Key}) -> 
    fun(Fun, List) ->
@@ -405,6 +425,18 @@ keylist({N, Key}) ->
 keylist(Key) ->
    keylist({1, Key}).
 
+
+keylist({N, Key}, Default) ->
+   fun(Fun, List) ->
+      H = case lists:keytake(Key, N, List) of
+         false         -> Default;
+         {value, V, _} -> V
+      end,
+      fmap(fun(X) -> lists:keystore(Key, N, List, X) end, Fun(H))
+   end;
+
+keylist(Key, Default) ->
+   keylist({1, Key}, Default).
 
 
 %%%------------------------------------------------------------------
