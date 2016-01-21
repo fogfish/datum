@@ -98,7 +98,7 @@ new(Head, ?NULL) ->
 -spec(head/1 :: (datum:stream()) -> _).
 
 head({s, Head, _}) ->
-	Head;
+   Head;
 head(_) ->
    exit(badarg).
 
@@ -107,7 +107,7 @@ head(_) ->
 -spec(tail/1 :: (datum:stream()) -> datum:stream()).
 
 tail({s, _, Fun}) ->
-	Fun();
+   Fun();
 tail(_) ->
    {}.
 
@@ -146,7 +146,7 @@ drop(0, Stream) ->
 drop(N, {s, _, _} = Stream) ->
   drop(N - 1, tail(Stream));
 drop(_, ?NULL) ->
-	?NULL.
+   ?NULL.
 
 %%
 %% drops elements from stream while predicate returns true and returns remaining
@@ -156,9 +156,9 @@ drop(_, ?NULL) ->
 dropwhile(Pred, {s, _, _}=Stream) ->
    case Pred(head(Stream)) of
       true  -> 
-      	dropwhile(Pred, tail(Stream)); 
+         dropwhile(Pred, tail(Stream)); 
       false -> 
-      	Stream
+         Stream
    end;
 dropwhile(_, ?NULL) ->
    ?NULL.
@@ -188,9 +188,9 @@ filter(_, ?NULL) ->
 -spec(fold/3 :: (function(), _, datum:stream()) -> _).
 
 fold(Fun, Acc, {s, _, _} = Stream) ->
-	fold(Fun, Fun(head(Stream), Acc), tail(Stream));
+   fold(Fun, Fun(head(Stream), Acc), tail(Stream));
 fold(_, Acc, ?NULL) ->
-	Acc.
+   Acc.
 
 
 %%
@@ -199,10 +199,10 @@ fold(_, Acc, ?NULL) ->
 -spec(foreach/2 :: (function(), datum:stream()) -> ok).
 
 foreach(Fun, {s, _, _} = Stream) ->
-	_ = Fun(head(Stream)),
-	foreach(Fun, tail(Stream));
+   _ = Fun(head(Stream)),
+   foreach(Fun, tail(Stream));
 foreach(_, ?NULL) ->
-	ok.
+   ok.
 
 %%
 %% create a new stream by apply a function to each element of input stream. 
@@ -223,9 +223,9 @@ scan(Fun, {s, _, _} = Stream) ->
    scan(Fun, head(Stream), tail(Stream)).
 
 scan(Fun, Acc0, {s, _, _} = Stream) ->
-	new(Acc0, fun() -> scan(Fun, Fun(head(Stream), Acc0), tail(Stream)) end);
+   new(Acc0, fun() -> scan(Fun, Fun(head(Stream), Acc0), tail(Stream)) end);
 scan(_, Acc0, ?NULL) ->
-	new(Acc0).
+   new(Acc0).
 
 %%
 %% partitions stream into two streams. The split behaves as if it is defined as 
@@ -268,9 +268,9 @@ splitwhile(_, Acc, ?NULL) ->
 -spec(take/2 :: (integer(), datum:stream()) -> datum:stream()).
 
 take(0, _) ->
-	?NULL;
+   ?NULL;
 take(N, {s, _, _} = Stream) ->
-	new(head(Stream), fun() -> take(N - 1, tail(Stream)) end);
+   new(head(Stream), fun() -> take(N - 1, tail(Stream)) end);
 take(_, ?NULL) ->
    ?NULL.
 
@@ -282,9 +282,9 @@ take(_, ?NULL) ->
 takewhile(Pred, {s, _, _} = Stream) ->
    case Pred(head(Stream)) of
       true  -> 
-      	new(head(Stream), fun() -> takewhile(Pred, tail(Stream)) end);
+         new(head(Stream), fun() -> takewhile(Pred, tail(Stream)) end);
       false ->
-      	?NULL
+         ?NULL
      end;
 takewhile(_, ?NULL) ->
    ?NULL.
@@ -309,21 +309,20 @@ unfold(Fun, Seed)
 -spec(zip/2 :: (datum:stream(), datum:stream()) -> datum:stream()).
 
 zip(Streams) ->
-	case [head(X) || X <- Streams, X =/= ?NULL] of
-		Head when length(Head) =:= length(Streams) ->
-			new(Head, fun() -> zip([tail(X) || X <- Streams]) end);
-		_ ->
-			?NULL
-	end.
+   case [head(X) || X <- Streams, X =/= ?NULL] of
+      Head when length(Head) =:= length(Streams) ->
+         new(Head, fun() -> zip([tail(X) || X <- Streams]) end);
+      _ ->
+      ?NULL
+   end.
 
 zip(A, B) ->
-	zip([A, B]).
+   zip([A, B]).
 
 %%
-%% takes one or more input streams and returns a newly-allocated stream 
-%% in which each element is a list of the corresponding elements of the input 
-%% streams. zipwith is not a syntax sugar for zip - map composition, 
-%% this is a fundamental stream combinator.   
+%% takes one or more input streams and returns a newly-allocated stream,  
+%% each element produced by composition function that map list of input heads to
+%% new head. The output stream is as long as the longest input stream.
 -spec(zipwith/2 :: (function(), [datum:stream()]) -> datum:stream()).
 -spec(zipwith/3 :: (function(), datum:stream(), datum:stream()) -> datum:stream()).
 
