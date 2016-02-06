@@ -47,7 +47,7 @@
 
 %%
 %% lenses  
--export([hd/0, tl/0, list/1]).
+-export([hd/0, hd/1, tl/0, tl/1, list/1, list/2]).
 -export([t1/0, t2/0, t3/0, tuple/1]).
 -export([map/1, map/2]).
 -export([keylist/1, keylist/2, pair/1, pair/2]).
@@ -60,7 +60,7 @@
 -export([put/4, put/5, put/6, put/7, put/8, put/9]).
 
 
--compile({no_auto_import,[apply/3]}).
+-compile({no_auto_import,[apply/3, hd/1, tl/1]}).
 -compile([inline, {inline_size, 128}, inline_list_funcs]).
 
 %%%------------------------------------------------------------------
@@ -228,10 +228,7 @@ fmap(_,   [const|_] = X) ->
 -spec apply(lens(), fun( (a()) -> a() ), s()) -> s().
 
 apply(Ln, Fun, S) ->
-   % @todo: The failing lenses are not handled properly if focus is not exists
-   %        They can return or handle `Omega` term. It is not clear how to init
-   %        a new container from nothing. The further investigation is required.
-   tl( Ln(fun(X) -> fmap(Fun, id(X)) end, S) ).
+   erlang:tl( Ln(fun(X) -> fmap(Fun, id(X)) end, S) ).
 
 
 %%
@@ -244,7 +241,7 @@ apply(Ln, Fun, S) ->
 -spec get(lens(), s()) -> a().
 
 get(Ln, S) ->
-   tl( Ln(fun(X) -> fmap(undefined, const(X)) end, S) ).
+   erlang:tl( Ln(fun(X) -> fmap(undefined, const(X)) end, S) ).
 
 
 %%
@@ -260,12 +257,6 @@ put(Ln, A, S) ->
    apply(Ln, fun(_) -> A end, S).
 
 
-%%%------------------------------------------------------------------
-%%%
-%%% lenses 
-%%%
-%%%------------------------------------------------------------------
-
 %% 
 %% Lens primitives above requires actual lens implementation. The lens
 %% definition is library agnostic. The function of lens() type is required.
@@ -280,56 +271,91 @@ put(Ln, A, S) ->
 %%
 %% The lens usage is straight forward:
 %%
-%%    lens:get(fun lens:hd/2, [1,2]).  
-%%    lens:put(fun lens:hd/2, 5, [1, 2]).
-%%    lens:apply(fun lens:hd/2, fun(X) -> X + 1 end, [1, 2]).
+%%    lens:get(lens:hd(), [1,2]).  
+%%    lens:put(lens:hd(), 5, [1, 2]).
+%%    lens:apply(lens:hd(), fun(X) -> X + 1 end, [1, 2]).
 %%
 %% Well behaved lens satisfies following laws
 %%  * GetPut - if we get focused element a() from s() and immediately put a() 
 %%             with no modifications back into s(), we must get back exactly s().
 %%
-%%    [a] = lens:put(fun lens:hd/2, lens:get(fun lens:hd/2, [a]), [a]).
+%%    [a] = lens:put(lens:hd(), lens:get(lens:hd(), [a]), [a]).
 %%
 %%  * PutGet - if putting a() inside s() yields a new s(), 
 %%             then the a() obtained from s is exactly a().
 %%
-%%    b = lens:get(fun lens:hd/2, lens:put(fun lens:hd/2, b, [a])).
+%%    b = lens:get(lens:hd(), lens:put(lens:hd(), b, [a])).
 %%
 %%  * PutPut - A sequence of two puts is just the effect of the second, 
 %%             the first gets completely overwritten. This law is applicable 
 %%             to very well behaved lenses.
 %%
-%%    [c] = lens:put(fun lens:hd/2, c, lens:put(fun lens:hd/2, b, [a])).
+%%    [c] = lens:put(lens:hd(), c, lens:put(lens:hd(), b, [a])).
 %%
 %%
 %% The utility section covers aspects of lens composition and building a complex
 %% applications.
 %%
+%% Failing lenses are not handled if focus is not exists. Each typed lens defines 
+%% Omega friendly variant. It is capable to create a new container from nothing.
+%% The Omega variant(s) is usable for practical application to construct nested data type
+%% but they are not well behaving.  
+%%
+
 -type pred() :: fun((_) -> true | false).
+
+
+
+
+%%%------------------------------------------------------------------
+%%%
+%%% list lenses 
+%%%
+%%%------------------------------------------------------------------
 
 %%
 %% focus head of list
 -spec hd() -> lens(_, list()).
+-spec hd(_) -> lens(_, list()).
 
 hd() ->
    fun(Fun, [H|T]) ->
       fmap(fun(X) -> [X|T] end, Fun(H))
    end.
 
+hd(Om) ->
+   fun
+   (Fun, [H|T]) ->
+      fmap(fun(X) -> [X|T] end, Fun(H));
+   (Fun,    []) ->
+      fmap(fun(X) -> [X] end, Fun(Om))
+   end.
+
+
 
 %%
 %% focus tail of list
 -spec tl() -> lens(list(), list()).
+-spec tl(_) -> lens(list(), list()).
 
 tl() ->
    fun(Fun, [H|T]) ->
       fmap(fun(X) -> [H|X] end, Fun(T))
    end.
 
+tl(Om) ->
+   fun
+   (Fun, [H|T]) ->
+      fmap(fun(X) -> [H|X] end, Fun(T));
+   (Fun,    []) ->
+      fmap(fun(X) -> X end, Fun(Om))
+   end.
+
 %%
-%% The list function takes a predicate and focuses the leftmost element 
+%% The list lens takes a predicate and focuses the leftmost element 
 %% of the structure matching the predicate
--spec list( pred() ) -> lens(_, list()).
+-spec list(pred()) -> lens(_, list()).
+-spec list(pred(), _) -> lens(_, list()).
 
 list(Pred)
  when is_function(Pred) ->
@@ -338,6 +364,23 @@ list(Pred)
       fmap(fun(X) -> H ++ [X|T] end, Fun(I))
    end.
 
+list(Pred, Om) 
+ when is_function(Pred) ->
+   fun(Fun, List) ->
+      {Head, [El|Tail]} = case      
+         lists:splitwith(fun(X) -> not Pred(X) end, List)
+      of
+         {H, []} -> {H, [Om]};
+         Value   -> Value
+      end,
+      fmap(fun(X) -> Head ++ [X|Tail] end, Fun(El))
+   end.
+
+%%%------------------------------------------------------------------
+%%%
+%%% tuple lenses 
+%%%
+%%%------------------------------------------------------------------
 
 %%
 %% focus fist tuple element
@@ -389,6 +432,12 @@ tuple_find(Pred, I, Term) ->
       false -> tuple_find(Pred, I + 1, Term)
    end.
 
+%%%------------------------------------------------------------------
+%%%
+%%% map lenses 
+%%%
+%%%------------------------------------------------------------------
+
 %%
 %% focuses map element using key or predicate function.
 -spec map(_) -> lens(_, map()).
@@ -407,11 +456,17 @@ map(Pred)
       fmap(fun(X) -> maps:put(Key, X, Map) end, Fun(maps:get(Key, Map)))      
    end.
 
-map(Key, Default)
+map(Key, Om)
  when not is_function(Key) ->
    fun(Fun, Map) ->
-      fmap(fun(X) -> maps:put(Key, X, Map) end, Fun(maps:get(Key, Map, Default)))
+      fmap(fun(X) -> maps:put(Key, X, Map) end, Fun(maps:get(Key, Map, Om)))
    end.
+
+%%%------------------------------------------------------------------
+%%%
+%%% keylist lenses 
+%%%
+%%%------------------------------------------------------------------
 
 %%
 %% focuses tuple in keylist.
@@ -428,17 +483,23 @@ keylist(Key) ->
    keylist({1, Key}).
 
 
-keylist({N, Key}, Default) ->
+keylist({N, Key}, Om) ->
    fun(Fun, List) ->
       H = case lists:keytake(Key, N, List) of
-         false         -> Default;
+         false         -> Om;
          {value, V, _} -> V
       end,
       fmap(fun(X) -> lists:keystore(Key, N, List, X) end, Fun(H))
    end;
 
-keylist(Key, Default) ->
-   keylist({1, Key}, Default).
+keylist(Key, Om) ->
+   keylist({1, Key}, Om).
+
+%%%------------------------------------------------------------------
+%%%
+%%% pair lenses 
+%%%
+%%%------------------------------------------------------------------
 
 %%
 %% focuses pair value
@@ -451,10 +512,10 @@ pair(Key) ->
       fmap(fun(X) -> lists:keystore(Key, 1, List, {Key, X}) end, Fun(Val))
    end.
 
-pair(Key, Default) ->
+pair(Key, Om) ->
    fun(Fun, List) ->
       Val = case lists:keytake(Key, 1, List) of
-         false -> Default;
+         false -> Om;
          {value, {_, V}, _} -> V
       end,
       fmap(fun(X) -> lists:keystore(Key, 1, List, {Key, X}) end, Fun(Val))
@@ -529,22 +590,22 @@ c([Ln | Lenses], Fun, S) ->
 
 
 apply(LnY, LnZ, Fun, S) ->
-   tl( LnY(?ALnZ, S) ).
+   erlang:tl( LnY(?ALnZ, S) ).
 
 apply(LnX, LnY, LnZ, Fun, S) ->
-   tl( LnX(?C(Xx, LnY, ?ALnZ), S) ).
+   erlang:tl( LnX(?C(Xx, LnY, ?ALnZ), S) ).
 
 apply(LnW, LnX, LnY, LnZ, Fun, S) ->
-   tl( LnW(?C(Xw, LnX, ?C(Xx, LnY, ?ALnZ)), S) ).
+   erlang:tl( LnW(?C(Xw, LnX, ?C(Xx, LnY, ?ALnZ)), S) ).
 
 apply(LnV, LnW, LnX, LnY, LnZ, Fun, S) ->
-   tl( LnV(?C(Xv, LnW, ?C(Xw, LnX, ?C(Xx, LnY, ?ALnZ))), S) ).
+   erlang:tl( LnV(?C(Xv, LnW, ?C(Xw, LnX, ?C(Xx, LnY, ?ALnZ))), S) ).
 
 apply(LnU, LnV, LnW, LnX, LnY, LnZ, Fun, S) ->
-   tl( LnU(?C(Xu, LnV, ?C(Xv, LnW, ?C(Xw, LnX, ?C(Xx, LnY, ?ALnZ)))), S) ).
+   erlang:tl( LnU(?C(Xu, LnV, ?C(Xv, LnW, ?C(Xw, LnX, ?C(Xx, LnY, ?ALnZ)))), S) ).
 
 apply(LnT, LnU, LnV, LnW, LnX, LnY, LnZ, Fun, S) ->
-   tl( LnT(?C(Xt, LnU, ?C(Xu, LnV, ?C(Xv, LnW, ?C(Xw, LnX, ?C(Xx, LnY, ?ALnZ))))), S) ).
+   erlang:tl( LnT(?C(Xt, LnU, ?C(Xu, LnV, ?C(Xv, LnW, ?C(Xw, LnX, ?C(Xx, LnY, ?ALnZ))))), S) ).
 
 %%
 %%
@@ -556,22 +617,22 @@ apply(LnT, LnU, LnV, LnW, LnX, LnY, LnZ, Fun, S) ->
 -spec get(lens(), lens(), lens(), lens(), lens(), lens(), lens(), s()) -> a().
 
 get(LnY, LnZ, S) ->
-   tl( LnY(?GLnZ, S) ).
+   erlang:tl( LnY(?GLnZ, S) ).
 
 get(LnX, LnY, LnZ, S) ->
-   tl( LnX(?C(Xx, LnY, ?GLnZ), S) ).
+   erlang:tl( LnX(?C(Xx, LnY, ?GLnZ), S) ).
 
 get(LnW, LnX, LnY, LnZ, S) ->
-   tl( LnW(?C(Xw, LnX, ?C(Xx, LnY, ?GLnZ)), S) ).
+   erlang:tl( LnW(?C(Xw, LnX, ?C(Xx, LnY, ?GLnZ)), S) ).
 
 get(LnV, LnW, LnX, LnY, LnZ, S) ->
-   tl( LnV(?C(Xv, LnW, ?C(Xw, LnX, ?C(Xx, LnY, ?GLnZ))), S) ).
+   erlang:tl( LnV(?C(Xv, LnW, ?C(Xw, LnX, ?C(Xx, LnY, ?GLnZ))), S) ).
 
 get(LnU, LnV, LnW, LnX, LnY, LnZ, S) ->
-   tl( LnU(?C(Xu, LnV, ?C(Xv, LnW, ?C(Xw, LnX, ?C(Xx, LnY, ?GLnZ)))), S) ).
+   erlang:tl( LnU(?C(Xu, LnV, ?C(Xv, LnW, ?C(Xw, LnX, ?C(Xx, LnY, ?GLnZ)))), S) ).
 
 get(LnT, LnU, LnV, LnW, LnX, LnY, LnZ, S) ->
-   tl( LnT(?C(Xt, LnU, ?C(Xu, LnV, ?C(Xv, LnW, ?C(Xw, LnX, ?C(Xx, LnY, ?GLnZ))))), S) ).
+   erlang:tl( LnT(?C(Xt, LnU, ?C(Xu, LnV, ?C(Xv, LnW, ?C(Xw, LnX, ?C(Xx, LnY, ?GLnZ))))), S) ).
 
 %%
 %%

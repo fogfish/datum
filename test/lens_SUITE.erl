@@ -57,6 +57,12 @@
 %% compose lenses
 -export([c/1, apply2/1, apply3/1, apply4/1, apply5/1, apply6/1, apply7/1]).
 
+%%
+%% omega lenses
+-export([
+   om_hd/1, om_tl/1, om_list/1
+]).
+
 %%%----------------------------------------------------------------------------   
 %%%
 %%% suite
@@ -67,6 +73,7 @@ all() ->
       {group, naive}
      ,{group, pure}
      ,{group, compose}
+     ,{group, omega}
    ].
 
 groups() ->
@@ -82,6 +89,9 @@ groups() ->
 
      ,{compose, [parallel], 
          [c, apply2, apply3, apply4, apply5, apply6, apply7]}
+
+     ,{omega, [parallel],
+         [om_hd, om_tl, om_list]}
    ].
 
 %%%----------------------------------------------------------------------------   
@@ -328,5 +338,27 @@ apply7(_Config) ->
    X = lens:put(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6, Ln7,    lens:get(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6, Ln7, X), X),
    d = lens:get(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6, Ln7,    lens:put(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6, Ln7, d, X)),
    Y = lens:put(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6, Ln7, e, lens:put(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6, Ln7, d, X)).
+
+
+%%%----------------------------------------------------------------------------   
+%%%
+%%% omega lens interface
+%%%
+%%%----------------------------------------------------------------------------   
+
+om_hd(_Config) ->
+   Ln  = lens:hd(e),
+   e   = lens:get(Ln, []),
+   [x] = lens:put(Ln, x, []).
+
+om_tl(_Config) ->
+   Ln  = lens:tl([e]),
+   [e] = lens:get(Ln, []),
+   [x] = lens:put(Ln, [x], []).
+
+om_list(_Config) ->
+   Ln  = lens:list(fun(X) -> X =:= a end, b),
+   b   = lens:get(Ln, [c,c]),
+   [c, c, z] = lens:put(Ln, z, [c,c]).
 
 
