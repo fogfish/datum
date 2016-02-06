@@ -534,11 +534,11 @@ pair(Key, Om) ->
 %% supported by Erlang.
 %%
 %% E.g. there is list of tuple [{1,2,3}], the composition of 
-%% fun lens:hd/2, fun lens:t2/2 allows to focus on second element on tuple.
+%% lens:hd(), fun lens:t2() allows to focus on second element on tuple.
 %% the composition is fundamental approach to deal with nested types.
 %% 
-%%   lens:get(lens:c([fun lens:hd/2, fun lens:t2/2]), [{1,2,3}]).
-%%   lens:put(lens:c([fun lens:hd/2, fun lens:t2/2]), 6, [{1,2,3}]).
+%%   lens:get(lens:c([lens:hd(), fun lens:t2()]), [{1,2,3}]).
+%%   lens:put(lens:c([lens:hd(), fun lens:t2()]), 6, [{1,2,3}]).
 %%
 -spec c([lens()]) -> lens().
 
@@ -551,6 +551,7 @@ c([Ln], Fun, S) ->
    Ln(Fun, S);
 c([Ln | Lenses], Fun, S) ->
    c(Lenses, fun(X) -> Ln(Fun, X) end, S).
+
 
 %%
 %% The composition function is not efficient from performance perspective, 
