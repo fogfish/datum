@@ -2,15 +2,60 @@
 %%   monad do-notation compiler
 -module(monad).
 
+-export([
+   'id.return'/1, 'id.>>='/2,
+   'io.return'/1, 'io.>>='/2
+]).
 -export([parse_transform/2]).
+
+
+%%%------------------------------------------------------------------
+%%%
+%%% build-in monads
+%%%
+%%%------------------------------------------------------------------
+
+%%
+%% identity monad
+'id.return'(X) ->
+   X. 
+
+'id.>>='(X, Fun) ->
+   Fun(X).
+
+%%
+%% i/o monad
+'io.return'(X)
+ when is_function(X) ->
+   X;
+'io.return'(X) ->
+   fun(_) -> X end.
+
+'io.>>='(X, Fun) ->
+   fun(Context) ->
+      case Fun( X(Context) ) of
+         Fun1 when is_function(Fun1) ->
+            Fun1(Context);
+         Scalar ->
+            Scalar
+      end
+   end.
+
+
+%%%------------------------------------------------------------------
+%%%
+%%% monad compiler (parse transform)
+%%%
+%%%------------------------------------------------------------------
 
 %%
 %% built-in pattern for abstract syntax tree
 -define(FUN(Clauses), 
    {function, Label, Name, Arity, Clauses}).
  
--define(MONAD(Monad),  
-   {lc, _, {atom, _, Monad}, _}).
+-define(MONAD(Lib, Monad),  
+   {lc, _, {tuple, _, [{atom, _, Lib}, {atom, _, Monad}]}, _}).
+
 
 %%
 %% entry-point
@@ -37,18 +82,18 @@ pt_clauses([]) ->
 
 %%
 %%
-pt_monad([?MONAD(_) = Head | Tail]) -> 
-   [compile(Head) | pt_monad(Tail)];
+pt_monad([?MONAD(Lib, Monad) = Head | Tail]) -> 
+   [compile({Lib, Monad}, Head) | pt_monad(Tail)];
 
 pt_monad(List) ->
    List.
 
 %%
 %% compile comprehension to monad
-compile({lc, L0, {atom, L1, Monad}, List} = LC) ->
+compile(Monad, {lc, Ln, _, List} = LC) ->
    case compile(List, Monad, []) of
       {Var, Expr} ->
-         {lc, L0, {var, L1, Var}, Expr};
+         {call,Ln, {atom,Ln,hd}, [{lc, Ln, {var, Ln, Var}, Expr}]};
       _ ->
          LC
    end.
@@ -92,9 +137,10 @@ lc(Ln, Expr) ->
 
 %% 
 %% lift expression to monadic type (including list comprehension)
-return(Monad, Ln, Expr) ->
+return({Lib, Monad}, Ln, Expr) ->
+   Return = list_to_atom(atom_to_list(Monad) ++ ".return"),
    {call, Ln, 
-      {remote, Ln, {atom, Ln, Monad}, {atom, Ln, return}},
+      {remote, Ln, {atom, Ln, Lib}, {atom, Ln, Return}},
       [Expr]
    }.
 
@@ -103,9 +149,10 @@ return(Monad, {generate, Ln, Head, Expr}) ->
 
 %%
 %% bind monad
-'>>='(Monad, Ma, Ln, Expr) ->
+'>>='({Lib, Monad}, Ma, Ln, Expr) ->
+   Bind = list_to_atom(atom_to_list(Monad) ++ ".>>="),
    {call, Ln, 
-      {remote, Ln, {atom, Ln, Monad}, {atom, Ln, '>>='}},
+      {remote, Ln, {atom, Ln, Lib}, {atom, Ln, Bind}},
       [{var, Ln, Ma}, lambda(Monad, Ma, Expr)]
    }.
 
@@ -114,7 +161,7 @@ return(Monad, {generate, Ln, Head, Expr}) ->
 
 %%
 %% lift expression to lambda function
-lambda(Monad, Ma, {call, Ln, Fun, Args}) ->
+lambda(_Monad, Ma, {call, Ln, Fun, Args}) ->
    {Local, Largs} = largs(Args, Ma, '_', []),
    {'fun', Ln,
       {clauses, 
