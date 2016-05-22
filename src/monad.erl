@@ -24,20 +24,26 @@
    Fun(X).
 
 %%
-%% i/o monad
+%% I/O monad - build side-effect computation
 'io.return'(X)
  when is_function(X) ->
    X;
 'io.return'(X) ->
    fun(_) -> X end.
 
-'io.>>='(X, Fun) ->
-   fun(Context) ->
-      case Fun( X(Context) ) of
-         Fun1 when is_function(Fun1) ->
-            Fun1(Context);
-         Scalar ->
-            Scalar
+'io.>>='(IO1, Fun) ->
+   fun(World0) ->
+      % IO is a function with side-effect that takes World as argument, 
+      % It produces computation returns the results and new World state.
+      {X, World1} = IO1(World0),      
+
+      % Fun is next chained computation, it takes the result as argument.
+      % It either produces next IO operation or scalar result
+      case Fun( X ) of
+         IO2 when is_function(IO2) ->
+            IO2(World1);
+         Y ->
+            {Y, World1}
       end
    end.
 
