@@ -32,18 +32,17 @@
    fun(_) -> X end.
 
 'io.>>='(IO1, Fun) ->
-   fun(World0) ->
-      % IO is a function with side-effect that takes World as argument, 
-      % It produces computation returns the results and new World state.
-      {X, World1} = IO1(World0),      
+   fun(World) ->
+      % IO is a function with side-effect that takes World as argument.
+      X = IO1(World),      
 
       % Fun is next chained computation, it takes the result as argument.
       % It either produces next IO operation or scalar result
       case Fun( X ) of
          IO2 when is_function(IO2) ->
-            IO2(World1);
+            IO2(World);
          Y ->
-            {Y, World1}
+            Y
       end
    end.
 
