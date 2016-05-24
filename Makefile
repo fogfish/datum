@@ -4,7 +4,7 @@
 ## @description
 ##   Makefile to build and release Erlang applications using standard development tools
 ##
-## @version 0.9.2
+## @version 0.11.5
 
 #####################################################################
 ##
@@ -12,40 +12,39 @@
 ##
 #####################################################################
 PREFIX ?= /usr/local
-APP ?= $(notdir $(CURDIR))
-ARCH?= $(shell uname -m)
-PLAT?= $(shell uname -s)
-VSN ?= $(shell test -z "`git status --porcelain`" && git describe --tags --long | sed -e 's/-g[0-9a-f]*//' | sed -e 's/-0//' || echo "`git describe --abbrev=0 --tags`-SNAPSHOT")
-REL  = ${APP}-${VSN}
-PKG  = ${REL}+${ARCH}.${PLAT}
-TEST?= ${APP}
-S3  ?=
-VMI ?= fogfish/erlang
-NET ?= lo0
+APP    ?= $(notdir $(CURDIR))
+ARCH   ?= $(shell uname -m)
+PLAT   ?= $(shell uname -s)
+VSN    ?= $(shell test -z "`git status --porcelain`" && git describe --tags --long | sed -e 's/-g[0-9a-f]*//' | sed -e 's/-0//' || echo "`git describe --abbrev=0 --tags`-SNAPSHOT")
+REL     = ${APP}-${VSN}
+PKG    ?= ${REL}+${ARCH}.${PLAT}
+TEST   ?= ${APP}
+S3     ?=
+VMI    ?= fogfish/erlang
+NET    ?= lo0
+URL 	 ?= undefined
+LATEST ?= latest
 
 ## root path to benchmark framework
-BB     = ../../dev/basho_bench
+BB     = ../basho_bench
 SSHENV = /tmp/ssh-agent.conf
 COOKIE?= nocookie
 
-## erlang flags (make run only)
-ROOT   = `pwd`
-ADDR   = $(shell ifconfig ${NET} | sed -En 's/.*inet (addr:)?(([0-9]*\.){3}[0-9]*).*/\2/p')
+## erlang runtime flags use by `make run`
+ROOT   = $(shell pwd)
+ADDR   = $(shell ifconfig ${NET} | sed -En 's/^${NET}:.*inet (addr:)?(([0-9]*\.){3}[0-9]*).*/\2/p' && echo "127.0.0.1")
 EFLAGS = \
 	-name ${APP}@${ADDR} \
 	-setcookie ${COOKIE} \
-	-pa ${ROOT}/ebin \
-	-pa ${ROOT}/deps/*/ebin \
-	-pa ${ROOT}/apps/*/ebin \
-	-pa ${ROOT}/rel/files \
-	-pa ${ROOT}/priv \
+	-pa ${ROOT}/_build/default/lib/*/ebin \
+	-pa ${ROOT}/rel \
 	-kernel inet_dist_listen_min 32100 \
 	-kernel inet_dist_listen_max 32199 \
 	+P 1000000 \
 	+K true +A 160 -sbt ts
 
 ## self-extracting bundle wrapper
-BUNDLE_INIT = PREFIX=${PREFIX}\nREL=${PREFIX}/${REL}\nAPP=${APP}\nVSN=${VSN}\nLINE=\`grep -a -n 'BUNDLE:\x24' \x240\`\ntail -n +\x24(( \x24{LINE\x25\x25:*} + 1)) \x240 | gzip -vdc - | tar -C ${PREFIX} -xvf - > /dev/null\n
+BUNDLE_INIT = PREFIX=${PREFIX}\nREL=${PREFIX}/${REL}\nAPP=${APP}\nVSN=${VSN}\nLINE=`grep -a -n "BUNDLE:$$" $$0`\nmkdir -p $${REL}\ntail -n +$$(( $${LINE%%%%:*} + 1)) $$0 | gzip -vdc - | tar -C $${REL} -xvf - > /dev/null\n
 BUNDLE_FREE = exit\nBUNDLE:\n
 BUILDER = FROM ${VMI}\nRUN mkdir ${APP}\nCOPY . ${APP}/\nRUN cd ${APP} && make && make rel\n
 CTRUN   = \
@@ -59,81 +58,86 @@ CTRUN   = \
    	end, \
 		erlang:halt().
 
-
 #####################################################################
 ##
 ## build
 ##
 #####################################################################
-all: rebar deps compile
+all: rebar3 compile
 
 compile:
-	@./rebar compile
-
-deps:
-	@./rebar get-deps
+	@./rebar3 compile
 
 clean:
-	@./rebar clean ;\
+	@./rebar3 clean ;\
+	rm -Rf _build/default/rel ;\
 	rm -rf test.*-temp-data ;\
 	rm -rf tests ;\
 	rm -rf log ;\
-	rm -Rf rel/${APP}-* ;\
-	rm -f  *.tgz ;\
-	rm -f  *.bundle ;\
-	rm -f test.erl 
+	rm -f  relx.config ;\
+	rm -f  *.tar.gz ;\
+	rm -f  *.bundle
 
 distclean: clean 
-	@./rebar delete-deps
+	@./rebar3 unlock ;\
+	rm -Rf _build ;\
+	rm -Rf rebar3
 
 ##
 ## execute unit test
 unit: all
-	@./rebar skip_deps=true eunit
+	@./rebar3 skip_deps=true eunit
 
 ##
 ## execute common test and terminate node
-test: ebin/test.beam
+test: _build/test.beam
 	@mkdir -p /tmp/test/${APP} ;\
-	erl ${EFLAGS} -run test run test/${TEST}.config
+	erl ${EFLAGS} -pa _build/ -pa test/ -run test run test/${TEST}.config
 
-ebin/test.beam: test.erl
-	erlc -o ebin $<
+_build/test.beam: _build/test.erl
+	erlc -o _build $<
 
-test.erl:
+_build/test.erl:
 	echo "${CTRUN}" > $@
 
-##
-##
-docs:
-	@./rebar skip_deps=true doc
 
 #####################################################################
 ##
 ## release 
 ##
 #####################################################################
-rel: ${PKG}.tgz
+rel: ${PKG}.tar.gz
 
 ## assemble VM release
 ifeq (${PLAT},$(shell uname -s))
-${PKG}.tgz:
-	@./rebar generate target_dir=${REL} ;\
-	test -d rel/${REL} && tar -C rel -zcf $@ ${REL} ;\
-	test -f $@ && echo "==> tarball: $@"
+${PKG}.tar.gz: relx.config
+	@./rebar3 tar -n ${APP} -v ${VSN} ;\
+	cp _build/default/rel/${APP}/${APP}-${VSN}.tar.gz $@ ;\
+	echo "==> tarball: $@"
+
+relx.config: rel/relx.config.src
+	@cat $< | sed 's/release/release, {${APP}, "${VSN}"}/' > $@ 
 else
-${PKG}.tgz: .git/dockermake
+${PKG}.tar.gz: _build/dockermake
 	@docker build --file=$< --force-rm=true	--tag=build/${APP}:latest . ;\
 	I=`docker create build/${APP}:latest` ;\
 	docker cp $$I:/${APP}/$@ $@ ;\
 	docker rm -f $$I ;\
 	docker rmi build/${APP}:latest ;\
-	rm $< ;\
 	test -f $@ && echo "==> tarball: $@"
 
-.git/dockermake:
+_build/dockermake:
 	@echo "${BUILDER}" > $@
 endif
+
+## build docker image
+docker: rel/Dockerfile
+	docker build \
+		--build-arg APP=${APP} \
+		--build-arg VSN=${VSN} \
+		-t ${URL}/${APP}:${VSN} -f $< .
+	docker tag -f ${URL}/${APP}:${VSN} ${URL}/${APP}:${LATEST}
+
 
 
 #####################################################################
@@ -141,16 +145,14 @@ endif
 ## package / bundle
 ##
 #####################################################################
-pkg: ${PKG}.tgz ${PKG}.bundle
+pkg: ${PKG}.tar.gz ${PKG}.bundle
 
 ${PKG}.bundle: rel/deploy.sh
-	@printf "${BUNDLE_INIT}" > $@ ;\
+	@printf '${BUNDLE_INIT}' > $@ ;\
 	cat $<  >> $@ ;\
-	printf  "${BUNDLE_FREE}" >> $@ ;\
-	cat  ${PKG}.tgz >> $@ ;\
+	printf  '${BUNDLE_FREE}' >> $@ ;\
+	cat  ${PKG}.tar.gz >> $@ ;\
 	chmod ugo+x $@ ;\
-	rm -f ${APP}-latest+${ARCH}.${PLAT}.bundle ;\
-	ln -s ${PKG} ${APP}-latest+${ARCH}.${PLAT}.bundle ;\
 	echo "==> bundle: $@"
 
 ## copy 'package' to s3
@@ -196,26 +198,17 @@ benchmark:
 	$(BB)/priv/summary.r -i tests/current ;\
 	open tests/current/summary.png
 
-start: ${PKG}.tgz
-	@./rel/${REL}/bin/${APP} start
-
-stop: ${PKG}.tgz
-	@./rel/${REL}/bin/${APP} stop
-
-console: ${PKG}.tgz
-	@./rel/${REL}/bin/${APP} console
-
-attach: ${PKG}.tgz
-	@./rel/${REL}/bin/${APP} attach
+console: ${PKG}.tar.gz
+	@_build/default/rel/${APP}/bin/${APP} console
 
 #####################################################################
 ##
 ## dependencies
 ##
 #####################################################################
-rebar:
-	@curl -L -O https://github.com/rebar/rebar/wiki/rebar ; \
-	chmod ugo+x rebar
+rebar3:
+	@curl -L -O https://s3.amazonaws.com/rebar3/rebar3 ; \
+	chmod ugo+x $@
 
 .PHONY: test rel deps all pkg 
 

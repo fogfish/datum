@@ -10,5 +10,6 @@ test.*
 tests/
 ebin/
 rebar3
-rebar3.lock
+rebar.lock
+_build/
 *.sublime-*

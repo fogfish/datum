@@ -1,50 +1,23 @@
+%%
+%%   Copyright 2016 Dmitry Kolesnikov, All Rights Reserved
+%%
+%%   Licensed under the Apache License, Version 2.0 (the "License");
+%%   you may not use this file except in compliance with the License.
+%%   You may obtain a copy of the License at
+%%
+%%       http://www.apache.org/licenses/LICENSE-2.0
+%%
+%%   Unless required by applicable law or agreed to in writing, software
+%%   distributed under the License is distributed on an "AS IS" BASIS,
+%%   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%%   See the License for the specific language governing permissions and
+%%   limitations under the License.
+%%
 %% @doc
-%%   monad do-notation compiler
+%%   monad parse transform (do-notation syntax)
 -module(monad).
 
--export([
-   'id.return'/1, 'id.>>='/2,
-   'io.return'/1, 'io.>>='/2
-]).
 -export([parse_transform/2]).
-
-
-%%%------------------------------------------------------------------
-%%%
-%%% build-in monads
-%%%
-%%%------------------------------------------------------------------
-
-%%
-%% identity monad
-'id.return'(X) ->
-   X. 
-
-'id.>>='(X, Fun) ->
-   Fun(X).
-
-%%
-%% I/O monad - build side-effect computation
-'io.return'(X)
- when is_function(X) ->
-   X;
-'io.return'(X) ->
-   fun(_) -> X end.
-
-'io.>>='(IO1, Fun) ->
-   fun(World) ->
-      % IO is a function with side-effect that takes World as argument.
-      X = IO1(World),      
-
-      % Fun is next chained computation, it takes the result as argument.
-      % It either produces next IO operation or scalar result
-      case Fun( X ) of
-         IO2 when is_function(IO2) ->
-            IO2(World);
-         Y ->
-            Y
-      end
-   end.
 
 
 %%%------------------------------------------------------------------
@@ -88,105 +61,77 @@ pt_clauses([]) ->
 %%
 %%
 pt_monad([?MONAD(Lib, Monad) = Head | Tail]) -> 
-   [compile({Lib, Monad}, Head) | pt_monad(Tail)];
+   [cc_lc({Lib, Monad}, Head) | pt_monad(Tail)];
 
 pt_monad(List) ->
    List.
 
 %%
-%% compile comprehension to monad
-compile(Monad, {lc, Ln, _, List} = LC) ->
-   case compile(List, Monad, []) of
-      {Var, Expr} ->
-         {call,Ln, {atom,Ln,hd}, [{lc, Ln, {var, Ln, Var}, Expr}]};
-      _ ->
-         LC
-   end.
-
-compile([{generate, _, {var, _, Ma}, _} = Expr | Tail], Monad, Acc) ->
-   compile(Tail, Ma, Monad, [return(Monad, Expr) | Acc]);
-
-compile([Head | Tail], Monad, Acc) ->
-   compile(Tail, Monad, [Head | Acc]);
-
-compile([], _, Acc) ->
-   lists:reverse(Acc).   
-
-compile([{generate, _, {var, _, Mb}, _} = Expr | Tail], Ma, Monad, Acc) ->
-   compile(Tail, Mb, Monad, ['>>='(Monad, Ma, Expr) | Acc]);
-
-compile([Head | Tail], Var, Monad, Acc) ->
-   compile(Tail, Var, Monad, [Head | Acc]);
-
-compile([], Var, _, Acc) ->
-   {Var, lists:reverse(Acc)}.   
+%% compile list comprehension to monad
+cc_lc(Monad, {lc, _, _, Seq}) ->
+   cc_do_return(Monad, pp_do(lists:reverse(Seq))).
 
 %%
-%% lift expression to list-comprehension
-lc(Ln, Expr) ->
-   {'case', Ln,
-      Expr,
-      [
-         {clause, Ln, 
-            [{var, Ln, 'X'}],
-            [[{call, Ln, {atom, Ln, is_list}, [{var, Ln, 'X'}]}]],
-            [{var, Ln, 'X'}]
-         },
-         {clause, Ln,
-            [{var, Ln, 'X'}],
-            [],
-            [{cons, Ln, {var, Ln, 'X'}, {nil, Ln}}]
-         }
-      ]
-   }.
+%% pre-process do sequence to replace 
+%% '=<' - return( ... )
+%% '>=' - fail(...)
+pp_do([{op, Ln, '=<', Ma, Expr} | Tail]) ->
+   [{generate, Ln, Ma, {call, Ln, {atom, Ln, return}, [Expr]}} | pp_do(Tail)];
 
+pp_do([{op, Ln, '>=', Ma, Expr} | Tail]) ->
+   [{generate, Ln, Ma, {call, Ln, {atom, Ln, fail}, [Expr]}} | pp_do(Tail)];
+
+pp_do([Head | Tail]) ->
+   [Head | pp_do(Tail)];
+
+pp_do([]) ->
+   [].
+
+%%
 %% 
-%% lift expression to monadic type (including list comprehension)
-return({Lib, Monad}, Ln, Expr) ->
-   Return = list_to_atom(atom_to_list(Monad) ++ ".return"),
-   {call, Ln, 
-      {remote, Ln, {atom, Ln, Lib}, {atom, Ln, Return}},
-      [Expr]
-   }.
+cc_do_return(_, [{generate, _, _, _}|_]) ->
+   exit("The last statement in a 'do' must be an expression");
 
-return(Monad, {generate, Ln, Head, Expr}) ->
-   {generate, Ln, Head, lc(Ln, return(Monad, Ln, Expr))}.
+cc_do_return(M, [Expr, {generate, _, Ma, _} | _] = Seq) ->
+   cc_do_seq(M, lambda(Ma, erlang:element(2, Expr), return(M, Expr)), tl(Seq)).   
 
-%%
-%% bind monad
-'>>='({Lib, Monad}, Ma, Ln, Expr) ->
-   Bind = list_to_atom(atom_to_list(Monad) ++ ".>>="),
-   {call, Ln, 
-      {remote, Ln, {atom, Ln, Lib}, {atom, Ln, Bind}},
-      [{var, Ln, Ma}, lambda(Monad, Ma, Expr)]
-   }.
+cc_do_seq(M, Lambda, [{generate, Ln, _, Expr}, {generate, _, Ma, _} | _] = Seq) ->
+   cc_do_seq(M, lambda(Ma, Ln, '>>='(M, Ln, return(M, Expr), Lambda)), tl(Seq));
 
-'>>='(Monad, Ma, {generate, Ln, {var, _, Mb}, Expr}) ->
-   {generate, Ln, {var, Ln, Mb}, lc(Ln, return(Monad, Ln, '>>='(Monad, Ma, Ln, Expr)))}.
+cc_do_seq(M, Lambda, [{generate, Ln, _, Expr}]) ->
+   '>>='(M, Ln, return(M, Expr), Lambda).
 
 %%
 %% lift expression to lambda function
-lambda(_Monad, Ma, {call, Ln, Fun, Args}) ->
-   {Local, Largs} = largs(Args, Ma, '_', []),
+lambda(Ma, Ln, Expr) ->
    {'fun', Ln,
       {clauses, 
          [
-            {clause, Ln, [{var, Ln, Local}], [], [{call, Ln, Fun, Largs}]}
+            {clause, Ln, [Ma], [], [Expr]}
          ]
       }
+   }.
+
+%%
+%% bind monad
+'>>='({Lib, M}, Ln, Expr, Lambda) ->
+   {call, Ln, 
+      {remote, Ln, {atom, Ln, Lib}, {atom, Ln, list_to_atom(atom_to_list(M) ++ ".>>=")}},
+      [Expr, Lambda]
+   }.
+
+%%
+%% return monad
+return({Lib, M}, {call, Ln, {atom, _, return}, Expr}) ->
+   {call, Ln,
+      {remote, Ln, {atom, Ln, Lib}, {atom, Ln, list_to_atom(atom_to_list(M) ++ ".return")}},
+      Expr
    };
-   
-lambda(_, _, _) ->
-   exit("only function calls are supported as generators.").
+return({Lib, M}, {call, Ln, {atom, _, fail}, Expr}) ->
+   {call, Ln,
+      {remote, Ln, {atom, Ln, Lib}, {atom, Ln, list_to_atom(atom_to_list(M) ++ ".fail")}},
+      Expr
+   };
+return(_, Expr) ->
+   Expr.
 
-%% 
-%% rewrite lambda arguments to support 
-largs([{var, Ln, Ma} | Tail], Ma, _, Acc) ->
-   La = list_to_atom("LocalMonadVar_" ++ atom_to_list(Ma)),
-   largs(Tail, Ma, La, [{var, Ln, La} | Acc]);
-
-largs([Head | Tail], Ma, La, Acc) ->
-   largs(Tail, Ma, La, [Head | Acc]);
-
-largs([], _, La, Acc) ->
-   {La, lists:reverse(Acc)}.
