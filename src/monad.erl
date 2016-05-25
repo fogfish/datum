@@ -31,8 +31,8 @@
 -define(FUN(Clauses), 
    {function, Label, Name, Arity, Clauses}).
  
--define(MONAD(Lib, Monad),  
-   {lc, _, {tuple, _, [{atom, _, Lib}, {atom, _, Monad}]}, _}).
+-define(MONAD(Monad),  
+   {lc, _, {tuple, _, [{atom, _, do}, Monad]}, _}).
 
 
 %%
@@ -60,8 +60,8 @@ pt_clauses([]) ->
 
 %%
 %%
-pt_monad([?MONAD(Lib, Monad) = Head | Tail]) -> 
-   [cc_lc({Lib, Monad}, Head) | pt_monad(Tail)];
+pt_monad([?MONAD(Monad) = Head | Tail]) -> 
+   [cc_lc(Monad, Head) | pt_monad(Tail)];
 
 pt_monad(List) ->
    List.
@@ -114,22 +114,22 @@ lambda(Ma, Ln, Expr) ->
 
 %%
 %% bind monad
-'>>='({Lib, M}, Ln, Expr, Lambda) ->
+'>>='(Monad, Ln, Expr, Lambda) ->
    {call, Ln, 
-      {remote, Ln, {atom, Ln, Lib}, {atom, Ln, list_to_atom(atom_to_list(M) ++ ".>>=")}},
+      {remote, Ln, Monad, {atom, Ln, '>>='}},
       [Expr, Lambda]
    }.
 
 %%
 %% return monad
-return({Lib, M}, {call, Ln, {atom, _, return}, Expr}) ->
+return(Monad, {call, Ln, {atom, _, return}, Expr}) ->
    {call, Ln,
-      {remote, Ln, {atom, Ln, Lib}, {atom, Ln, list_to_atom(atom_to_list(M) ++ ".return")}},
+      {remote, Ln, Monad, {atom, Ln, return}},
       Expr
    };
-return({Lib, M}, {call, Ln, {atom, _, fail}, Expr}) ->
+return(Monad, {call, Ln, {atom, _, fail}, Expr}) ->
    {call, Ln,
-      {remote, Ln, {atom, Ln, Lib}, {atom, Ln, list_to_atom(atom_to_list(M) ++ ".fail")}},
+      {remote, Ln, Monad, {atom, Ln, fail}},
       Expr
    };
 return(_, Expr) ->
