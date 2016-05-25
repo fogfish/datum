@@ -89,48 +89,18 @@ end_per_group(_, _Config) ->
 %%
 %%
 id_do(_Config) ->
-   111 = id_do_m().
-
-id_do_m() ->
-   [{'M', id} ||
-      A <- id_do_100(),
-      B <- return(10),
-      C =< 1,
-      return(A + B + C)
-   ].
-
-id_do_100() -> 
-   100.
-
+   111 = do_M('Mid').
 
 %%
 %%
 error_do(_Config) ->
-   {ok, 111} = error_do_m().
-
-error_do_m() ->
-   [{'M', error} ||
-      A <- error_do_100(),
-      B <- return(10),
-      C =< 1,
-      return(A + B + C)
-   ].
-
-error_do_100() -> 
-   {ok, 100}.
-
+   {ok, 111} = do_M('Merror').
 
 %%
 %%
 error_fail(_Config) ->
-   {error, 1} = error_fail_m().
+   {error, 1} = do_M_fail('Merror').
 
-error_fail_m() ->
-   [{'M', error} ||
-      A >= 1,
-      B =< 2,
-      return(A, B)
-   ].
 
 
 %%
@@ -141,7 +111,7 @@ io_do(_Config) ->
    "a:b:c:d" = Fun(":").
    
 io_do_m() ->
-   [{'M', io} ||
+   [{do, 'Mio'} ||
       A =< "a",
       B <- io_req(A, "b"),
       C <- io_req(B, "c"),
@@ -150,7 +120,7 @@ io_do_m() ->
    ].
 
 io_req(State, X) ->
-   [{'M', id} ||
+   [{do, 'Mid'} ||
       A <- io_struct(X),
       io_action(State, A)
    ].
@@ -164,9 +134,33 @@ io_action(State, X) ->
    end. 
 
 
+%%%----------------------------------------------------------------------------   
+%%%
+%%% private
+%%%
+%%%----------------------------------------------------------------------------   
 
+%%
+%% successful computation 
+do_M(Mtype) ->
+   [{do, Mtype} ||
+      A <- value(Mtype),
+      B <- return(10),
+      C =< 1,
+      return(A + B + C)
+   ].
 
+value(Mtype) -> 
+   Mtype:return(100).
 
+%%
+%% failed computation
+do_M_fail(Mtype) ->
+   [{do, Mtype} ||
+      A >= 1,
+      B =< 2,
+      return(A, B)
+   ].
 
 
 
