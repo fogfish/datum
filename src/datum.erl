@@ -42,7 +42,7 @@
 
 %%
 %%
--spec(typeof/1 :: (any()) -> q | stream | tree | heap | lens | undefined).
+-spec typeof(_) -> q | stream | tree | heap | lens | undefined.
 
 typeof(X)
  when is_tuple(X) ->

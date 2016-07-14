@@ -31,14 +31,14 @@
 
 %%
 %% create new empty red-black tree
--spec(new/0 :: () -> tree()).
+-spec new() -> tree().
 
 new() ->
 	?NULL.
 
 %%
 %% apply function to element
--spec(apply/3 :: (function(), key(), tree()) -> tree()).
+-spec apply(function(), key(), tree()) -> tree().
 
 apply(Fun, Key, T) ->
    erlang:setelement(1, apply_el(Fun, Key, T), b).
@@ -60,7 +60,7 @@ apply_el(Fun, Key, {C, L, {K, _}=X, R})
 
 %%
 %% insert element
--spec(insert/3 :: (key(), element(), tree()) -> tree()).
+-spec insert(key(), element(), tree()) -> tree().
 
 insert(Key, Val, T) ->
    erlang:setelement(1, ins(Key, Val, T), b).
@@ -81,7 +81,7 @@ ins(Key, Val, {C, L, {K, _}=X, R})
 
 %%
 %% lookup element
--spec(lookup/2 :: (key(), tree()) -> element()).
+-spec lookup(key(), tree()) -> element().
 
 lookup(_Key, ?NULL) ->
    undefined;

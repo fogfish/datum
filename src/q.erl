@@ -40,8 +40,8 @@
 
 %%
 %% create new queue
--spec(new/0 :: () -> datum:q()).
--spec(new/1 :: (list()) -> datum:q()).
+-spec new() -> datum:q().
+-spec new(list()) -> datum:q().
 
 new() ->
    ?NULL.
@@ -50,7 +50,7 @@ new(List) ->
 
 %%
 %% queue head element
--spec(head/1 :: (datum:q()) -> any()).
+-spec head(datum:q()) -> any().
 
 head({q, _N, _Tail, [Head|_]}) ->
    Head;
@@ -63,7 +63,7 @@ head(_) ->
 
 %%
 %% queue tail
--spec(tail/1 :: (datum:q()) -> datum:q()).
+-spec tail(datum:q()) -> datum:q().
 
 tail(Q) ->
    {_, Tail} = deq(Q),
@@ -71,7 +71,7 @@ tail(Q) ->
 
 %%
 %% enqueue element
--spec(enq/2 :: (any(), datum:q()) -> datum:q()).
+-spec enq(any(), datum:q()) -> datum:q().
 
 enq(E, {q, N, [_]=Tail, []}) ->
    {q, N + 1, [E], Tail};
@@ -84,7 +84,7 @@ enq(E, ?NULL) ->
 
 %%
 %% dequeue element
--spec(deq/1 :: (datum:q()) -> {any(), datum:q()}).
+-spec deq(datum:q()) -> {any(), datum:q()}.
 
 deq({q, _N, [E], []}) ->
    {E, deq:new()};
@@ -102,7 +102,7 @@ deq({q, N, Tail, [E|Head]}) ->
 
 %%
 %% check if the queue is empty
--spec(is_empty/1 :: (datum:q()) -> boolean()).
+-spec is_empty(datum:q()) -> boolean().
 
 is_empty(?NULL) ->
    true;
@@ -118,7 +118,7 @@ length(?NULL) ->
 
 %%
 %% dropwhile head of queue
--spec(dropwhile/2 :: (function(), datum:q()) -> datum:q()).
+-spec dropwhile(function(), datum:q()) -> datum:q().
 
 dropwhile(Pred, {q, _N, _Tail, _Head}=Q) ->
    {Head, Tail} = deq(Q),
@@ -132,7 +132,7 @@ dropwhile(_,  {}) ->
 
 %%
 %% takewhile head of queue
--spec(takewhile/2 :: (function(), datum:q()) -> datum:q()).
+-spec takewhile(function(), datum:q()) -> datum:q().
 
 takewhile(Pred, Queue) ->
    takewhile(Pred, new(), Queue).
@@ -149,7 +149,7 @@ takewhile(_,  Acc, {}) ->
 
 %%
 %% partitions queue into two queues.
--spec(split/2 :: (function(), datum:q()) -> {datum:q(), datum:q()}).
+-spec split(function(), datum:q()) -> {datum:q(), datum:q()}.
 
 split(X, {q, N, _, _} = Queue)
  when X >= N ->
@@ -171,7 +171,7 @@ split(N, Acc, Queue) ->
 %% partitions queue into two queues according to predicate.
 %% The splitwith/2 behaves as if it is defined as consequent 
 %% takewhile(Pred, Queue), dropwhile(Pred, Queue)
--spec(splitwith/2 :: (function(), datum:q()) -> {datum:q(), datum:q()}).
+-spec splitwith(function(), datum:q()) -> {datum:q(), datum:q()}.
 
 splitwith(Pred, Queue) ->
    splitwith(Pred, new(), Queue).
@@ -188,7 +188,7 @@ splitwith(_,  Acc, {}) ->
 
 %%
 %%
--spec(list/1 :: (datum:q()) -> list()).
+-spec list(datum:q()) -> list().
 
 list({q, _, Tail, Head}) ->
    Head ++ lists:reverse(Tail, []);

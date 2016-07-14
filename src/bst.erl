@@ -48,14 +48,14 @@
 
 %%
 %% create new binary search tree
--spec(new/0 :: () -> datum:tree()).
+-spec new() -> datum:tree().
 
 new()  ->
    {t, ?NULL}.
 
 %%
 %% build tree from data type
--spec(build/1 :: (list()) -> datum:tree()).
+-spec build(list()) -> datum:tree().
 
 build(X)
  when is_list(X) ->
@@ -77,7 +77,7 @@ list_to_tree(List) ->
 
 %%
 %% apply function on element
--spec(apply/3 :: (function(), key(), datum:tree()) -> datum:tree()).
+-spec apply(function(), key(), datum:tree()) -> datum:tree().
 
 apply(Fun, K, {t, T}) ->
    {t, apply_el(Fun, K, T)}.
@@ -97,7 +97,7 @@ apply_el(Fun, K, {A, Kx, Vx, B})
 
 %%
 %% insert element
--spec(insert/3 :: (key(), val(), datum:tree()) -> datum:tree()).
+-spec insert(key(), val(), datum:tree()) -> datum:tree().
 
 insert(K, V, {t, T}) ->
    {t, insert_el(K, V, T)}.
@@ -116,7 +116,7 @@ insert_el(K, V, {A, Kx, Vx, B})
 
 %%
 %% lookup element
--spec(lookup/2 :: (key(), datum:tree()) -> val() | undefined).
+-spec lookup(key(), datum:tree()) -> val() | undefined.
 
 lookup(K, {t, T}) ->
    lookup_el(K, T).
@@ -135,7 +135,7 @@ lookup_el(K, {A, Kx,  _, _})
 
 %%
 %% remove element
--spec(remove/2 :: (key(), datum:tree()) -> datum:tree()).
+-spec remove(key(), datum:tree()) -> datum:tree().
 
 remove(K, {t, T}) ->
    {t, remove_el(K, T)}.
@@ -161,7 +161,7 @@ remove_el(K, {A, Kx, Vx, B})
 
 %%
 %% return smallest element
--spec(min/1 :: (tree()) -> {key(), val()} | undefined).
+-spec min(tree()) -> {key(), val()} | undefined.
 
 min({t, T}) ->
    min_el(T).
@@ -175,7 +175,7 @@ min_el(?NULL) ->
 
 %%
 %% return largest element
--spec(max/1 :: (tree()) -> {key(), val()}).
+-spec max(tree()) -> {key(), val()}.
 
 max({t, T}) ->
    max_el(T).
@@ -189,7 +189,7 @@ max_el(?NULL) ->
 
 %%
 %% map tree
--spec(map/2 :: (function(), datum:tree()) -> datum:tree()).
+-spec map(function(), datum:tree()) -> datum:tree().
 
 map(Fun, {t, T}) ->
    {t, map_el(Fun, T)}.
@@ -202,7 +202,7 @@ map_el(Fun, {A, K, V, B}) ->
 
 %%
 %% fold function over tree 
--spec(foldl/3 :: (function(), any(), datum:tree()) -> any()).
+-spec foldl(function(), any(), datum:tree()) -> any().
 
 foldl(Fun, Acc, {t, T}) ->
    foldl_el(Fun, Acc, T).
@@ -214,7 +214,7 @@ foldl_el(Fun, Acc0, {A, K, V, B}) ->
 
 %%
 %% map and fold function over tree
--spec(mapfoldl/3 :: (function(), any(), datum:tree()) -> {datum:tree(), any()}).
+-spec mapfoldl(function(), any(), datum:tree()) -> {datum:tree(), any()}.
 
 mapfoldl(Fun, Acc0, {t, T}) ->
    {Tx, Acc} = mapfoldl_el(Fun, Acc0, T),
@@ -231,7 +231,7 @@ mapfoldl_el(Fun, Acc0, {A, K, V, B}) ->
 
 %% 
 %% fold function over tree 
--spec(foldr/3 :: (function(), any(), datum:tree()) -> any()).
+-spec foldr(function(), any(), datum:tree()) -> any().
 
 foldr(Fun, Acc, {t, T}) ->
    foldr_el(Fun, Acc, T).
@@ -243,7 +243,7 @@ foldr_el(Fun, Acc0, {A, K, V, B}) ->
 
 %%
 %% map and fold function over tree
--spec(mapfoldr/3 :: (function(), any(), datum:tree()) -> {datum:tree(), any()}).
+-spec mapfoldr(function(), any(), datum:tree()) -> {datum:tree(), any()}.
 
 mapfoldr(Fun, Acc0, {t, T}) ->
    {Tx, Acc} = mapfoldr_el(Fun, Acc0, T),
@@ -261,7 +261,7 @@ mapfoldr_el(Fun, Acc0, {A, K, V, B}) ->
 %% split tree on left and right according to predicate function.
 %% the predicate function returns true for leftist keys and false otherwise. 
 %% the function behaves as follows: {takewhile(...), dropwhile(...)}
--spec(splitwith/2 :: (function(), datum:tree()) -> {datum:tree(), datum:tree()}).
+-spec splitwith(function(), datum:tree()) -> {datum:tree(), datum:tree()}.
 
 splitwith(Fun, {t, T}) ->
    {A, B} = splitwith_el(Fun, T),
@@ -282,7 +282,7 @@ splitwith_el(Fun, {A, K, V, B}) ->
 
 %%
 %% takes elements from tree while predicate function return true
--spec(takewhile/2 :: (function(), datum:tree()) -> datum:tree()).
+-spec takewhile(function(), datum:tree()) -> datum:tree().
 
 takewhile(Fun, {t, T}) ->
    {t, takewhile_el(Fun, T)}.
@@ -300,7 +300,7 @@ takewhile_el(Fun, {A, K, V, B}) ->
 
 %%
 %%
--spec(take/2 :: (integer(), tree()) -> tree()).
+-spec take(integer(), tree()) -> tree().
 
 take(N, {t, T}) ->
    {t, erlang:element(2, take_el(N, T))}.
@@ -318,7 +318,7 @@ take_el(N, {A, K, V, B}) ->
 
 %%
 %% drops elements from tree while predicate function return true
--spec(dropwhile/2 :: (function(), tree()) -> tree()).
+-spec dropwhile(function(), tree()) -> tree().
 
 dropwhile(Fun, {t, T}) ->
    {t, dropwhile_el(Fun, T)}.
@@ -336,7 +336,7 @@ dropwhile_el(Fun, {A, K, V, B}) ->
 
 %%
 %%
--spec(drop/2 :: (integer(), tree()) -> tree()).
+-spec drop(integer(), tree()) -> tree().
 
 drop(N, {t, T}) ->
    {t, erlang:element(2, drop_el(N, T))}.
@@ -353,7 +353,7 @@ drop_el(N, {A, K, V, B}) ->
 
 %%
 %% 
--spec(list/1 :: (tree()) -> list()).
+-spec list(tree()) -> list().
 
 list(Tree) ->
    foldr(
@@ -362,15 +362,3 @@ list(Tree) ->
       Tree
    ).
 
-
-% iterator({nil, _, _, _} = T, As) ->
-%     [T | As];
-% iterator({L, _, _, _} = T, As) ->
-%     iterator(L, [T | As]);
-% iterator(nil, As) ->
-%     As.
-
-% next([{X, V, _, T} | As]) ->
-%     {X, V, iterator(T, As)};
-% next([]) ->
-%     none.

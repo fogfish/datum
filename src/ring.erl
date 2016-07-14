@@ -81,8 +81,8 @@
 %%   {n,    integer()} - number of replicas
 %%   {q,    integer()}  - number of shard 
 %%   {hash, md5 | sha1} - ring hashing algorithm
--spec(new/0 :: () -> #ring{}).
--spec(new/1 :: (list()) -> #ring{}).
+-spec new() -> #ring{}.
+-spec new(list()) -> #ring{}.
 
 new() ->
    new([]).
@@ -113,21 +113,21 @@ init([], R) ->
 
 %%
 %% number of ring members
--spec(size/1 :: (#ring{}) -> integer()).
+-spec size(#ring{}) -> integer().
 
 size(#ring{}=R) ->
    length(R#ring.keys).
 
 %%
 %% number of replica
--spec(n/1 :: (#ring{}) -> integer()).
+-spec n(#ring{}) -> integer().
 
 n(#ring{n=N}) ->
    N.
 
 %%
 %% maps key into address on the ring
--spec(address/2 :: (key() | addr(), #ring{}) -> addr()).
+-spec address(key() | addr(), #ring{}) -> addr().
 
 address(X, #ring{}=R)
  when is_integer(X) ->
@@ -148,7 +148,7 @@ address(X, #ring{}=R) ->
 
 %%
 %% return complete set of ring addresses
--spec(address/1 :: (#ring{}) -> integer()).
+-spec address(#ring{}) -> integer().
 
 address(#ring{}=R) ->
    Top = ringtop(R),
@@ -157,7 +157,7 @@ address(#ring{}=R) ->
 
 %%
 %% lookup the key position on the ring
--spec(whereis/2 :: (key() | addr(), #ring{}) -> {addr(), key()}).
+-spec whereis(key() | addr(), #ring{}) -> {addr(), key()}.
 
 whereis(Addr, #ring{}=R)
  when is_integer(Addr) ->
@@ -179,8 +179,8 @@ lookup(Addr, #ring{}=R)
 %% return list of N - predecessors slots
 %% those N slots are claimed by hopefully distinct N nodes 
 %% [ {X,Y} || {_, X} <- ring:predecessors(3, 0, R), Y <- [ring:get(X, R)] ].
--spec(predecessors/2 :: (key() | addr(), #ring{}) -> [{addr(), key()}]).
--spec(predecessors/3 :: (integer(), key() | addr(), #ring{}) -> [{addr(), key()}]).
+-spec predecessors(key() | addr(), #ring{}) -> [{addr(), key()}].
+-spec predecessors(integer(), key() | addr(), #ring{}) -> [{addr(), key()}].
 
 predecessors(Key, #ring{}=R) ->
    predecessors(R#ring.n, Key, R).
@@ -215,8 +215,8 @@ predecessors(N, Key, Ring) ->
 %% return list of N - successors slots
 %% those N slots are claimed by hopefully distinct N nodes 
 %% [ {X,Y} || {_, X} <- ring:successors(3, 0, R), Y <- [ring:get(X, R)] ].
--spec(successors/2 :: (key() | addr(), #ring{}) ->[{addr(), key()}]).
--spec(successors/3 :: (integer(), key() | addr(), #ring{}) -> [{addr(), key()}]).
+-spec successors(key() | addr(), #ring{}) ->[{addr(), key()}].
+-spec successors(integer(), key() | addr(), #ring{}) -> [{addr(), key()}].
 
 successors(Key, #ring{}=R) ->
    successors(R#ring.n, Key, R).
@@ -250,14 +250,14 @@ successors(N, Key, Ring) ->
 
 %%
 %% return list of ring members
--spec(members/1 :: (#ring{}) -> [{key(), val()}]).
+-spec members(#ring{}) -> [{key(), val()}].
 
 members(#ring{}=S) ->
    [X || {_, X} <- S#ring.keys].
 
 %%
 %% return ring statistic
--spec(i/1 :: (#ring{}) -> [{key(), integer()}]).
+-spec i(#ring{}) -> [{key(), integer()}].
 
 i(#ring{tokens=Tokens}) ->
    bst:foldr(fun i/3, [], Tokens).
@@ -271,7 +271,7 @@ i(_, #t{key=Key}, Acc) ->
 
 %%
 %% dump ring
--spec(dump/1 :: (#ring{}) -> [{addr(), key()}]).
+-spec dump(#ring{}) -> [{addr(), key()}].
 
 dump(#ring{tokens=Tokens}) ->
    bst:foldr(fun dump/3, [], Tokens).
@@ -284,7 +284,7 @@ dump(Addr, #t{key=Key}, Acc) ->
 
 %%
 %% return list of addresses associated with given key
--spec(whois/2 :: (any() | function(), #ring{}) -> [{addr(), key()}]).
+-spec whois(any() | function(), #ring{}) -> [{addr(), key()}].
 
 whois(Key, #ring{keys = Keys, tokens = Tokens}=R) ->
    Addr = address(Key, R),
@@ -306,7 +306,7 @@ whois(Key, #ring{keys = Keys, tokens = Tokens}=R) ->
 
 %%
 %% return value associated with given key
--spec(get/2 :: (key(), #ring{}) -> val()).
+-spec get(key(), #ring{}) -> val().
 
 get(Key, #ring{}=R) ->
    Addr = address(Key, R),
@@ -320,7 +320,7 @@ get(Key, #ring{}=R) ->
 
 %%
 %% join key-value to the ring
--spec(join/3 :: (key(), val(), #ring{}) -> #ring{}).
+-spec join(key(), val(), #ring{}) -> #ring{}.
 
 join(Key, Val, #ring{}=R) ->
    join(address(Key, R), Key, Val, R).
@@ -412,7 +412,7 @@ repair(#ring{tokens = Tokens0}=R) ->
 
 %%
 %% leave node from ring
--spec(leave/2 :: (key() | addr(), #ring{}) -> #ring{}).
+-spec leave(key() | addr(), #ring{}) -> #ring{}.
 
 leave(Addr, #ring{}=R)
  when is_integer(Addr) ->

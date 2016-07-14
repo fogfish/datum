@@ -77,9 +77,9 @@
 %%
 %% creates a newly allocated stream containing stream head and promise.
 %% the promise is recursive, it returns new stream pair when evaluated.
--spec(new/0 :: () -> datum:stream()).
--spec(new/1 :: (_) -> datum:stream()).
--spec(new/2 :: (_, function()) -> datum:stream()).
+-spec new() -> datum:stream().
+-spec new(_) -> datum:stream().
+-spec new(_, function()) -> datum:stream().
 
 new() ->
    ?NULL.
@@ -95,7 +95,7 @@ new(Head, ?NULL) ->
 
 %%
 %% takes stream and return head element of stream
--spec(head/1 :: (datum:stream()) -> _).
+-spec head(datum:stream()) -> _.
 
 head({s, Head, _}) ->
    Head;
@@ -104,7 +104,7 @@ head(_) ->
 
 %%
 %% force stream promise and return new stream (evaluates tail of stream).
--spec(tail/1 :: (datum:stream()) -> datum:stream()).
+-spec tail(datum:stream()) -> datum:stream().
 
 tail({s, _, Fun}) ->
    Fun();
@@ -120,8 +120,8 @@ tail(_) ->
 %%
 %% concatenate streams, returns newly-allocated stream composed of elements
 %% copied from input streams (in order of input). 
--spec('++'/2 :: (datum:stream(), datum:stream()) -> datum:stream()).
--spec('++'/1 :: ([datum:stream()]) -> datum:stream()).
+-spec '++'(datum:stream(), datum:stream()) -> datum:stream().
+-spec '++'([datum:stream()]) -> datum:stream().
 
 '++'(?NULL, StreamB) ->
    StreamB;
@@ -139,7 +139,7 @@ tail(_) ->
 %%
 %% returns the suffix of the input stream that starts at the next element after
 %% the first n elements.
--spec(drop/2 :: (integer(), datum:stream()) -> datum:stream()).
+-spec drop(integer(), datum:stream()) -> datum:stream().
 
 drop(0, Stream) ->
    Stream;
@@ -151,7 +151,7 @@ drop(_, ?NULL) ->
 %%
 %% drops elements from stream while predicate returns true and returns remaining
 %% stream suffix.
--spec(dropwhile/2 :: (function(), datum:stream()) -> datum:stream()).
+-spec dropwhile(function(), datum:stream()) -> datum:stream().
 
 dropwhile(Pred, {s, _, _}=Stream) ->
    case Pred(head(Stream)) of
@@ -167,7 +167,7 @@ dropwhile(_, ?NULL) ->
 %%
 %% returns a newly-allocated stream that contains only those elements x of the 
 %% input stream for which predicate is true.
--spec(filter/2 :: (function(), datum:stream()) -> datum:stream()).
+-spec filter(function(), datum:stream()) -> datum:stream().
 
 filter(Pred, {s, _, _} = Stream) ->
    case Pred(head(Stream)) of
@@ -185,7 +185,7 @@ filter(_, ?NULL) ->
 %% then applies the function to the new accumulator and the next element of stream to 
 %% compute a succeeding accumulator, and so on, the final accumulated value is returned
 %% when the end of the stream is reached. Stream must be finite.
--spec(fold/3 :: (function(), _, datum:stream()) -> _).
+-spec fold(function(), _, datum:stream()) -> _.
 
 fold(Fun, Acc, {s, _, _} = Stream) ->
    fold(Fun, Fun(head(Stream), Acc), tail(Stream));
@@ -196,7 +196,7 @@ fold(_, Acc, ?NULL) ->
 %%
 %% applies a function to each stream element for its side-effects; 
 %% it returns nothing. 
--spec(foreach/2 :: (function(), datum:stream()) -> ok).
+-spec foreach(function(), datum:stream()) -> ok.
 
 foreach(Fun, {s, _, _} = Stream) ->
    _ = Fun(head(Stream)),
@@ -206,7 +206,7 @@ foreach(_, ?NULL) ->
 
 %%
 %% create a new stream by apply a function to each element of input stream. 
--spec(map/2 :: (function(), datum:stream()) -> datum:stream()).
+-spec map(function(), datum:stream()) -> datum:stream().
 
 map(Fun, {s, _, _} = Stream) ->
    new(Fun(head(Stream)), fun() -> map(Fun, tail(Stream)) end);
@@ -216,8 +216,8 @@ map(_, ?NULL) ->
 %%
 %% accumulates the partial folds of an input stream into a newly-allocated stream.
 %% the output stream is accumulator followed by partial fold.
--spec(scan/2 :: (function(), datum:stream()) -> datum:stream()).
--spec(scan/3 :: (function(), _, datum:stream()) -> datum:stream()).
+-spec scan(function(), datum:stream()) -> datum:stream().
+-spec scan(function(), _, datum:stream()) -> datum:stream().
 
 scan(Fun, {s, _, _} = Stream) ->
    scan(Fun, head(Stream), tail(Stream)).
@@ -230,7 +230,7 @@ scan(_, Acc0, ?NULL) ->
 %%
 %% partitions stream into two streams. The split behaves as if it is defined as 
 %% consequent take(N, Stream), drop(N, Stream). 
--spec(split/2 :: (integer(), datum:stream()) -> {[_], datum:stream()}).
+-spec split(integer(), datum:stream()) -> {[_], datum:stream()}.
 
 split(N, Stream) ->
    split(N, [], Stream).
@@ -246,7 +246,7 @@ split(_, Acc, ?NULL) ->
 %% partitions stream into two streams according to predicate.
 %% The splitwith/2 behaves as if it is defined as consequent 
 %% takewhile(Pred, Stream), dropwhile(Pred, Stream)
--spec(splitwhile/2 :: (function(), datum:stream()) -> {[_], datum:stream()}).
+-spec splitwhile(function(), datum:stream()) -> {[_], datum:stream()}.
 
 splitwhile(Pred, Stream) ->
    splitwhile(Pred, [], Stream).
@@ -265,7 +265,7 @@ splitwhile(_, Acc, ?NULL) ->
 %%
 %% returns a newly-allocated stream containing the first n elements of 
 %% the input stream. 
--spec(take/2 :: (integer(), datum:stream()) -> datum:stream()).
+-spec take(integer(), datum:stream()) -> datum:stream().
 
 take(0, _) ->
    ?NULL;
@@ -277,7 +277,7 @@ take(_, ?NULL) ->
 %%
 %% returns a newly-allocated stream that contains those elements from stream 
 %% while predicate returns true.
--spec(takewhile/2 :: (function(), datum:stream()) -> datum:stream()).
+-spec takewhile(function(), datum:stream()) -> datum:stream().
 
 takewhile(Pred, {s, _, _} = Stream) ->
    case Pred(head(Stream)) of
@@ -294,7 +294,7 @@ takewhile(_, ?NULL) ->
 %% the fundamental recursive infinite stream constructor. 
 %% it applies a function to each previous seed element in turn
 %% to determine the next element.
--spec(unfold/2 :: (function(), _) -> datum:stream()).
+-spec unfold(function(), _) -> datum:stream().
 
 unfold(Fun, Seed)
  when is_function(Fun) ->
@@ -305,8 +305,8 @@ unfold(Fun, Seed)
 %% takes one or more input streams and returns a newly-allocated stream 
 %% in which each element is a list of the corresponding elements of the input 
 %% streams. The output stream is as long as the shortest input stream.
--spec(zip/1 :: ([datum:stream()]) -> datum:stream()).
--spec(zip/2 :: (datum:stream(), datum:stream()) -> datum:stream()).
+-spec zip([datum:stream()]) -> datum:stream().
+-spec zip(datum:stream(), datum:stream()) -> datum:stream().
 
 zip(Streams) ->
    case [head(X) || X <- Streams, X =/= ?NULL] of
@@ -323,8 +323,8 @@ zip(A, B) ->
 %% takes one or more input streams and returns a newly-allocated stream,  
 %% each element produced by composition function that map list of input heads to
 %% new head. The output stream is as long as the longest input stream.
--spec(zipwith/2 :: (function(), [datum:stream()]) -> datum:stream()).
--spec(zipwith/3 :: (function(), datum:stream(), datum:stream()) -> datum:stream()).
+-spec zipwith(function(), [datum:stream()]) -> datum:stream().
+-spec zipwith(function(), datum:stream(), datum:stream()) -> datum:stream().
 
 zipwith(_, []) ->
    ?NULL;
@@ -353,7 +353,7 @@ zipwith(Fun, A, B) ->
 
 %%
 %% reverse order of elements in stream.
--spec(reverse/1 :: (datum:stream()) -> datum:stream()).
+-spec reverse(datum:stream()) -> datum:stream().
 
 reverse(Stream) ->
    reverse(Stream, new()).
@@ -367,7 +367,7 @@ reverse(?NULL, Acc) ->
 %%
 %% takes list of elements and returns a newly-allocated stream composed of 
 %% list elements, repeating them in succession forever.
--spec(cycle/1 :: (list()) -> datum:stream()).
+-spec cycle(list()) -> datum:stream().
 
 cycle(List) -> 
    cycle([], List).
@@ -380,8 +380,8 @@ cycle([], [Head|Tail]=List) ->
 
 %%
 %% returns a newly-allocated list containing stream elements
--spec(list/1 :: (datum:stream()) -> list()).
--spec(list/2 :: (integer(), datum:stream()) -> list()).
+-spec list(datum:stream()) -> list().
+-spec list(integer(), datum:stream()) -> list().
 
 list({s, _, _}=Stream) ->
    [stream:head(Stream) | list(stream:tail(Stream))];
@@ -394,7 +394,7 @@ list(N, Stream) ->
 %%
 %% takes an object of Erlang data type are returns a newly-allocated stream
 %%   list() -> stream contains the objects in the list. 
--spec(build/1 :: (any()) -> datum:stream()).
+-spec build(any()) -> datum:stream().
 
 build([]) ->
    new();
@@ -410,3 +410,4 @@ build(X)
 %%% private
 %%%
 %%%------------------------------------------------------------------
+

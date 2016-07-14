@@ -67,14 +67,14 @@
 
 %%
 %% create new hash tree
--spec(new/0 :: () -> datum:tree()).
+-spec new() -> datum:tree().
 
 new()  ->
    {t, ?NULL}.
 
 %%
 %% build tree from data type
--spec(build/1 :: ([{key(), val()}]) -> datum:tree()).
+-spec build([{key(), val()}]) -> datum:tree().
 
 build(List) ->
    lists:foldl(
@@ -85,7 +85,7 @@ build(List) ->
 
 %%
 %% insert element to hash tree
--spec(insert/3 :: (key(), val(), datum:tree()) -> datum:tree()).
+-spec insert(key(), val(), datum:tree()) -> datum:tree().
 
 insert(K, V, {t, T}) ->
    {_, Tx} = ht_insert(fhash(K), V, T),
@@ -152,7 +152,7 @@ ht_split(_, T) ->
 
 %%
 %% lookup element
--spec(lookup/2 :: (key(), datum:tree()) -> val() | undefined).
+-spec lookup(key(), datum:tree()) -> val() | undefined.
 
 lookup(K, {t, T}) ->
    ht_lookup(fhash(K), T).
@@ -170,7 +170,7 @@ ht_lookup(L, H, #n{nodes = Nodes}) ->
 
 %%
 %% remove element
--spec(remove/2 :: (key(), datum:tree()) -> datum:tree()).
+-spec remove(key(), datum:tree()) -> datum:tree().
 
 remove(K, {t, T}) ->
    {_, Tx} = ht_remove(fhash(K), T),
@@ -196,7 +196,7 @@ ht_remove(L, H, #n{hash = Hash, nodes = Nodes}=T) ->
 
 %%
 %% fold function over tree 
--spec(foldl/3 :: (function(), any(), datum:tree()) -> any()).
+-spec foldl(function(), any(), datum:tree()) -> any().
 
 foldl(Fun, Acc, {t, T}) ->
    ht_foldl(Fun, Acc, T).
@@ -210,7 +210,7 @@ ht_foldl(Fun, Acc0, #n{nodes = Nodes}) ->
 
 %%
 %% fold function over tree 
--spec(foldr/3 :: (function(), any(), datum:tree()) -> any()).
+-spec foldr(function(), any(), datum:tree()) -> any().
 
 foldr(Fun, Acc, {t, T}) ->
    ht_foldr(Fun, Acc, T).
@@ -224,7 +224,7 @@ ht_foldr(Fun, Acc0, #n{nodes = Nodes}) ->
 
 %%
 %% apply side-effect function to each element 
--spec(foreach/2 :: (function(), datum:tree()) -> ok).
+-spec foreach(function(), datum:tree()) -> ok.
 
 foreach(Fun, {t, T}) ->
    ht_foreach(Fun, T).
@@ -239,8 +239,8 @@ ht_foreach(Fun, #n{nodes = Nodes}) ->
 
 %%
 %% return list of signatures at level 
--spec(hash/1 :: (datum:tree()) -> sign()).
--spec(hash/2 :: (integer(), datum:tree()) -> sign() | undefined).
+-spec hash(datum:tree()) -> sign().
+-spec hash(integer(), datum:tree()) -> sign() | undefined.
 
 hash(T) ->
    {hash, -1, foldl(fun(H, _, Acc) -> gb_sets:add(H, Acc) end, gb_sets:new(), T)}.
@@ -267,7 +267,7 @@ ht_hash(_, Acc0, _) ->
 
 %%
 %% evict subtrees that matches a signature
--spec(evict/2 :: (sign(), datum:tree()) -> datum:tree()).
+-spec evict(sign(), datum:tree()) -> datum:tree().
 
 evict({hash, L, Hashes}, {t, T}) ->
    {t, ht_evict(L, Hashes, T)}.
@@ -316,7 +316,7 @@ ht_evict_bits(L, Hashes, Nodes) ->
 
 %%
 %% calculate difference of signature or tree
--spec(diff/2 :: (sign() | datum:tree(), sign() | datum:tree()) -> sign() | datum:tree()).
+-spec diff(sign() | datum:tree(), sign() | datum:tree()) -> sign() | datum:tree().
 
 diff({hash, LA, HA}, {hash, LB, HB})
  when LA =:= LB ->

@@ -38,14 +38,14 @@
 
 %%
 %% create new empty heap
--spec(new/0 :: () -> datum:heap()).
+-spec new() -> datum:heap().
 
 new() ->
    {h, 0, ?NULL}.
 
 %%
 %% read head value
--spec(head/1 :: (datum:heap()) -> {key(), val()}).
+-spec head(datum:heap()) -> {key(), val()}.
 
 head({h, _, {_, _, Key, Val, _}}) ->
    {Key, Val};
@@ -54,7 +54,7 @@ head(_) ->
 
 %%
 %% return tail value
--spec(tail/1 :: (datum:heap()) -> datum:heap()).
+-spec tail(datum:heap()) -> datum:heap().
 
 tail({h, Size, {A, _, _, _, B}}) ->
    {h, Size - 1, merge(A, B)};
@@ -63,14 +63,14 @@ tail(_) ->
 
 %%
 %% insert new value
--spec(insert/3 :: (key(), val(), datum:heap()) -> heap()).
+-spec insert(key(), val(), datum:heap()) -> heap().
 
 insert(Key, Val, {h, Size, Heap}) ->
    {h, Size + 1, merge({?NULL, 1, Key, Val, ?NULL}, Heap)}.
 
 %%
 %% return heap size
--spec(size/1 :: (datum:heap()) -> integer()).
+-spec size(datum:heap()) -> integer().
 
 size({h, Size, _}) ->
    Size;
@@ -79,7 +79,7 @@ size(_) ->
 
 %%
 %% dropwhile head of heap
--spec(dropwhile/2 :: (function(), datum:heap()) -> datum:heap()).
+-spec dropwhile(function(), datum:heap()) -> datum:heap().
 
 dropwhile(_Pred, {h, _, ?NULL} = Heap) ->
    Heap;
@@ -93,7 +93,7 @@ dropwhile(Pred, {h, _, _} = Heap) ->
 
 %%
 %% takewhile head of heap
--spec(takewhile/2 :: (function(), datum:heap()) -> datum:heap()).
+-spec takewhile(function(), datum:heap()) -> datum:heap().
 
 takewhile(Pred, Heap) ->
    takewhile(Pred, new(), Heap).
@@ -112,7 +112,7 @@ takewhile(Pred, Acc, {h, _, _} = Heap) ->
 %% partitions heap into two heaps according to predicate.
 %% The splitwith/2 behaves as if it is defined as consequent 
 %% takewhile(Pred, Queue), dropwhile(Pred, Queue)
--spec(splitwith/2 :: (function(), datum:q()) -> {datum:q(), datum:q()}).
+-spec splitwith(function(), datum:q()) -> {datum:q(), datum:q()}.
 
 splitwith(Pred, Queue) ->
    splitwith(Pred, new(), Queue).
@@ -128,7 +128,7 @@ splitwith(Pred, Acc, {h, _, _} = Heap) ->
 
 %%
 %% return list of elements
--spec(list/1 :: (datum:heap()) -> [{key(), val()}]).
+-spec list(datum:heap()) -> [{key(), val()}].
 
 list({h, _, _} = Heap) -> 
    list(Heap, []).
