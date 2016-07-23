@@ -111,19 +111,19 @@ io_do(_Config) ->
    "a:b:c:d" = Fun(":").
    
 io_do_m() ->
-   [{do, 'Mio'} ||
+   do(['Mio' ||
       A =< "a",
       B <- io_req(A, "b"),
       C <- io_req(B, "c"),
       D <- io_req(C, "d"),
       D
-   ].
+   ]).
 
 io_req(State, X) ->
-   [{do, 'Mid'} ||
+   do(['Mid' ||
       A <- io_struct(X),
       io_action(State, A)
-   ].
+   ]).
 
 io_struct(X) ->
    X.
@@ -143,12 +143,12 @@ io_action(State, X) ->
 %%
 %% successful computation 
 do_M(Mtype) ->
-   [{do, Mtype} ||
+   do([Mtype ||
       A <- value(Mtype),
       B <- return(10),
       C =< 1,
       return(A + B + C)
-   ].
+   ]).
 
 value(Mtype) -> 
    Mtype:return(100).
@@ -156,11 +156,11 @@ value(Mtype) ->
 %%
 %% failed computation
 do_M_fail(Mtype) ->
-   [{do, Mtype} ||
+   do([Mtype ||
       A >= 1,
       B =< 2,
       return(A, B)
-   ].
+   ]).
 
 
 

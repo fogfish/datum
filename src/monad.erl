@@ -30,9 +30,19 @@
 %% built-in pattern for abstract syntax tree
 -define(FUN(Clauses), 
    {function, Label, Name, Arity, Clauses}).
- 
+
+%  
+% -define(MONAD(Monad),  
+%    {lc, _, {tuple, _, [{atom, _, do}, Monad]}, _}).
+%
+% -define(SEQUENCE(Seq),  
+%    {lc, _, {tuple, _, [{atom, _, do}, _]}, Seq}).
+
 -define(MONAD(Monad),  
-   {lc, _, {tuple, _, [{atom, _, do}, Monad]}, _}).
+   {call, _, {atom, _, do}, [{lc, _, Monad, _}]}).
+
+-define(SEQUENCE(Seq),  
+   {call, _, {atom, _, do}, [{lc, _, _, Seq}]}).
 
 
 %%
@@ -68,8 +78,9 @@ pt_monad(List) ->
 
 %%
 %% compile list comprehension to monad
-cc_lc(Monad, {lc, _, _, Seq}) ->
+cc_lc(Monad, ?SEQUENCE(Seq)) ->
    cc_do_return(Monad, pp_do(lists:reverse(Seq))).
+
 
 %%
 %% pre-process do sequence to replace 
