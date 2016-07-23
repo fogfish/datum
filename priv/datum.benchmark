@@ -54,11 +54,11 @@
 %   ,{put,   1}
 % ]}.
 
-{struct,   dict}.
-{operations, [
-    {store,   1}
-   % ,{find,    1}
-]}.
+% {struct,   dict}.
+% {operations, [
+%     {store,   1}
+%    % ,{find,    1}
+% ]}.
 
 % {struct,   gb_trees}.
 % {operations, [
@@ -71,3 +71,13 @@
 %    {get,   1}
 %   ,{put,   1}
 % ]}.
+
+{struct,   qsort}.
+{operations, [
+    {sortl,   1}
+   % ,{sortf,   1}
+   % ,{sortfl,  1}
+   % ,{sortx,   1}
+   ,{sortp,   1}
+]}.
+

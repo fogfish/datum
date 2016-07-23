@@ -34,7 +34,8 @@ init(lens)   ->  {lens,   erlang:make_tuple(?N, <<>>)};
 %% erlang built-in data types
 init(dict)     -> {dict,  dict:new()};
 init(gb_trees) -> {gb_trees, gb_trees:empty()};
-init(tuple)    -> {tuple, erlang:make_tuple(?N, <<>>)}. 
+init(tuple)    -> {tuple, erlang:make_tuple(?N, <<>>)}.
+
 
 
 %%%------------------------------------------------------------------
@@ -200,8 +201,6 @@ run(get, KeyGen, _ValGen, {tuple, S0}) ->
    Key = KeyGen() rem ?N + 1,
    _ = erlang:element(Key, S0),
    {ok, {tuple, S0}}.
-
-
 
 %%%------------------------------------------------------------------
 %%%
