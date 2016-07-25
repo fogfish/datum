@@ -26,6 +26,7 @@
    add/2,
    has/2
 ]).
+-compile(export_all).
 
 %%
 %% scalable bloom filter
@@ -50,14 +51,14 @@
 
 %%
 %% create new scalable bloom filter
-new(N) ->
-   new(N, 0.001).
+new(B) ->
+   new(B, 0.001).
 
-new(N, P) ->
-   new(N, P, 0.85).
+new(B, P) ->
+   new(B, P, 0.85).
 
-new(N, P, R) ->
-   #sbf{r = R, size = 0, list = [bf_new(N, P)]}.
+new(B, P, R) ->
+   #sbf{r = R, size = 0, list = [bf_new(B, P)]}.
 
 %%
 %% add element 
@@ -88,35 +89,31 @@ has(E, #sbf{list = List}) ->
 %%%
 %%%------------------------------------------------------------------
 
-%% N - capacity
-%% P - error probability
-bf_new(N, P) ->
+%% B - approximate filter size in kilobytes 
+%% P - desired error probability
+bf_new(B, P) ->
    K = bf_k(P),
-   M = bf_m(N, bf_p(P, K)),
+   M = bf_m(B, K),
    #bf{
       p    = P,
       k    = K,
       m    = M,
-      n    = bf_n(M, bf_p(P, K)),
+      n    = bf_n(M * K, P),
       size = 0,
       bits = [bits_new(M) || _ <- lists:seq(1, K)]
    }.
 
-%% number of hash functions with 50% fill rate
+%% number of hash functions with 50% fill rate (optimal rate)
 bf_k(P) ->
    1 + erlang:trunc(log2(1 / P)).
 
-%% expected fill ratio p, P = p^k
-bf_p(P, K) ->
-   math:pow(P, 1 / K).
+%% number of bits per slice m = M / k aligned to x^2
+bf_m(B, K) ->
+   1 bsl (1 + erlang:trunc(log2(B * 8 * 1024 / K))).
 
-%% number of bits per slice n ≈ −m ln(1 − p) aligned x^2
-bf_m(N, P) ->
-   1 bsl (1 + erlang:trunc(log2( -N / math:log(1 - P) ))).
-
-%% number of elements n ≈ −m ln(1 − p)
+%% number of elements n ≈ M * (ln 2)^2 / |ln P|
 bf_n(M, P) ->
-   1 + erlang:trunc( -M * math:log(1 - P) ).
+   1 + erlang:trunc(M * math:pow(math:log(2), 2) / erlang:abs(math:log(P))).
 
 %%
 %% insert element to set
@@ -143,13 +140,9 @@ bf_has(E, #bf{m = M, k = K, bits = Bits0}) ->
 %% P1 = P0 * r error probability, where r is the tightening ratio with 0 < r < 1.
 %% k0 = log2 P0 ^ −1
 %% ki = log2 Pi ^ −1
-bf_scale(R, #bf{p = P, n = N}) ->
-   Px = P * R,
-   K  = bf_k(Px),
-   M  = bf_m(N, bf_p(Px, K)),
-   Nx = bf_n(M, bf_p(Px, K)),
-   bf_new(Nx, Px).
-
+bf_scale(R, #bf{p = P, k = K, m = M}) ->
+   B = erlang:trunc((K * M) / (8 * 1024)),
+   bf_new(B, P * R).
 
 %%%------------------------------------------------------------------
 %%%
