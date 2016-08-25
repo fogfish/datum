@@ -209,20 +209,20 @@ run(get, KeyGen, _ValGen, {tuple, S0}) ->
 %%%------------------------------------------------------------------
 
 stream() ->
-   random:seed(os:timestamp()),
+   rand:seed(os:timestamp()),
    stream:constant(
-      [random:uniform(16#ffffffff) || _ <- lists:seq(1, ?N)]
+      [rand:uniform(16#ffffffff) || _ <- lists:seq(1, ?N)]
    ).
 
 %%
 ring(Mod) ->
    io:format("init ring: "),
-   random:seed(os:timestamp()),
+   rand:seed(os:timestamp()),
    Ring = lists:foldl(
       fun(_, Acc) ->
          io:format("."),
-         Key = list_to_binary(integer_to_list(random:uniform(16#ffffffff))),
-         Val = list_to_binary(integer_to_list(random:uniform(16#ffffffff))),
+         Key = list_to_binary(integer_to_list(rand:uniform(16#ffffffff))),
+         Val = list_to_binary(integer_to_list(rand:uniform(16#ffffffff))),
          Mod:join(Key, Val, Acc)
       end,
       Mod:new(?RING),

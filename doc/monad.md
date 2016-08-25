@@ -15,6 +15,8 @@ doM() ->
       _ <- fail(invalid)   %% fail :: _ -> m a      
       _ >= invalid         %% syntax sugar for fail
 
+      X /= utility(10)     %% syntax sugar for return e.g. =< {utility, 10}
+
       return(A + B + C)    %% final statement 
    ]).
 ```

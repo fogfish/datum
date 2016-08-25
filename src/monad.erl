@@ -92,6 +92,9 @@ pp_do([{op, Ln, '=<', Ma, Expr} | Tail]) ->
 pp_do([{op, Ln, '>=', Ma, Expr} | Tail]) ->
    [{generate, Ln, Ma, {call, Ln, {atom, Ln, fail}, [Expr]}} | pp_do(Tail)];
 
+pp_do([{op, Ln, '/=', Ma, {call, _, Fun, Expr}} | Tail]) ->
+   [{generate, Ln, Ma, {call, Ln, {remote, Ln, '/=', Fun}, Expr}} | pp_do(Tail)];
+
 pp_do([Head | Tail]) ->
    [Head | pp_do(Tail)];
 
@@ -143,6 +146,13 @@ return(Monad, {call, Ln, {atom, _, fail}, Expr}) ->
       {remote, Ln, Monad, {atom, Ln, fail}},
       Expr
    };
+
+return(Monad, {call, Ln, {remote, _, '/=', Fun}, Expr}) ->
+   {call, Ln,
+      {remote, Ln, Monad, Fun},
+      Expr
+   };
+
 return(_, Expr) ->
    Expr.
 
