@@ -1,4 +1,5 @@
 -module(datum_benchmark).
+-compile({parse_transform, monad}).
 
 -export([
    new/1, run/4
@@ -29,6 +30,7 @@ init(rbtree) ->  {rbtree, rbtree:new()};
 init(chord)  ->  {chord,  ring(chord)};
 init(ring)   ->  {ring,   ring(ring)};
 init(lens)   ->  {lens,   erlang:make_tuple(?N, <<>>)};
+init(monad)  ->  {monad,  undefined};
 
 %%
 %% erlang built-in data types
@@ -126,19 +128,42 @@ run(successors,   _KeyGen, ValGen, {ring, S0}) ->
 %%%
 %%%------------------------------------------------------------------
 
-run(put, KeyGen, ValGen,  {lens, S0}) ->
-   L   = lens:new(KeyGen() rem ?N + 1),
-   % L   = lens:new(tuple, KeyGen() rem ?N + 1),
+run(put, _KeyGen, ValGen,  {lens, S0}) ->
+   L   = lens:tuple(rand:uniform(?N)),
    Val = ValGen(),
    S1  = lens:put(L, Val, S0),
    {ok, {lens, S1}};
 
-run(get, KeyGen, _ValGen, {lens, S0}) ->
-   L = lens:new(KeyGen() rem ?N + 1),
-   % L = lens:new(tuple, KeyGen() rem ?N + 1),
+run(get, _KeyGen, _ValGen, {lens, S0}) ->
+   L = lens:tuple(rand:uniform(?N)),
    _ = lens:get(L, S0),
    {ok, {lens, S0}};
 
+%%%------------------------------------------------------------------
+%%%
+%%% monad
+%%%
+%%%------------------------------------------------------------------
+
+run(m_id, _KeyGen, _ValGen,  {monad, State}) ->
+   monad(m_id),
+   {ok, {monad, State}};
+
+run(m_error, _KeyGen, _ValGen,  {monad, State}) ->
+   monad(m_error),
+   {ok, {monad, State}};
+
+run(m_state, _KeyGen, _ValGen,  {monad, State}) ->
+   (monad(m_state))(#{}),
+   {ok, {monad, State}};
+
+run(m_io, _KeyGen, _ValGen,  {monad, State}) ->
+   m_io:unsafe( monad(m_io) ),
+   {ok, {monad, State}};
+
+run(m_native, _KeyGen, _ValGen,  {monad, State}) ->
+   m_native(),
+   {ok, {monad, State}};
 
 %%%------------------------------------------------------------------
 %%%
@@ -230,4 +255,57 @@ ring(Mod) ->
    ),
    io:nl(),
    Ring.
+
+%%
+%%
+monad(Type) ->
+   do([Type ||
+      _ =< 0,
+      _ =< _ + 1,
+      _ =< _ + 1,
+      _ =< _ + 1,
+      _ =< _ + 1,
+      _ =< _ + 1,
+      _ =< _ + 1,
+      _ =< _ + 1,
+      _ =< _ + 1,
+      _ =< _ + 1,
+      _ =< _ + 1,
+      _ =< _ + 1,
+      _ =< _ + 1,
+      _ =< _ + 1,
+      _ =< _ + 1,
+      _ =< _ + 1,
+      _ =< _ + 1,
+      _ =< _ + 1,
+      _ =< _ + 1,
+      _ =< _ + 1,
+      return(_)
+   ]).
+
+%%
+%%
+m_native() ->
+   X00 = 0,
+   X01 = X00 + 1,
+   X02 = X01 + 1,
+   X03 = X02 + 1,
+   X04 = X03 + 1,
+   X05 = X04 + 1,
+   X06 = X05 + 1,
+   X07 = X06 + 1,
+   X08 = X07 + 1,
+   X09 = X08 + 1,
+   X10 = X09 + 1,
+   X11 = X10 + 1,
+   X12 = X11 + 1,
+   X13 = X12 + 1,
+   X14 = X13 + 1,
+   X15 = X14 + 1,
+   X16 = X15 + 1,
+   X17 = X16 + 1,
+   X18 = X17 + 1,
+   X19 = X18 + 1,
+   X19.
+
 

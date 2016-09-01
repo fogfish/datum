@@ -14,24 +14,34 @@
 %%   limitations under the License.
 %%
 %% @doc
-%%   error monad
--module('Merror').
+%%   state monad 
+-module(m_state).
 
 -export([return/1, fail/1, '>>='/2]).
+-export([put/2, get/1]).
 
-return(ok) -> 
-   ok;
-return(X)  -> 
-   {ok, X}.
-
+return(X) ->
+   fun(State) -> [X|State] end.
 
 fail(X) ->
-   {error, X}.
+   exit(X).
 
+'>>='(X, Fun) ->
+   fun(State) ->
+      [A|Y] = X(State),
+      ( Fun(A) )(Y)
+   end.
 
-'>>='({ok, X}, Fun) ->
-   Fun(X);
-'>>='(ok, Fun) ->
-   Fun(ok);
-'>>='({error, _} = Error, _) ->
-   Error.
+%%
+%%
+get(Ln) ->
+   fun(State) ->
+      [lens:get(Ln, State)|State]
+   end.
+
+%%
+%%
+put(Ln, X) ->
+   fun(State) ->
+      [X|lens:put(Ln, X, State)]
+   end.

@@ -16,7 +16,7 @@
 %%
 %% @doc
 %%
--module('M_SUITE').
+-module(m_SUITE).
 -include_lib("common_test/include/ct.hrl").
 -compile({parse_transform, monad}).
 
@@ -34,6 +34,7 @@
 -export([id_do/1]).
 -export([error_do/1, error_fail/1]).
 -export([io_do/1]).
+-export([state_do/1, state_get/1, state_put/1]).
 
 
 %%%----------------------------------------------------------------------------   
@@ -46,6 +47,7 @@ all() ->
       {group, id}
      ,{group, error}
      ,{group, io}
+     ,{group, state}
    ].
 
 groups() ->
@@ -58,6 +60,10 @@ groups() ->
 
      ,{io, [parallel], 
          [io_do]}
+
+     ,{state, [parallel], 
+         [state_do, state_put, state_get]}
+
    ].
 
 %%%----------------------------------------------------------------------------   
@@ -89,29 +95,27 @@ end_per_group(_, _Config) ->
 %%
 %%
 id_do(_Config) ->
-   111 = do_M('Mid').
+   111 = do_M(m_id).
 
 %%
 %%
 error_do(_Config) ->
-   {ok, 111} = do_M('Merror').
+   {ok, 111} = do_M(m_error).
 
 %%
 %%
 error_fail(_Config) ->
-   {error, 1} = do_M_fail('Merror').
+   {error, 1} = do_M_fail(m_error).
 
 
 
 %%
 %%
 io_do(_Config) ->
-   Fun = io_do_m(),
-   "a-b-c-d" = Fun("-"),
-   "a:b:c:d" = Fun(":").
+   "a:b:c:d" = m_io:unsafe( io_do_m() ).
    
 io_do_m() ->
-   do(['Mio' ||
+   do([m_io ||
       A =< "a",
       B <- io_req(A, "b"),
       C <- io_req(B, "c"),
@@ -120,7 +124,7 @@ io_do_m() ->
    ]).
 
 io_req(State, X) ->
-   do(['Mid' ||
+   do([m_id ||
       A <- io_struct(X),
       io_action(State, A)
    ]).
@@ -129,9 +133,40 @@ io_struct(X) ->
    X.
 
 io_action(State, X) ->
-   fun(Y) ->
-      State ++ Y ++ X
+   fun() ->
+      State ++ ":" ++ X
    end. 
+
+%%
+%%
+state_do(_Config) ->
+   [111|{0}] = ( do_M(m_state) )({0}).
+
+%%
+%%
+state_put(_Config) ->
+   [3|{3}] = (state_put_m())({0}).
+
+
+state_put_m() ->
+   do([m_state || 
+      A =< 1,
+      B =< 2,
+      _ /= put(lens:t1(), A + B),
+      return(A + B)
+   ]).
+
+%%
+%%
+state_get(_Config) ->
+   [3|{2}] = (state_get_m())({2}).
+
+state_get_m() ->
+   do([m_state ||
+      A =< 1,
+      B /= get(lens:t1()),
+      return(A + B)
+   ]).
 
 
 %%%----------------------------------------------------------------------------   

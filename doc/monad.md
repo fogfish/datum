@@ -6,7 +6,7 @@ tbd
 
 ```erlang
 doM() ->
-   do(['Mid' ||            %% (Monad m)    
+   do([m_id ||             %% (Monad m)    
       A <- one(),          %% (Monad m) => m a -> (a -> m b) -> m b
 
       B <- return(two()),  %% return :: (Monad m) => a -> m a
@@ -15,11 +15,12 @@ doM() ->
       _ <- fail(invalid)   %% fail :: _ -> m a      
       _ >= invalid         %% syntax sugar for fail
 
-      X /= utility(10)     %% syntax sugar for return e.g. =< {utility, 10}
+      X /= utility(10)     %% syntax sugar for parametrized return e.g. =< {utility, 10}
 
       return(A + B + C)    %% final statement 
    ]).
 ```
+
 
 References:
 

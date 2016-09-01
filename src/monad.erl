@@ -38,7 +38,7 @@
 % -define(SEQUENCE(Seq),  
 %    {lc, _, {tuple, _, [{atom, _, do}, _]}, Seq}).
 
--define(MONAD(Monad),  
+-define(DO(Monad),  
    {call, _, {atom, _, do}, [{lc, _, Monad, _}]}).
 
 -define(SEQUENCE(Seq),  
@@ -70,22 +70,23 @@ pt_clauses([]) ->
 
 %%
 %%
-pt_monad([?MONAD(Monad) = Head | Tail]) -> 
-   [cc_lc(Monad, Head) | pt_monad(Tail)];
+pt_monad([?DO(Monad) = Head | Tail]) -> 
+   [cc_do_lc(Monad, Head) | pt_monad(Tail)];
 
 pt_monad(List) ->
    List.
 
 %%
 %% compile list comprehension to monad
-cc_lc(Monad, ?SEQUENCE(Seq)) ->
-   cc_do_return(Monad, pp_do(lists:reverse(Seq))).
+cc_do_lc(Monad, ?SEQUENCE(Seq)) ->
+   cc_do_return(Monad, lists:reverse( pp_var('_', 0, pp_do(Seq)) )).
 
 
 %%
 %% pre-process do sequence to replace 
 %% '=<' - return( ... )
 %% '>=' - fail(...)
+%% '/=' - monad additional function
 pp_do([{op, Ln, '=<', Ma, Expr} | Tail]) ->
    [{generate, Ln, Ma, {call, Ln, {atom, Ln, return}, [Expr]}} | pp_do(Tail)];
 
@@ -101,6 +102,21 @@ pp_do([Head | Tail]) ->
 pp_do([]) ->
    [].
 
+%%
+%% pre-process do sequence to replace unbound variables _ (cuts)
+pp_var(Mv, I, [{generate, Ln, {var, _, '_'}, Expr} | Tail]) ->
+   Vx = erlang:list_to_atom("_Vx" ++ erlang:integer_to_list(I)),
+   [{generate, Ln, {var, Ln, Vx}, cc_bind_var(Mv, Expr)} | pp_var(Vx, I + 1, Tail)];
+
+pp_var(Mv, I, [{generate, Ln, Head, Expr} | Tail]) ->
+   [{generate, Ln, Head, cc_bind_var(Mv, Expr)} | pp_var(Mv, I, Tail)];
+
+pp_var(Mv, I, [Expr | Tail]) ->
+   [cc_bind_var(Mv, Expr) | pp_var(Mv, I, Tail)];
+
+pp_var(_, _, []) ->
+   [].
+      
 %%
 %% 
 cc_do_return(_, [{generate, _, _, _}|_]) ->
@@ -155,4 +171,26 @@ return(Monad, {call, Ln, {remote, _, '/=', Fun}, Expr}) ->
 
 return(_, Expr) ->
    Expr.
+
+
+%%
+%%
+cc_bind_var(Vx, X)
+ when is_tuple(X) ->
+   erlang:list_to_tuple(
+      cc_bind_var(Vx, erlang:tuple_to_list(X))
+   );
+
+cc_bind_var(Vx, [{var, Ln, '_'} | T]) ->
+   [{var, Ln, Vx} | cc_bind_var(Vx, T)];
+cc_bind_var(Vx, [H | T]) ->
+   [cc_bind_var(Vx, H) | cc_bind_var(Vx, T)];
+cc_bind_var(_, []) ->
+   [];
+
+cc_bind_var(_, X) ->
+   X.
+   
+   
+
 

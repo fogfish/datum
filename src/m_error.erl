@@ -14,17 +14,24 @@
 %%   limitations under the License.
 %%
 %% @doc
-%%   identity monad
--module('Mid').
+%%   error monad
+-module(m_error).
 
 -export([return/1, fail/1, '>>='/2]).
 
-return(X) ->
-   X. 
+return(ok) -> 
+   ok;
+return(X)  -> 
+   {ok, X}.
+
 
 fail(X) ->
-   exit(X).
+   {error, X}.
 
 
-'>>='(X, Fun) ->
-   Fun(X).
+'>>='({ok, X}, Fun) ->
+   Fun(X);
+'>>='(ok, Fun) ->
+   Fun(ok);
+'>>='({error, _} = Error, _) ->
+   Error.

@@ -15,31 +15,28 @@
 %%
 %% @doc
 %%   IO monad
--module('Mio').
+-module(m_io).
 
 -export([return/1, fail/1, '>>='/2]).
-
+-export([unsafe/1]).
 
 return(X) ->
-   fun(_) -> X end.
-
+   fun() -> X end.
 
 fail(X) ->
    exit(X).
 
 
-'>>='(IO1, Fun) ->
-   fun(World) ->
-      % IO is a function with side-effect that takes World as argument.
-      X = IO1(World),      
-
-      % Fun is next chained computation, it takes the result as argument.
-      % It either produces next IO operation or scalar result
-      case Fun( X ) of
-         IO2 when is_function(IO2) ->
-            IO2(World);
-         Y ->
-            Y
-      end
+'>>='(IO, Fn) ->
+   fun() ->
+      %% IO is unsafe computation is evaluated, yielding value x      
+      %% then perform computation Fn, yielding a new unsafe IO computation
+      Fn( IO() )
    end.
+
+unsafe(IO)
+ when is_function(IO) ->
+   unsafe(IO());
+unsafe(IO) ->
+   IO.
 
