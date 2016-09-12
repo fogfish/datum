@@ -298,8 +298,12 @@ takewhile(_, ?NULL) ->
 
 unfold(Fun, Seed)
  when is_function(Fun) ->
-   {Head, Next} = Fun(Seed),
-   new(Head, fun() -> unfold(Fun, Next) end).
+   case Fun(Seed) of
+      {Head, Next} ->
+         new(Head, fun() -> unfold(Fun, Next) end);
+      _ ->
+         new()
+   end.
 
 %%
 %% takes one or more input streams and returns a newly-allocated stream 
