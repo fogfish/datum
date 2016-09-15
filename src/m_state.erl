@@ -20,16 +20,49 @@
 -export([return/1, fail/1, '>>='/2]).
 -export([put/2, get/1]).
 
+-type state(A)  :: fun((_) -> [A|_]).
+-type f(A, B)   :: fun((A) -> state(B)).
+
+%%
+%%
+-spec return(A) -> state(A).
+
 return(X) ->
    fun(State) -> [X|State] end.
+
+%%
+%%
+-spec fail(_) -> _.
 
 fail(X) ->
    exit(X).
 
+
+%%
+%%
+-spec '>>='(state(A), f(A, B)) -> state(B).
+
 '>>='(X, Fun) ->
+   join(fmap(Fun, X)).
+
+%%
+%%
+-spec join(state(state(A))) -> state(A).
+
+join(IO) ->
+   fun(State) -> 
+      [A|Y] = IO(State),
+      A(Y)
+   end.
+
+%%
+%%
+-spec fmap(fun((A) -> B), state(A)) -> state(B).
+
+fmap(Fun, IO) ->
    fun(State) ->
-      [A|Y] = X(State),
-      ( Fun(A) )(Y)
+      [A|Y]=IO(State),
+      [Fun(A)|Y]
    end.
 
 %%
