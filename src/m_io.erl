@@ -18,25 +18,51 @@
 -module(m_io).
 
 -export([return/1, fail/1, '>>='/2]).
--export([unsafe/1]).
+
+-type io(A)   :: fun(( ) -> A).
+-type f(A, B) :: fun((A) -> io(B)).
+
+%%
+%%
+-spec return(A) -> io(A).
 
 return(X) ->
    fun() -> X end.
 
+%%
+%%
+-spec fail(_) -> _.
+
 fail(X) ->
    exit(X).
 
+%%
+%%
+-spec '>>='(io(A), f(A, B)) -> io(B).
 
 '>>='(IO, Fn) ->
-   fun() ->
-      %% IO is unsafe computation is evaluated, yielding value x      
-      %% then perform computation Fn, yielding a new unsafe IO computation
-      Fn( IO() )
+   join(fmap(Fn, IO)).
+
+
+%%
+%%
+-spec join(io(io(A))) -> io(A).
+
+join(IO) ->
+   fun() -> 
+      ( IO() )() 
    end.
 
-unsafe(IO)
- when is_function(IO) ->
-   unsafe(IO());
-unsafe(IO) ->
-   IO.
+%%
+%%
+-spec fmap(fun((A) -> B), io(A)) -> io(B).
+
+fmap(Fun, IO) ->
+   fun() -> Fun(IO()) end.
+
+
+
+
+
+
 
