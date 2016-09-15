@@ -32,6 +32,6 @@ fail(X) ->
 '>>='({ok, X}, Fun) ->
    Fun(X);
 '>>='(ok, Fun) ->
-   Fun(ok);
+   Fun();
 '>>='({error, _} = Error, _) ->
    Error.
