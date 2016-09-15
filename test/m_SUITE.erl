@@ -112,7 +112,7 @@ error_fail(_Config) ->
 %%
 %%
 io_do(_Config) ->
-   "a:b:c:d" = m_io:unsafe( io_do_m() ).
+   "a:b:c:d" = ( io_do_m() )().
    
 io_do_m() ->
    do([m_io ||
@@ -120,7 +120,7 @@ io_do_m() ->
       B <- io_req(A, "b"),
       C <- io_req(B, "c"),
       D <- io_req(C, "d"),
-      D
+      return(D)
    ]).
 
 io_req(State, X) ->
