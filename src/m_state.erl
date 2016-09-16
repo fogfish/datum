@@ -51,8 +51,8 @@ fail(X) ->
 
 join(IO) ->
    fun(State) -> 
-      [A|Y] = IO(State),
-      A(Y)
+      [Fun|Y] = IO(State),
+      Fun(Y)
    end.
 
 %%
