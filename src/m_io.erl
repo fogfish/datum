@@ -19,12 +19,12 @@
 
 -export([return/1, fail/1, '>>='/2]).
 
--type io(A)   :: fun(( ) -> A).
--type f(A, B) :: fun((A) -> io(B)).
+-type m(A)    :: fun(( ) -> A).
+-type f(A, B) :: fun((A) -> m(B)).
 
 %%
 %%
--spec return(A) -> io(A).
+-spec return(A) -> m(A).
 
 return(X) ->
    fun() -> X end.
@@ -38,7 +38,7 @@ fail(X) ->
 
 %%
 %%
--spec '>>='(io(A), f(A, B)) -> io(B).
+-spec '>>='(m(A), f(A, B)) -> m(B).
 
 '>>='(IO, Fn) ->
    join(fmap(Fn, IO)).
@@ -46,7 +46,7 @@ fail(X) ->
 
 %%
 %%
--spec join(io(io(A))) -> io(A).
+-spec join( m(m(A)) ) -> m(A).
 
 join(IO) ->
    fun() -> 
@@ -55,14 +55,7 @@ join(IO) ->
 
 %%
 %%
--spec fmap(fun((A) -> B), io(A)) -> io(B).
+-spec fmap(fun((A) -> B), m(A)) -> m(B).
 
 fmap(Fun, IO) ->
    fun() -> Fun(IO()) end.
-
-
-
-
-
-
-
