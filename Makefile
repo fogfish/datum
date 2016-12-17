@@ -4,7 +4,7 @@
 ## @description
 ##   Makefile to build and release Erlang applications using standard development tools
 ##
-## @version 0.11.5
+## @version 0.11.6
 
 #####################################################################
 ##
@@ -22,8 +22,11 @@ TEST   ?= ${APP}
 S3     ?=
 VMI    ?= fogfish/erlang
 NET    ?= lo0
-URL 	 ?= undefined
+URL    ?= undefined
 LATEST ?= latest
+
+## rebar version (no spaces at end)
+REBAR  ?= 3.3.2
 
 ## root path to benchmark framework
 BB     = ../basho_bench
@@ -207,8 +210,9 @@ console: ${PKG}.tar.gz
 ##
 #####################################################################
 rebar3:
-	@curl -L -O https://s3.amazonaws.com/rebar3/rebar3 ; \
-	chmod ugo+x $@
+	@echo "==> install rebar (${REBAR})" ;\
+	curl -L -O --progress-bar https://github.com/erlang/rebar3/releases/download/${REBAR}/rebar3 ;\
+	chmod +x $@
 
 .PHONY: test rel deps all pkg 
 
