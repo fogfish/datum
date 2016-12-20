@@ -37,16 +37,30 @@ is_category(_) ->
 
 %%
 %% apply category pattern
-category(function, Expr) ->
-   case is_category_function_partial(Expr) of
+category(function, Expr0) ->
+   Expr1 = category_function(Expr0),
+   case is_category_function_partial(Expr1) of
       true ->
-         category_function_partial_compose(Expr);
+         category_function_partial_compose(Expr1);
       false ->
-         category_function_compose(Expr)
+         category_function_compose(Expr1)
    end.
 
 %%
 %% built-in functional composition f . g
+category_function([{call, _, _, _} = H | T]) ->
+   [H | category_function(T)];
+category_function([{'fun', Line, {function, Id, _}} | T]) ->
+   [{call, Line, {atom, Line, Id}, [{var, Line, '_'}]} | category_function(T)];
+category_function([{'fun', Line, {function, Mod, Fun, _}}| T]) ->
+   [{call, Line, {remote, Line, Mod, Fun}, [{var, Line, '_'}]} | category_function(T)];
+category_function([H | _]) ->
+   Msg = io_lib:format("The category pattern do not support~n~p~n", [H]),
+   exit(Msg);
+category_function([]) ->
+   [].
+
+%%
 category_function_compose([{call, _, _, _} = F, {call, Line, Gf0, Ga0} | T]) ->
    Ga1 = set_blank_variable(F, Ga0),
    G   = {call, Line, Gf0, Ga1},
@@ -54,6 +68,7 @@ category_function_compose([{call, _, _, _} = F, {call, Line, Gf0, Ga0} | T]) ->
 category_function_compose([Expr]) ->
    Expr.
 
+%%
 category_function_partial_compose([{call, Line, Ff0, Fa0}|T]) ->
    Fa1 = set_blank_variable({var, Line, 'VCatX'}, Fa0),
    G   = {call, Line, Ff0, Fa1},
@@ -67,7 +82,6 @@ category_function_partial_compose([{call, Line, Ff0, Fa0}|T]) ->
       ]}
    }.
 
-%%
 %%
 is_category_function_partial([{call, _, _, Fa0} | _]) ->
    length( lists:filter(fun({var, _, '_'}) -> true; (_) -> false end, Fa0) ) > 0.
