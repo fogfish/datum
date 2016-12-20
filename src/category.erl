@@ -400,7 +400,7 @@ expr({lc,Line,E0,Qs0}) ->
       false ->
          {lc,Line, expr(E0), lc_bc_quals(Qs0)};
       Category ->
-         datum_macro:category(Category, Qs0)
+         datum_macro:category(Category, lc_bc_quals(Qs0))
    end;
 expr({bc,Line,E0,Qs0}) ->
     Qs1 = lc_bc_quals(Qs0),

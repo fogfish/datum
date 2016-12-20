@@ -47,12 +47,13 @@ category_compose_with(_, [Expr]) ->
 %%
 %%
 category_compose_partial_with(Fun, [{call, Line, Ff0, Fa0}|T]) ->
-   Fa1 = set_blank_variable({var, Line, 'VCatX'}, Fa0),
+   Var = uuid(),
+   Fa1 = set_blank_variable({var, Line, Var}, Fa0),
    G   = {call, Line, Ff0, Fa1},
    {'fun', Line,
       {clauses, [
          {clause, Line,
-            [{var, Line, 'VCatX'}],
+            [{var, Line, Var}],
             [],
             [category_compose_with(Fun, [G|T])]
          }
@@ -80,7 +81,7 @@ category('xor', Expr0) ->
    Expr1 = function_composition(Expr0),
    case is_category_partial(Expr1) of
       true ->
-         {call, Line, _, _} = hd(Expr0),
+         Line = erlang:element(2, hd(Expr0)),
          {Var, Expr2} = category_compose_with(fun compose_xor/2, lists:reverse(Expr1)),
          {'fun', Line,
             {clauses, [
@@ -154,14 +155,19 @@ set_blank_variable(_, []) ->
 function_composition([{call, _, _, _} = H | T]) ->
    [H | function_composition(T)];
 
+%% function reference 
 function_composition([{'fun', Line, {function, Id, _}} | T]) ->
    [{call, Line, {atom, Line, Id}, [{var, Line, '_'}]} | function_composition(T)];
 
-function_composition([{'fun', Line, {function, Mod, Fun, _}}| T]) ->
+function_composition([{'fun', Line, {function, Mod, Fun, _}} | T]) ->
    [{call, Line, {remote, Line, Mod, Fun}, [{var, Line, '_'}]} | function_composition(T)];
 
+%% inline function
+function_composition([{'fun', Line, {clauses, _}} = H | T]) ->
+   [{call, Line, H, [{var, Line, '_'}]} | function_composition(T)];
+
 function_composition([H | _]) ->
-   exit( io_lib:format("Function composition do not support the expression:~n~p~n", [H]) );
+   exit( lists:flatten(io_lib:format("Function composition do not support the expression:~n~p~n", [H])) );
 
 function_composition([]) ->
    [].
