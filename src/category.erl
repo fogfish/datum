@@ -1,15 +1,9 @@
 %%
 %% @doc
+%%   implements category functional pattern  
+%%
 %%   based on stdlib-3.0/examples/erl_id_trans.erl
--module(partial).
-
-
-%%%------------------------------------------------------------------
-%%%
-%%% stdlib-3.0/examples/erl_id_trans.erl
-%%%
-%%%------------------------------------------------------------------   
-
+-module(category).
 
 %% An identity transformer of Erlang abstract syntax.
 
@@ -402,9 +396,12 @@ expr({cons,Line,H0,T0}) ->
     T1 = expr(T0),            %They see the same variables
     {cons,Line,H1,T1};
 expr({lc,Line,E0,Qs0}) ->
-    Qs1 = lc_bc_quals(Qs0),
-    E1 = expr(E0),
-    {lc,Line,E1,Qs1};
+   case datum_macro:is_category(E0) of
+      false ->
+         {lc,Line, expr(E0), lc_bc_quals(Qs0)};
+      Category ->
+         datum_macro:category(Category, Qs0)
+   end;
 expr({bc,Line,E0,Qs0}) ->
     Qs1 = lc_bc_quals(Qs0),
     E1 = expr(E0),
@@ -492,7 +489,12 @@ expr({'fun',Line,Body}) ->
 expr({named_fun,Loc,Name,Cs}) ->
     {named_fun,Loc,Name,fun_clauses(Cs)};
 expr({call,Line,F0,As0}) ->
-    hook_partial_application(Line, F0, As0);
+    %% N.B. If F an atom then call to local function or BIF, if F a
+    %% remote structure (see below) then call to other module,
+    %% otherwise apply to "function".
+    F1 = expr(F0),
+    As1 = expr_list(As0),
+    {call,Line,F1,As1};
 expr({'catch',Line,E0}) ->
     %% No new variables added.
     E1 = expr(E0),
@@ -674,72 +676,3 @@ type_list([T|Ts]) ->
     T1 = type(T),
     [T1|type_list(Ts)];
 type_list([]) -> [].
-
-
-%%%------------------------------------------------------------------
-%%%
-%%% partial application extension
-%%%
-%%%------------------------------------------------------------------   
-
-%%
-%%
-hook_partial_application(Line, F0, As0) ->
-   %% partial application of function is defined via _ | _1 .. _N
-   case partial_application_arity(As0) of
-      0 ->
-         {call, Line, expr(F0), expr_list(As0)};
-      N ->
-         transform_partial_application(N, Line, expr(F0), expr_list(As0))
-   end.
-
-%%
-%%
-partial_application_arity(List) ->
-   length( lists:filter(fun is_partial_application/1, List) ).
-
-is_partial_application({var, _, '_'}) ->
-   true;
-is_partial_application(_) ->
-   false.
-
-
-transform_partial_application(N, Line, F0, As0) ->
-   Ids = [list_to_atom("_Vpa" ++ integer_to_list(X)) || X <- lists:seq(1, N)],
-   As1 = partial_application_args(Ids, As0),
-   F1  = partial_application_call(hd(Ids), Line, F0, As1),
-   partial_application_curry(tl(Ids), Line, F1).
-
-partial_application_args([IdH|IdT], [{var, Line, '_'}|T]) ->
-   [{var, Line, IdH} | partial_application_args(IdT, T)];
-partial_application_args(Ids, [H|T]) ->
-   [H | partial_application_args(Ids, T)];
-partial_application_args(_, []) ->
-   [].      
-  
-
-partial_application_call(Var, Line, F0, As0) ->
-   {'fun', Line,
-      {clauses, [
-         {clause, Line,
-            [{var, Line, Var}],
-            [],
-            [{call, Line, F0, As0}]
-         }
-      ]}
-   }.
-
-partial_application_curry([H|T], Line, F0) ->
-   F1 = {'fun', Line,
-      {clauses, [
-         {clause, Line,
-            [{var, Line, H}],
-            [],
-            [F0]
-         }
-      ]}
-   },
-   partial_application_curry(T, Line, F1);
-
-partial_application_curry([], _, F0) ->
-   F0.
