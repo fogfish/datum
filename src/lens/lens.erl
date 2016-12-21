@@ -36,6 +36,7 @@
 %%   * http://www.cs.otago.ac.nz/staffpriv/ok/lens.erl by Richard A. O'Keefe
 %%
 -module(lens).
+-compile({parse_transform, category}).
 
 %%
 %% naive lens interface
@@ -228,7 +229,10 @@ fmap(_,   [const|_] = X) ->
 -spec apply(lens(), fun( (a()) -> a() ), s()) -> s().
 
 apply(Ln, Fun, S) ->
-   erlang:tl( Ln(fun(X) -> fmap(Fun, id(X)) end, S) ).
+   [$.|| Ln(_, S), erlang:tl(_)] ([$.|| id(_), fmap(Fun, _)]).
+
+   % standard Erlang syntax 
+   % erlang:tl( Ln(fun(X) -> fmap(Fun, id(X)) end, S) ).
 
 
 %%
@@ -241,7 +245,10 @@ apply(Ln, Fun, S) ->
 -spec get(lens(), s()) -> a().
 
 get(Ln, S) ->
-   erlang:tl( Ln(fun(X) -> fmap(undefined, const(X)) end, S) ).
+   [$.|| Ln(_, S), erlang:tl(_)] ([$.|| const(_), fmap(any, _)]).
+   
+   % standard Erlang syntax
+   % erlang:tl( Ln(fun(X) -> fmap(undefined, const(X)) end, S) ).
 
 
 %%

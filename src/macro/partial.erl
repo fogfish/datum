@@ -653,7 +653,12 @@ type({user_type,Line,N,As}) ->
     {user_type,Line,N,As1};
 type({type,Line,N,As}) ->
     As1 = type_list(As),
-    {type,Line,N,As1}.
+    {type,Line,N,As1};
+
+%% otp 18.x compatibility
+type([{typed_record_field, _, _}|_] = Rec) ->
+    record_defs(Rec).
+
 
 map_pair_types([{type,Line,map_field_assoc,[K,V]}|Ps]) ->
     K1 = type(K),
