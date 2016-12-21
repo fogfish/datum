@@ -166,6 +166,10 @@ function_composition([{'fun', Line, {function, Mod, Fun, _}} | T]) ->
 function_composition([{'fun', Line, {clauses, _}} = H | T]) ->
    [{call, Line, H, [{var, Line, '_'}]} | function_composition(T)];
 
+%% function reference within variable
+function_composition([{var, Line, _} = H | T]) ->
+   [{call, Line, H, [{var, Line, '_'}]} | function_composition(T)];
+
 function_composition([H | _]) ->
    exit( lists:flatten(io_lib:format("Function composition do not support the expression:~n~p~n", [H])) );
 

@@ -101,7 +101,10 @@ f_syntax(_Config) ->
    10 = [$. || f_id(5), fun f_m2/1],
    10 =([$. || f_id(_), f_m2(_)])(5),
    10 =([$. || fun f_id/1, f_m2(_)])(5),
-   10 =([$. || fun f_id/1, fun f_m2/1])(5).
+   10 =([$. || fun f_id/1, fun f_m2/1])(5),
+   A  = fun f_id/1,
+   B  = fun f_m2/1,
+   10 =([$. || A, B])(5).
 
 f_left_id(_Config) ->
    10 = [$. || f_id(5), fun f_m2/1].
@@ -135,7 +138,11 @@ x_syntax(_Config) ->
    {ok, 10} = [$^ || x_id(5), fun x_m2/1],
    {ok, 10} =([$^ || x_id(_), x_m2(_)])(5),
    {ok, 10} =([$^ || fun x_id/1, x_m2(_)])(5),
-   {ok, 10} =([$^ || fun x_id/1, fun x_m2/1])(5).
+   {ok, 10} =([$^ || fun x_id/1, fun x_m2/1])(5),
+   A  = fun x_id/1,
+   B  = fun x_m2/1,
+   {ok, 10} =([$^ || A, B])(5).
+
 
 x_left_id(_Config) ->
    {ok, 10} = [$^ || x_id(5), fun x_m2/1].
