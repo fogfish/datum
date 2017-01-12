@@ -40,6 +40,7 @@
   ,filter/2
   ,fold/3
   ,foreach/2
+  ,flat/1
   ,map/2
   ,scan/2
   ,scan/3
@@ -203,6 +204,19 @@ foreach(Fun, {s, _, _} = Stream) ->
    foreach(Fun, tail(Stream));
 foreach(_, ?NULL) ->
    ok.
+
+%%
+%% flat stream of streams
+-spec flat(datum:stream()) -> datum:stream().
+
+flat({s, {s, _, _} = Head, Tail}) ->
+   new(stream:head(Head), fun() -> flat({s, stream:tail(Head), Tail}) end);
+
+flat({s, {}, _} = Stream) ->
+   flat(stream:tail(Stream));
+
+flat(Stream) ->
+   Stream.
 
 %%
 %% create a new stream by apply a function to each element of input stream. 
