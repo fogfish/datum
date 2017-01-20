@@ -32,6 +32,8 @@
 %% check if code is category pattern (functional comprehension)
 is_category({char, _, $.}) ->
    function;
+is_category({char, _, $?}) ->
+   maybe;
 is_category({char, _, $^}) ->
    'xor';
 is_category(_) ->
@@ -77,6 +79,26 @@ category(function, Expr0) ->
          category_compose_with(fun compose_function/2, Expr1)
    end;
 
+category(maybe, Expr0) ->
+   Expr1 = function_composition(Expr0),
+   case is_category_partial(Expr1) of
+      true ->
+         Line = erlang:element(2, hd(Expr0)),
+         {Var, Expr2} = category_compose_with(fun compose_maybe/2, lists:reverse(Expr1)),
+         {'fun', Line,
+            {clauses, [
+               {clause, Line,
+                  [{var, Line, Var}],
+                  [],
+                  [Expr2]
+               }
+            ]}
+         };
+      false ->
+         {_, Expr2} = category_compose_with(fun compose_maybe/2, lists:reverse(Expr1)),
+         Expr2
+   end;
+
 category('xor', Expr0) ->
    Expr1 = function_composition(Expr0),
    case is_category_partial(Expr1) of
@@ -102,6 +124,28 @@ category('xor', Expr0) ->
 compose_function({call, _, _, _} = F, {call, Line, Gf0, Ga0}) ->
    %% rewrite f(_) . g(_) to g(f(_)) without runtime overhead 
    {call, Line, Gf0, set_blank_variable(F, Ga0)}.
+
+%%
+%% compose operator in maybe category
+compose_maybe({call, Line, Ff0, Fa0}, {call, _, _, _} = G) ->
+   Var = uuid(),
+   compose_maybe({Var, {call, Line, Ff0, set_blank_variable({var, Line, Var}, Fa0)}}, G);
+
+compose_maybe({V0, F}, {call, Line, Gf0, Ga0}) ->
+   Var = uuid(),
+   I = {'case', Line, {call, Line, Gf0, set_blank_variable({var, Line, Var}, Ga0)}, [
+      {clause, Line,
+         [{atom, Line, undefined}],
+         [],
+         [{atom, Line, undefined}]
+      },
+      {clause, Line, 
+         [{var, Line, V0}],
+         [],
+         [F]
+      }
+   ]},
+   {Var, I}.
 
 %%
 %% compose operator in xor category
