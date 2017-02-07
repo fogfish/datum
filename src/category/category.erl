@@ -396,11 +396,11 @@ expr({cons,Line,H0,T0}) ->
     T1 = expr(T0),            %They see the same variables
     {cons,Line,H1,T1};
 expr({lc,Line,E0,Qs0}) ->
-   case datum_macro:is_category(E0) of
+   case datum_cat:is_category(E0) of
       false ->
          {lc,Line, expr(E0), lc_bc_quals(Qs0)};
       Category ->
-         datum_macro:category(Category, lc_bc_quals(Qs0))
+         datum_cat:category(Category, lc_bc_quals(Qs0))
    end;
 expr({bc,Line,E0,Qs0}) ->
     Qs1 = lc_bc_quals(Qs0),
