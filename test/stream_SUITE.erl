@@ -50,7 +50,7 @@
 %%
 %% stream algorithm
 -export([
-   prime/1, union/1, join/1
+   prime/1, union/1, join/1, unique/1
 ]).
 
 %%
@@ -83,7 +83,7 @@ groups() ->
          [reverse, cycle]}
 
      ,{algorithm,  [parallel],
-         [prime, union, join]}
+         [prime, union, join, unique]}
    ].
 
 %%%----------------------------------------------------------------------------   
@@ -349,3 +349,16 @@ sjoin(Streams) ->
       _     ->
          {undefined, []}
    end.
+
+%%
+%% remove continues, duplicated elements from stream
+unique(_Config) ->
+   ?prefix([1,2,3,4,5],
+      sunique( stream:build([1,1,1,2,2,2,2,3,3,3,4,4,4,4,5,5,5]) )
+   ).   
+
+sunique({s, Head, _}=Stream) ->
+   stream:new(Head, fun() -> sunique(stream:dropwhile(fun(X) -> X =:= Head end, Stream)) end);
+sunique({}) ->
+   stream:new().
+
