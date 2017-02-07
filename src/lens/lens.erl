@@ -60,6 +60,7 @@
 -export([get/3, get/4, get/5, get/6, get/7, get/8]).
 -export([put/4, put/5, put/6, put/7, put/8, put/9]).
 
+-export_type([lens/0]).
 
 -compile({no_auto_import,[apply/3, hd/1, tl/1]}).
 -compile([inline, {inline_size, 128}, inline_list_funcs]).
