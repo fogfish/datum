@@ -18,17 +18,16 @@
 -module(datum).
 
 -export([
-   typeof/1
+   typeof/1,
+   compare/2
 ]).
 
 %%
 %% data types
 -type(q()      :: {q, integer(), list(), list()}).
--type(stream() :: {s, any(), function()}).
--type(tree()   :: {t, any()}).
--type(heap()   :: {h, integer(), any()}).
--type(lens()   :: {l, function(), function(), function()}).
-
+-type(stream() :: {s, _, function()}).
+-type(tree()   :: {t, _, _}).
+-type(heap()   :: {h, integer(), _}).
 -type(ring()   :: tuple()).
 
 -export_type([
@@ -37,7 +36,6 @@
   ,tree/0
   ,heap/0
   ,ring/0
-  ,lens/0
 ]).
 
 %%
@@ -55,9 +53,18 @@ type(q) -> q;
 type(s) -> stream;
 type(h) -> heap;
 type(t) -> tree;
-type(l) -> lens;
 type(_) -> undefined.
 
+
+%%
+%% order functor
+-spec compare(_, _) -> eq | gt | lt.
+
+%%
+%% default ordering functor
+compare(A, B) when A =:= B -> eq;
+compare(A, B) when A  >  B -> gt;
+compare(A, B) when A  <  B -> lt.
 
 
 

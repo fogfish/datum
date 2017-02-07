@@ -20,7 +20,9 @@
 
 -export([
    new/0         %% O(1)
+  ,new/1         %% O(1)
   ,build/1       %% O(n)
+  ,build/2       %% O(n)
   ,apply/3       %% O(log n)
   ,insert/3      %% O(log n)
   ,lookup/2      %% O(log n)
@@ -40,26 +42,39 @@
   ,list/1        %% O(n)
 ]).
 
+%%
+%%
 -define(NULL,   nil).
 
--type(tree() :: {tree(), key(), val(), tree()} | ?NULL).
--type(key()  :: any()).
--type(val()  :: any()).
+%%
+%% data types
+-type tree() :: {tree(), key(), val(), tree()} | ?NULL.
+-type key()  :: any().
+-type val()  :: any().
+-type ord()  :: fun( (key(), key()) -> eq | lt | gt ).
 
 %%
 %% create new binary search tree
 -spec new() -> datum:tree().
+-spec new(ord()) -> datum:tree().
 
 new()  ->
-   {t, ?NULL}.
+   new(fun datum:compare/2).
+
+new(Ord) ->
+   {t, Ord, ?NULL}.
 
 %%
-%% build tree from data type
+%% build tree from sorted data type
 -spec build(list()) -> datum:tree().
+-spec build(ord(), list()) -> datum:tree().
 
 build(X)
  when is_list(X) ->
-   {t, list_to_tree(X)}.
+   build(fun datum:compare/2, X).
+
+build(Ord, X) ->
+   {t, Ord, list_to_tree(X)}.
 
 list_to_tree([]) ->
    ?NULL;
@@ -79,91 +94,89 @@ list_to_tree(List) ->
 %% apply function on element
 -spec apply(function(), key(), datum:tree()) -> datum:tree().
 
-apply(Fun, K, {t, T}) ->
-   {t, apply_el(Fun, K, T)}.
+apply(Fun, K, {t, Ord, T}) ->
+   {t, Ord, apply_el(Ord, K, Fun, T)}.
 
-apply_el(Fun, K, ?NULL) ->
+apply_el(_, K, Fun, ?NULL) ->
    {?NULL, K, Fun(undefined), ?NULL};
-apply_el(Fun, K, {A, Kx, Vx, B})
- when K =:= Kx ->
+apply_el(Ord, K, Fun, {_, Kx, _, _} = T) ->
+   apply_el(Ord(K, Kx), Ord, K, Fun, T).
+
+apply_el(eq,   _, _, Fun, {A, Kx, Vx, B}) ->
    {A, Kx, Fun(Vx), B};
-apply_el(Fun, K, {A, Kx, Vx, B})
- when K  >  Kx ->
-   {A, Kx, Vx, apply_el(Fun, K, B)};
-apply_el(Fun, K, {A, Kx, Vx, B})
- when K  <  Kx ->
-   {apply_el(Fun, K, A), Kx, Vx, B}.
+apply_el(gt, Ord, K, Fun, {A, Kx, Vx, B}) ->
+   {A, Kx, Vx, apply_el(Ord, K, Fun, B)};
+apply_el(lt, Ord, K, Fun, {A, Kx, Vx, B}) ->
+   {apply_el(Ord, K, Fun, A), Kx, Vx, B}.
 
 
 %%
 %% insert element
 -spec insert(key(), val(), datum:tree()) -> datum:tree().
 
-insert(K, V, {t, T}) ->
-   {t, insert_el(K, V, T)}.
+insert(K, V, {t, Ord, T}) ->
+   {t, Ord, insert_el(Ord, K, V, T)}.
 
-insert_el(K, V, ?NULL) ->
+insert_el(_, K, V, ?NULL) ->
    {?NULL, K, V, ?NULL};
-insert_el(K, V, {A, Kx, _, B})
- when K =:= Kx ->
+insert_el(Ord, K, V, {_, Kx, _, _} = T) ->
+   insert_el(Ord(K, Kx), Ord, K, V, T).
+
+insert_el(eq,   _, _, V, {A, Kx,  _, B}) ->
    {A, Kx, V, B};
-insert_el(K, V, {A, Kx, Vx, B})
- when K  >  Kx ->
-   {A, Kx, Vx, insert_el(K, V, B)};
-insert_el(K, V, {A, Kx, Vx, B})
- when K  <  Kx ->
-   {insert_el(K, V, A), Kx, Vx, B}.
+insert_el(gt, Ord, K, V, {A, Kx, Vx, B}) ->
+   {A, Kx, Vx, insert_el(Ord, K, V, B)};
+insert_el(lt, Ord, K, V, {A, Kx, Vx, B}) ->
+   {insert_el(Ord, K, V, A), Kx, Vx, B}.
 
 %%
 %% lookup element
 -spec lookup(key(), datum:tree()) -> val() | undefined.
 
-lookup(K, {t, T}) ->
-   lookup_el(K, T).
+lookup(K, {t, Ord, T}) ->
+   lookup_el(Ord, K, T).
 
-lookup_el(_, ?NULL) ->
+lookup_el(_, _, ?NULL) ->
    undefined;
-lookup_el(K, {_, Kx, Vx, _})
- when K =:= Kx ->
+lookup_el(Ord, K, {_, Kx, _, _} = T) ->
+   lookup_el(Ord(K, Kx), Ord, K, T).
+
+lookup_el(eq,   _, _, {_, _, Vx, _}) ->
    Vx;
-lookup_el(K, {_, Kx,  _, B})
- when K  >  Kx ->
-   lookup_el(K, B);
-lookup_el(K, {A, Kx,  _, _})
- when K  <  Kx ->
-   lookup_el(K, A).
+lookup_el(gt, Ord, K, {_, _,  _, B}) -> 
+   lookup_el(Ord, K, B);
+lookup_el(lt, Ord, K, {A, _,  _, _}) ->
+   lookup_el(Ord, K, A).
 
 %%
 %% remove element
 -spec remove(key(), datum:tree()) -> datum:tree().
 
-remove(K, {t, T}) ->
-   {t, remove_el(K, T)}.
+remove(K, {t, Ord, T}) ->
+   {t, Ord, remove_el(Ord, K, T)}.
 
-remove_el(_K, ?NULL) ->
+remove_el(_, _K, ?NULL) ->
    ?NULL;
-remove_el(K, {A, Kx, _, ?NULL})
- when K =:= Kx ->
+remove_el(Ord, K, {_, Kx, _, _} = T) ->
+   remove_el(Ord(K, Kx), Ord, K, T).
+
+remove_el(eq,   _, _, {A, _, _, ?NULL}) ->
    A;
-remove_el(K, {?NULL, Kx, _, B})
- when K =:= Kx ->
+remove_el(eq,   _, _, {?NULL, _, _, B}) ->
    B;
-remove_el(K, {{_, Ka, Va, _}=A, Kx, _, B})
- when K =:= Kx ->
-   {remove_el(Ka, A), Ka, Va, B};
-remove_el(K, {A, Kx, Vx, B})
- when K  >  Kx ->
-   {A, Kx, Vx, remove_el(K, B)};
-remove_el(K, {A, Kx, Vx, B})
- when K  <  Kx ->
-   {remove_el(K, A), Kx, Vx, B}.
+remove_el(eq, Ord, _, {{_, Ka, Va, _}=A, _, _, B}) ->
+   {remove_el(Ord, Ka, A), Ka, Va, B};
+remove_el(gt, Ord, K, {A, Kx, Vx, B}) ->
+   {A, Kx, Vx, remove_el(Ord, K, B)};
+remove_el(lt, Ord, K, {A, Kx, Vx, B}) ->
+   {remove_el(Ord, K, A), Kx, Vx, B}.
 
 
 %%
 %% return smallest element
 -spec min(tree()) -> {key(), val()} | undefined.
 
-min({t, T}) ->
+min({t, _, T}) ->
    min_el(T).
 
 min_el({?NULL, K, V, _}) ->
@@ -177,7 +190,7 @@ min_el(?NULL) ->
 %% return largest element
 -spec max(tree()) -> {key(), val()}.
 
-max({t, T}) ->
+max({t, _, T}) ->
    max_el(T).
 
 max_el({_, K, V, ?NULL}) ->
@@ -191,8 +204,8 @@ max_el(?NULL) ->
 %% map tree
 -spec map(function(), datum:tree()) -> datum:tree().
 
-map(Fun, {t, T}) ->
-   {t, map_el(Fun, T)}.
+map(Fun, {t, Ord, T}) ->
+   {t, Ord, map_el(Fun, T)}.
 
 map_el(_Fun, ?NULL) ->
    ?NULL;
@@ -204,7 +217,7 @@ map_el(Fun, {A, K, V, B}) ->
 %% fold function over tree 
 -spec foldl(function(), any(), datum:tree()) -> any().
 
-foldl(Fun, Acc, {t, T}) ->
+foldl(Fun, Acc, {t, _, T}) ->
    foldl_el(Fun, Acc, T).
 
 foldl_el(_Fun, Acc0, ?NULL) ->
@@ -216,9 +229,9 @@ foldl_el(Fun, Acc0, {A, K, V, B}) ->
 %% map and fold function over tree
 -spec mapfoldl(function(), any(), datum:tree()) -> {datum:tree(), any()}.
 
-mapfoldl(Fun, Acc0, {t, T}) ->
+mapfoldl(Fun, Acc0, {t, Ord, T}) ->
    {Tx, Acc} = mapfoldl_el(Fun, Acc0, T),
-   {{t, Tx}, Acc}.
+   {{t, Ord, Tx}, Acc}.
 
 mapfoldl_el(_Fun, Acc0, ?NULL) ->
    {?NULL, Acc0};
@@ -233,7 +246,7 @@ mapfoldl_el(Fun, Acc0, {A, K, V, B}) ->
 %% fold function over tree 
 -spec foldr(function(), any(), datum:tree()) -> any().
 
-foldr(Fun, Acc, {t, T}) ->
+foldr(Fun, Acc, {t, _, T}) ->
    foldr_el(Fun, Acc, T).
 
 foldr_el(_Fun, Acc0, ?NULL) ->
@@ -245,9 +258,9 @@ foldr_el(Fun, Acc0, {A, K, V, B}) ->
 %% map and fold function over tree
 -spec mapfoldr(function(), any(), datum:tree()) -> {datum:tree(), any()}.
 
-mapfoldr(Fun, Acc0, {t, T}) ->
+mapfoldr(Fun, Acc0, {t, Ord, T}) ->
    {Tx, Acc} = mapfoldr_el(Fun, Acc0, T),
-   {{t, Tx}, Acc}.
+   {{t, Ord, Tx}, Acc}.
 
 mapfoldr_el(_Fun, Acc0, ?NULL) ->
    {?NULL, Acc0};
@@ -263,9 +276,9 @@ mapfoldr_el(Fun, Acc0, {A, K, V, B}) ->
 %% the function behaves as follows: {takewhile(...), dropwhile(...)}
 -spec splitwith(function(), datum:tree()) -> {datum:tree(), datum:tree()}.
 
-splitwith(Fun, {t, T}) ->
+splitwith(Fun, {t, Ord, T}) ->
    {A, B} = splitwith_el(Fun, T),
-   {{t, A}, {t, B}}.
+   {{t, Ord, A}, {t, Ord, B}}.
 
 splitwith_el(_Fun, ?NULL) ->
    {?NULL, ?NULL};
@@ -284,8 +297,8 @@ splitwith_el(Fun, {A, K, V, B}) ->
 %% takes elements from tree while predicate function return true
 -spec takewhile(function(), datum:tree()) -> datum:tree().
 
-takewhile(Fun, {t, T}) ->
-   {t, takewhile_el(Fun, T)}.
+takewhile(Fun, {t, Ord, T}) ->
+   {t, Ord, takewhile_el(Fun, T)}.
 
 takewhile_el(_Fun, ?NULL) ->
    ?NULL;
@@ -302,8 +315,8 @@ takewhile_el(Fun, {A, K, V, B}) ->
 %%
 -spec take(integer(), tree()) -> tree().
 
-take(N, {t, T}) ->
-   {t, erlang:element(2, take_el(N, T))}.
+take(N, {t, Ord, T}) ->
+   {t, Ord, erlang:element(2, take_el(N, T))}.
 
 take_el(N, ?NULL) ->
    {N, ?NULL};
@@ -320,8 +333,8 @@ take_el(N, {A, K, V, B}) ->
 %% drops elements from tree while predicate function return true
 -spec dropwhile(function(), tree()) -> tree().
 
-dropwhile(Fun, {t, T}) ->
-   {t, dropwhile_el(Fun, T)}.
+dropwhile(Fun, {t, Ord, T}) ->
+   {t, Ord, dropwhile_el(Fun, T)}.
 
 dropwhile_el(_Fun, ?NULL) ->
    ?NULL;
@@ -338,8 +351,8 @@ dropwhile_el(Fun, {A, K, V, B}) ->
 %%
 -spec drop(integer(), tree()) -> tree().
 
-drop(N, {t, T}) ->
-   {t, erlang:element(2, drop_el(N, T))}.
+drop(N, {t, Ord, T}) ->
+   {t, Ord, erlang:element(2, drop_el(N, T))}.
 
 drop_el(N, ?NULL) ->
    {N, ?NULL};
@@ -361,4 +374,3 @@ list(Tree) ->
       [],
       Tree
    ).
-
