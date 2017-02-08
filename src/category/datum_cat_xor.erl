@@ -14,7 +14,7 @@
    Expr = dot_expr(Ln, VarX, {call, Ln, Ff0, set_blank_variable({var, Ln, VarN}, Fa0)}, G),
    {'xor', VarN, Expr};
 
-'.'({call, _, _, _} = G, {call, Ln, Ff0, Fa0}) ->
+'.'({call, Ln, Ff0, Fa0}, {call, _, _, _} = G) ->
    VarN = uuid(),
    Expr = {call, Ln, Ff0, set_blank_variable({var, Ln, VarN}, Fa0)},
    '.'({'xor', VarN, Expr}, G).
