@@ -3,12 +3,14 @@
 The library facilitates a pure functional programming by providing a set of utility functions to work with monads. It also provides the definition of several common monads and defines extension interface using Erlang parse-transform so that users can define their own monads. 
 
 We will skip the monad definitions here. These documents provide excessive explanation of monads:
+* [Monads in functional programming](https://en.wikipedia.org/wiki/Monad_(functional_programming))
 * [A Fistful of Monads](http://learnyouahaskell.com/a-fistful-of-monads) 
 * [Monads for functional programming](http://homepages.inf.ed.ac.uk/wadler/papers/marktoberdorf/baastad.pdf)
 
+
 ## "do"-notation
 
-The library implements rough Haskell's equivalent of "do"-notation, so called monadic binding form, using parse-transforms and special form of list comprehension. We used a techniques similar to [erlando](https://github.com/rabbitmq/erlando). Monads extends the meaning of variable binding within a sequential computation, they defines programmable commas. 
+The library implements rough Haskell's equivalent of "do"-notation, so called monadic binding form, using parse-transforms and special form of list comprehension. We used a techniques similar to [erlando](https://github.com/rabbitmq/erlando). This construction decorates computation pipeline(s) with additional rules implemented by monad, they defines programmable commas. 
 
 ```erlang
 -compile({parse_transform, monad}).
@@ -20,7 +22,9 @@ f() ->
    ]).
 ```
 
-The library transforms `f() -> do([ atom() || ... ]).` syntax construction to monadic binding using `atom()` as current monad. List comprehension generators `X <- ...` are transformed into symbol pattern matching rules. For example the following computation produces a list `[1, 2, 100, 101]`
+The used syntax expresses various programming concepts in terms of a monad structures: side-effects, variable assignment, error handling, parsing, concurrency, domain specific languages, etc. 
+
+The library transforms `do([ atom() || ... ])` syntax construction to monadic binding using `atom()` as identity of monad module. List comprehension generators `X <- ...` are transformed into symbol pattern matching rules. For example the following computation produces a list `[1, 2, 100, 101]`
 
 ```erlang
 f() ->
@@ -31,9 +35,9 @@ f() ->
    ]).
 ```  
 
-Note the use of return as final "statement" of the do-notation. It is appropriate `return` functions in the specified monad. It injects bounds value into the monadic value (container).
+Note the use of return as final "statement" of the do-notation is mandatory. It is appropriate `return` functions in the specified monad. It injects bounds value into the monadic value (container).
 
-Besides syntax sugar for "do"-notation, the library does not do much until your application start using monads other than identity one.  
+The library implements only "do"-notation syntax sugar for Erlang. Your application benefits from the notation once it implements either own monad or utilize provided implementations.   
 
 Monads are defined in terms of `return`, `bind` and `fail` operations
 
@@ -64,13 +68,13 @@ f() ->
 ```
 
 
-## return
+### return
 
 The operation takes non-monadic value or plain type expression and "lifts" it into container using monadic constructor. The library also implements an operand `=<` as syntax equivalence of `return` to lift expression into monad. For instance, next computation produces `{ok, 4}`. 
 
 ```erlang
 f() ->
-   do([m_error ||
+   do([m_xor ||
       X <- return(2),
       Y =< X * X,
       return(Y)
@@ -78,7 +82,7 @@ f() ->
 ```
 
 
-## fail
+### fail
 
 The operation enable failures in a special syntactic construct for monads. The operation is rarely used but allows to escalate failure within computation. The failure is either indicated using `fail` operation from specified monad or `>=` operand.
 
@@ -103,7 +107,7 @@ f() ->
 
 ```erlang
 f(File) ->
-   do([m_error ||
+   do([m_xor ||
       X <- file:open(File),
       Y <- read(X),
       _ <- file:close(X),
@@ -111,7 +115,7 @@ f(File) ->
    ]).
 
 read(FD) ->
-   do([m_error ||
+   do([m_xor ||
       X <- file:read(FD, 4),
       Y <- file:read(FD, 4),      
       return(X + Y)
@@ -140,7 +144,7 @@ f() ->
 
 tbd
 
-### error (`m_error`)
+### error (`m_xor`)
 
 tbd
 
