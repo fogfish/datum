@@ -32,6 +32,7 @@
 ]).
 
 -export([id_do/1]).
+-export([maybe_do/1, maybe_none/1]).
 -export([xor_do/1, xor_fail/1]).
 -export([io_do/1]).
 -export([state_do/1, state_get/1, state_put/1]).
@@ -45,6 +46,7 @@
 all() ->
    [
       {group, id}
+     ,{group, maybe}
      ,{group, 'xor'}
      ,{group, io}
      ,{group, state}
@@ -54,6 +56,9 @@ groups() ->
    [
       {id, [parallel], 
          [id_do]}
+
+     ,{maybe,  [parallel], 
+         [maybe_do, maybe_none]}
 
      ,{'xor',  [parallel], 
          [xor_do, xor_fail]}
@@ -96,6 +101,17 @@ end_per_group(_, _Config) ->
 %%
 id_do(_Config) ->
    111 = do_M(m_id).
+
+%%
+%%
+maybe_do(_Config) ->
+   111 = do_M(m_maybe).
+
+%%
+%%
+maybe_none(_Config) ->
+   undefined = do_M_fail(m_maybe).
+
 
 %%
 %%
