@@ -92,9 +92,9 @@ list_to_tree(List) ->
 
 %%
 %% apply function on element
--spec apply(function(), key(), datum:tree()) -> datum:tree().
+-spec apply(key(), function(), datum:tree()) -> datum:tree().
 
-apply(Fun, K, {t, Ord, T}) ->
+apply(K, Fun, {t, Ord, T}) ->
    {t, Ord, apply_el(Ord, K, Fun, T)}.
 
 apply_el(_, K, Fun, ?NULL) ->
