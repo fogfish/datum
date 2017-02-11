@@ -32,7 +32,7 @@
 ]).
 
 -export([id_do/1]).
--export([error_do/1, error_fail/1]).
+-export([xor_do/1, xor_fail/1]).
 -export([io_do/1]).
 -export([state_do/1, state_get/1, state_put/1]).
 
@@ -45,7 +45,7 @@
 all() ->
    [
       {group, id}
-     ,{group, error}
+     ,{group, 'xor'}
      ,{group, io}
      ,{group, state}
    ].
@@ -55,8 +55,8 @@ groups() ->
       {id, [parallel], 
          [id_do]}
 
-     ,{error,  [parallel], 
-         [error_do, error_fail]}
+     ,{'xor',  [parallel], 
+         [xor_do, xor_fail]}
 
      ,{io, [parallel], 
          [io_do]}
@@ -99,13 +99,13 @@ id_do(_Config) ->
 
 %%
 %%
-error_do(_Config) ->
-   {ok, 111} = do_M(m_error).
+xor_do(_Config) ->
+   {ok, 111} = do_M(m_xor).
 
 %%
 %%
-error_fail(_Config) ->
-   {error, 1} = do_M_fail(m_error).
+xor_fail(_Config) ->
+   {error, 1} = do_M_fail(m_xor).
 
 
 

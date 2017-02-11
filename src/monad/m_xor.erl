@@ -14,8 +14,8 @@
 %%   limitations under the License.
 %%
 %% @doc
-%%   error monad
--module(m_error).
+%%   xor monad
+-module(m_xor).
 
 -export([return/1, fail/1, '>>='/2]).
 

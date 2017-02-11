@@ -59,7 +59,7 @@ partial({'xor', VarX, {'case', Ln, _, _} = Expr}) ->
 %%
 %% unique variable
 uuid() ->
-   list_to_atom("Var" ++ integer_to_list(erlang:unique_integer([monotonic, positive]))).
+   list_to_atom("_Vx" ++ integer_to_list(erlang:unique_integer([monotonic, positive]))).
 
 %%
 %% set blank variable to 
