@@ -1,6 +1,6 @@
 %% @doc
-%%   category pattern: xor category
--module(datum_cat_xor).
+%%   category pattern: either
+-module(datum_cat_either).
 
 -export(['.'/2, expr/1, partial/1]).
 
@@ -9,15 +9,15 @@
 %%
 %% case f(_) of {error, _} = Err -> Err ; {ok, X} -> g(X) end
 %%
-'.'({'xor', VarX, G}, {call, Ln, Ff0, Fa0}) ->
+'.'({either, VarX, G}, {call, Ln, Ff0, Fa0}) ->
    VarN = uuid(),
    Expr = dot_expr(Ln, VarX, {call, Ln, Ff0, set_blank_variable({var, Ln, VarN}, Fa0)}, G),
-   {'xor', VarN, Expr};
+   {either, VarN, Expr};
 
 '.'({call, Ln, Ff0, Fa0}, {call, _, _, _} = G) ->
    VarN = uuid(),
    Expr = {call, Ln, Ff0, set_blank_variable({var, Ln, VarN}, Fa0)},
-   '.'({'xor', VarN, Expr}, G).
+   '.'({either, VarN, Expr}, G).
 
 %%
 %% 
@@ -39,13 +39,13 @@ dot_expr(Ln, VarX, F, G) ->
 %%
 %% map compose to expression 
 %% 
-expr({'xor', _, Expr}) -> 
+expr({either, _, Expr}) -> 
    Expr.
 
 %%
 %% map compose to partial expression
 %%
-partial({'xor', VarX, {'case', Ln, _, _} = Expr}) ->
+partial({either, VarX, {'case', Ln, _, _} = Expr}) ->
    {'fun', Ln,
       {clauses, [
          {clause, Ln,

@@ -14,8 +14,8 @@
 %%   limitations under the License.
 %%
 %% @doc
-%%   xor monad
--module(m_xor).
+%%   either monad
+-module(m_either).
 
 -export([return/1, fail/1, '>>='/2]).
 

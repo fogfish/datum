@@ -14,7 +14,7 @@ is_category({char, _, $.}) ->
 is_category({char, _, $?}) ->
    datum_cat_maybe;
 is_category({char, _, $^}) ->
-   datum_cat_xor;
+   datum_cat_either;
 is_category(_) ->
    false.
 

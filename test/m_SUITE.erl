@@ -116,12 +116,12 @@ maybe_none(_Config) ->
 %%
 %%
 xor_do(_Config) ->
-   {ok, 111} = do_M(m_xor).
+   {ok, 111} = do_M(m_either).
 
 %%
 %%
 xor_fail(_Config) ->
-   {error, 1} = do_M_fail(m_xor).
+   {error, 1} = do_M_fail(m_either).
 
 
 
