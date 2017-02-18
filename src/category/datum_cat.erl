@@ -3,7 +3,7 @@
 %%   [<compose operator> || <function 0> ... <function n>]
 -module(datum_cat).
 
--export([is_category/1, category/2]).
+-export([is_category/1, category/2, cc_bind_var/2]).
 
 %%
 %%
@@ -36,6 +36,30 @@ category(false, Cat, Expr) ->
 
 category(true, Cat, Expr) ->
    Cat:partial(join(fun Cat:'.'/2, Expr)).
+
+
+%%
+%% helper function to bind blank variable with expression
+-spec cc_bind_var(erl_parse:abstract_expr(), erl_parse:abstract_expr()) -> erl_parse:abstract_expr().
+
+cc_bind_var(Vx, X)
+ when is_tuple(X) ->
+   erlang:list_to_tuple(
+      cc_bind_var(Vx, erlang:tuple_to_list(X))
+   );
+
+cc_bind_var(Vx, [{lc, _, _, _} = H | T]) ->
+   % skip binding for nested objects
+   [H | cc_bind_var(Vx, T)];
+cc_bind_var(Vx, [{var, _, '_'} | T]) ->
+   [Vx | cc_bind_var(Vx, T)];
+cc_bind_var(Vx, [H | T]) ->
+   [cc_bind_var(Vx, H) | cc_bind_var(Vx, T)];
+cc_bind_var(_, []) ->
+   [];
+
+cc_bind_var(_, X) ->
+   X.
 
 
 

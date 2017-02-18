@@ -11,12 +11,12 @@
 %%
 '.'({either, VarX, G}, {call, Ln, Ff0, Fa0}) ->
    VarN = uuid(),
-   Expr = dot_expr(Ln, VarX, {call, Ln, Ff0, set_blank_variable({var, Ln, VarN}, Fa0)}, G),
+   Expr = dot_expr(Ln, VarX, {call, Ln, Ff0, datum_cat:cc_bind_var({var, Ln, VarN}, Fa0)}, G),
    {either, VarN, Expr};
 
 '.'({call, Ln, Ff0, Fa0}, {call, _, _, _} = G) ->
    VarN = uuid(),
-   Expr = {call, Ln, Ff0, set_blank_variable({var, Ln, VarN}, Fa0)},
+   Expr = {call, Ln, Ff0, datum_cat:cc_bind_var({var, Ln, VarN}, Fa0)},
    '.'({either, VarN, Expr}, G).
 
 %%
@@ -60,14 +60,3 @@ partial({either, VarX, {'case', Ln, _, _} = Expr}) ->
 %% unique variable
 uuid() ->
    list_to_atom("_Vx" ++ integer_to_list(erlang:unique_integer([monotonic, positive]))).
-
-%%
-%% set blank variable to 
-set_blank_variable(X, [{var, _, '_'}|T]) ->
-   [X|set_blank_variable(X, T)];
-
-set_blank_variable(X, [H|T]) ->
-   [H|set_blank_variable(X, T)];
-
-set_blank_variable(_, []) ->
-   [].  
