@@ -4,7 +4,7 @@
 ## @description
 ##   Makefile to build and release Erlang applications using standard development tools
 ##
-## @version 0.11.8
+## @version 0.11.9
 
 #####################################################################
 ##
@@ -73,6 +73,7 @@ compile:
 
 clean:
 	@./rebar3 clean ;\
+	rm test/*.beam ;\
 	rm -Rf _build/default/rel ;\
 	rm -rf test.*-temp-data ;\
 	rm -rf tests ;\

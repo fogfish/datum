@@ -21,7 +21,13 @@ is_category(_) ->
 %%
 %%
 is_partial([{call, _, _, Fa0} | _]) ->
-   length( lists:filter(fun({var, _, '_'}) -> true; (_) -> false end, Fa0) ) > 0.
+   length( lists:filter(fun({var, _, '_'}) -> true; (_) -> false end, Fa0) ) > 0;
+
+is_partial([{'fun', _, _} | _]) ->
+   true;
+
+is_partial([{var, _, _} | _]) ->
+   true.
 
 %%
 %%
