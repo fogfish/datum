@@ -34,7 +34,7 @@ is_partial([{var, _, _} | _]) ->
 -spec category(atom(), erl_parse:abstract_expr()) -> erl_parse:abstract_expr().
 
 category(Cat, Expr0) ->
-   Expr1 = compile(Expr0),
+   Expr1 = compile(Cat, Expr0),
    category(is_partial(Expr0), Cat, Expr1).
 
 category(false, Cat, Expr) ->
@@ -105,30 +105,33 @@ uuid() ->
 
 %%
 %% compile expression to functional composition (f . g . h ...)
-compile(List) ->
-   lists:reverse([c(X) || X <- List]).
+compile(Cat, List) ->
+   lists:reverse([c(Cat, X) || X <- List]).
 
-c({call, _, _, _} = H) ->
+c(Cat, {call, Ln, {atom, _, fmap} = Fn, Fa}) ->
+   {call, Ln, {remote, Ln, {atom, Ln, Cat}, Fn}, Fa};
+
+c(_, {call, _, _, _} = H) ->
    % explicit call: f(...)
    H;
 
-c({'fun', Line, {function, Id, _}}) ->
+c(_, {'fun', Line, {function, Id, _}}) ->
    % reference to function: fun f/n 
    {call, Line, {atom, Line, Id}, [{var, Line, '_'}]};
 
-c({'fun', Line, {function, Mod, Fun, _}}) ->
+c(_, {'fun', Line, {function, Mod, Fun, _}}) ->
    % reference to function: fun mod:f/n
    {call, Line, {remote, Line, Mod, Fun}, [{var, Line, '_'}]};
 
-c({'fun', Line, {clauses, _}} = H) ->
+c(_, {'fun', Line, {clauses, _}} = H) ->
    % inline function: fun(_) -> ... end
    {call, Line, H, [{var, Line, '_'}]};
 
-c({var, Line, _} = H) ->
+c(_, {var, Line, _} = H) ->
    % function reference within variable: X = ... 
    {call, Line, H, [{var, Line, '_'}]};
 
-c(H) ->
+c(_, H) ->
    exit( lists:flatten(io_lib:format("Function composition do not support the expression:~n~p~n", [H])) ).
 
 

@@ -2,7 +2,7 @@
 %%   category pattern: function category
 -module(datum_cat_f).
 
--export(['.'/2, expr/1, partial/1]).
+-export(['.'/2, fmap/1, expr/1, partial/1]).
 
 %%
 %% compose function(s) using AST notation
@@ -15,6 +15,10 @@
 '.'({call, _, _, _} = G, {call, _, _, _} = F) ->
    '.'({f, [G]}, F).
 
+%%
+%%
+fmap(X) ->
+   X.
 
 %%
 %% map compose to expression 

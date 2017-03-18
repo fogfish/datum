@@ -2,7 +2,7 @@
 %%   category pattern: maybe category
 -module(datum_cat_maybe).
 
--export(['.'/2, expr/1, partial/1]).
+-export(['.'/2, fmap/1, expr/1, partial/1]).
 
 
 %%
@@ -19,6 +19,12 @@
    VarN = uuid(),
    Expr = {call, Ln, Ff0, datum_cat:cc_bind_var({var, Ln, VarN}, Fa0)},
    '.'({maybe, VarN, Expr}, G).
+
+%%
+%%
+fmap(X) ->
+   X.   
+
 
 %%
 %% 
