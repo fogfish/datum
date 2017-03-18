@@ -230,7 +230,7 @@ fmap(_,   [const|_] = X) ->
 -spec apply(lens(), fun( (a()) -> a() ), s()) -> s().
 
 apply(Ln, Fun, S) ->
-   [$.|| Ln(_, S), erlang:tl(_)] ([$.|| id(_), fmap(Fun, _)]).
+   [$.|| Ln(_, S), erlang:tl(_)] ([$.|| id(_), lens:fmap(Fun, _)]).
 
    % standard Erlang syntax 
    % erlang:tl( Ln(fun(X) -> fmap(Fun, id(X)) end, S) ).
@@ -246,7 +246,7 @@ apply(Ln, Fun, S) ->
 -spec get(lens(), s()) -> a().
 
 get(Ln, S) ->
-   [$.|| Ln(_, S), erlang:tl(_)] ([$.|| const(_), fmap(any, _)]).
+   [$.|| Ln(_, S), erlang:tl(_)] ([$.|| const(_), lens:fmap(any, _)]).
    
    % standard Erlang syntax
    % erlang:tl( Ln(fun(X) -> fmap(undefined, const(X)) end, S) ).
