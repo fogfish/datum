@@ -3,7 +3,7 @@
 %%   [<compose operator> || <function 0> ... <function n>]
 -module(datum_cat).
 
--export([is_category/1, category/2, cc_bind_var/2]).
+-export([is_category/1, category/2, cc_bind_var/2, cc_derive/2, uuid/0]).
 
 %%
 %%
@@ -61,6 +61,34 @@ cc_bind_var(_, []) ->
 cc_bind_var(_, X) ->
    X.
 
+%%
+%% helper function to derive variables from expression with blank variables
+-spec cc_derive(erl_parse:abstract_expr(), [_]) -> {[_], erl_parse:abstract_expr()}.
+
+cc_derive({lc, _, _, _} = Expr, Acc) ->
+   % skip binding for nested objects
+   {Expr, Acc};
+
+cc_derive({var, Ln, '_'}, Acc) ->
+   Uuid = uuid(),
+   {{var, Ln, Uuid}, [Uuid|Acc]};
+
+cc_derive(Expr, Acc)
+ when is_tuple(Expr) ->
+   {Code, Var} = lists:mapfoldl(fun cc_derive/2, Acc, erlang:tuple_to_list(Expr)),
+   {erlang:list_to_tuple(Code), Var};
+
+cc_derive(Expr, Acc)
+ when is_list(Expr) ->
+   lists:mapfoldl(fun cc_derive/2, Acc, Expr);
+
+cc_derive(Expr, Acc) ->
+   {Expr, Acc}.
+
+%%
+%% unique variable
+uuid() ->
+   list_to_atom("_Vx" ++ integer_to_list(erlang:unique_integer([monotonic, positive]))).
 
 
 %%%------------------------------------------------------------------

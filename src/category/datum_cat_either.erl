@@ -10,22 +10,36 @@
 %% case f(_) of {error, _} = Err -> Err ; {ok, X} -> g(X) end
 %%
 '.'({either, VarX, G}, {call, Ln, Ff0, Fa0}) ->
-   VarN = uuid(),
-   Expr = dot_expr(Ln, VarX, {call, Ln, Ff0, datum_cat:cc_bind_var({var, Ln, VarN}, Fa0)}, G),
+   {Fa1, VarN} = datum_cat:cc_derive(Fa0, []),
+   Expr = dot_expr(Ln, VarX, {call, Ln, Ff0, Fa1}, G),
    {either, VarN, Expr};
 
 '.'({call, Ln, Ff0, Fa0}, {call, _, _, _} = G) ->
-   VarN = uuid(),
-   Expr = {call, Ln, Ff0, datum_cat:cc_bind_var({var, Ln, VarN}, Fa0)},
-   '.'({either, VarN, Expr}, G).
+   {Fa1, VarN} = datum_cat:cc_derive(Fa0, []),
+   '.'({either, VarN, {call, Ln, Ff0, Fa1}}, G).
 
 %%
-%% 
-dot_expr(Ln, VarX, F, G) ->
+%%
+dot_expr(Ln, [], F, G) ->
    Err = uuid(),
    {'case', Ln, F, [
+      {clause, Ln, 
+         [{match, Ln, {tuple, Ln, [{atom, Ln, error}, {var, Ln, '_'}]}, {var, Ln, Err}}],
+         [],
+         [{var, Ln, Err}]
+      },
       {clause, Ln,
-         [{tuple, Ln, [{atom, Ln, ok},{var, Ln, VarX}]}],
+         [{var, Ln, '_'}],
+         [],
+         [G]
+      }
+   ]};
+dot_expr(Ln, VarX, F, G) ->
+   Err = uuid(),
+   Pat = [{var, Ln, X} || X <- VarX],
+   {'case', Ln, F, [
+      {clause, Ln,
+         [{tuple, Ln, [{atom, Ln, ok}|Pat]}],
          [],
          [G]
       },
@@ -35,6 +49,7 @@ dot_expr(Ln, VarX, F, G) ->
          [{var, Ln, Err}]
       }
    ]}.
+
 
 %%
 %% map compose to expression 
