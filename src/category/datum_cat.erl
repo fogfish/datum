@@ -81,12 +81,12 @@ cc_derive({var, Ln, '_'}, Acc) ->
 
 cc_derive(Expr, Acc)
  when is_tuple(Expr) ->
-   {Code, Var} = lists:mapfoldl(fun cc_derive/2, Acc, erlang:tuple_to_list(Expr)),
+   {Code, Var} = lists:mapfoldr(fun cc_derive/2, Acc, erlang:tuple_to_list(Expr)),
    {erlang:list_to_tuple(Code), Var};
 
 cc_derive(Expr, Acc)
  when is_list(Expr) ->
-   lists:mapfoldl(fun cc_derive/2, Acc, Expr);
+   lists:mapfoldr(fun cc_derive/2, Acc, Expr);
 
 cc_derive(Expr, Acc) ->
    {Expr, Acc}.
