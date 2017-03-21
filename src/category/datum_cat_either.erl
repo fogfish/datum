@@ -2,7 +2,7 @@
 %%   category pattern: either
 -module(datum_cat_either).
 
--export(['.'/2, fmap/1, expr/1, partial/1]).
+-export(['.'/2, fmap/1, fmap/2, expr/1, partial/1]).
 
 %%
 %% compose function(s) using AST notation
@@ -52,11 +52,26 @@ dot_expr(Ln, VarX, F, G) ->
 
 %%
 %%
-fmap(X)
- when is_tuple(X), (element(1, X) =:= ok orelse element(1, X) =:= error) ->
-   X;
+fmap(X) 
+ when is_tuple(X) ->
+   case element(1, X) of
+      ok    -> X;
+      error -> X;
+      _     -> {ok, X}
+   end;
 fmap(X) ->
    {ok, X}.
+
+fmap(A, X)
+ when is_tuple(X) ->
+   case element(1, X) of
+      ok    -> X;
+      error -> X;
+      _     -> {ok, A, X}
+   end;
+fmap(A, X) ->
+   {ok, A, X}.
+
 
 %%
 %% map compose to expression 
