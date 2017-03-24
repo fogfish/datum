@@ -110,6 +110,11 @@ return(Monad, {call, Ln, {atom, _, return}, Expr}) ->
       {remote, Ln, Monad, {atom, Ln, return}},
       Expr
    };
+return(Monad, {call, Ln, {atom, _, yield}, Expr}) ->
+   {call, Ln,
+      {remote, Ln, Monad, {atom, Ln, yield}},
+      Expr
+   };
 return(Monad, {call, Ln, {atom, _, fail}, Expr}) ->
    {call, Ln,
       {remote, Ln, Monad, {atom, Ln, fail}},

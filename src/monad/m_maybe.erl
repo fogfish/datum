@@ -14,16 +14,40 @@
 %%   limitations under the License.
 %%
 %% @doc
-%%   xor monad
+%%   maybe / optional monad
 -module(m_maybe).
 
--export([return/1, fail/1, '>>='/2]).
+-export([return/1, yield/1, fail/1, '>>='/2]).
+
+-type m(A)    :: undefined | A.
+-type f(A, B) :: fun((A) -> m(B)).
+
+%%
+%%
+-spec return(A) -> m(A).
 
 return(X)  -> 
    X.
 
+%%
+%%
+-spec yield(A) -> m(A).
+
+yield([_|_] = X) ->
+   erlang:list_to_tuple(X);
+yield(X) ->
+   X.
+
+%%
+%%
+-spec fail(_) -> _.
+
 fail(_) ->
    undefined.
+
+%%
+%%
+-spec '>>='(m(A), f(A, B)) -> m(B).
 
 '>>='(undefined, _) ->
    undefined;
