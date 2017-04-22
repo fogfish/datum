@@ -11,9 +11,15 @@
 
 is_category({char, _, $.}) ->
    datum_cat_f;
+is_category({atom, _, identity}) ->
+   datum_cat_f;
 is_category({char, _, $?}) ->
-   datum_cat_maybe;
+   datum_cat_option;
+is_category({atom, _, option}) ->
+   datum_cat_option;
 is_category({char, _, $^}) ->
+   datum_cat_either;
+is_category({atom, _, either}) ->
    datum_cat_either;
 is_category(_) ->
    false.

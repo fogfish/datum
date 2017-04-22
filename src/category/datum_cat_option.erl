@@ -1,6 +1,6 @@
 %% @doc
-%%   category pattern: maybe category
--module(datum_cat_maybe).
+%%   category pattern: option category
+-module(datum_cat_option).
 
 -export(['.'/2, fmap/1, expr/1, partial/1]).
 
@@ -10,15 +10,15 @@
 %%
 %% case f(_) of undefined -> undefined ; X -> g(X) end
 %%
-'.'({maybe, VarX, G}, {call, Ln, Ff0, Fa0}) ->
+'.'({option, VarX, G}, {call, Ln, Ff0, Fa0}) ->
    VarN = uuid(),
    Expr = dot_expr(Ln, VarX, {call, Ln, Ff0, datum_cat:cc_bind_var({var, Ln, VarN}, Fa0)}, G),
-   {maybe, VarN, Expr};
+   {option, VarN, Expr};
 
 '.'({call, Ln, Ff0, Fa0}, {call, _, _, _} = G) ->
    VarN = uuid(),
    Expr = {call, Ln, Ff0, datum_cat:cc_bind_var({var, Ln, VarN}, Fa0)},
-   '.'({maybe, VarN, Expr}, G).
+   '.'({option, VarN, Expr}, G).
 
 %%
 %%
@@ -45,13 +45,13 @@ dot_expr(Ln, VarX, F, G) ->
 %%
 %% map compose to expression 
 %% 
-expr({maybe, _, Expr}) -> 
+expr({option, _, Expr}) -> 
    Expr.
 
 %%
 %% map compose to partial expression
 %%
-partial({maybe, VarX, {'case', Ln, _, _} = Expr}) ->
+partial({option, VarX, {'case', Ln, _, _} = Expr}) ->
    {'fun', Ln,
       {clauses, [
          {clause, Ln,
