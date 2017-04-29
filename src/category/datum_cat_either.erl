@@ -2,7 +2,7 @@
 %%   category pattern: either
 -module(datum_cat_either).
 
--export(['.'/2, expr/1, partial/1]).
+-export(['.'/2, fmap/1, fmap/2, expr/1, partial/1]).
 
 %%
 %% compose function(s) using AST notation
@@ -10,22 +10,36 @@
 %% case f(_) of {error, _} = Err -> Err ; {ok, X} -> g(X) end
 %%
 '.'({either, VarX, G}, {call, Ln, Ff0, Fa0}) ->
-   VarN = uuid(),
-   Expr = dot_expr(Ln, VarX, {call, Ln, Ff0, set_blank_variable({var, Ln, VarN}, Fa0)}, G),
+   {Fa1, VarN} = datum_cat:cc_derive(Fa0, []),
+   Expr = dot_expr(Ln, VarX, {call, Ln, Ff0, Fa1}, G),
    {either, VarN, Expr};
 
 '.'({call, Ln, Ff0, Fa0}, {call, _, _, _} = G) ->
-   VarN = uuid(),
-   Expr = {call, Ln, Ff0, set_blank_variable({var, Ln, VarN}, Fa0)},
-   '.'({either, VarN, Expr}, G).
+   {Fa1, VarN} = datum_cat:cc_derive(Fa0, []),
+   '.'({either, VarN, {call, Ln, Ff0, Fa1}}, G).
 
 %%
-%% 
-dot_expr(Ln, VarX, F, G) ->
+%%
+dot_expr(Ln, [], F, G) ->
    Err = uuid(),
    {'case', Ln, F, [
+      {clause, Ln, 
+         [{match, Ln, {tuple, Ln, [{atom, Ln, error}, {var, Ln, '_'}]}, {var, Ln, Err}}],
+         [],
+         [{var, Ln, Err}]
+      },
       {clause, Ln,
-         [{tuple, Ln, [{atom, Ln, ok},{var, Ln, VarX}]}],
+         [{var, Ln, '_'}],
+         [],
+         [G]
+      }
+   ]};
+dot_expr(Ln, VarX, F, G) ->
+   Err = uuid(),
+   Pat = [{var, Ln, X} || X <- VarX],
+   {'case', Ln, F, [
+      {clause, Ln,
+         [{tuple, Ln, [{atom, Ln, ok}|Pat]}],
          [],
          [G]
       },
@@ -35,6 +49,29 @@ dot_expr(Ln, VarX, F, G) ->
          [{var, Ln, Err}]
       }
    ]}.
+
+%%
+%%
+fmap(X) 
+ when is_tuple(X) ->
+   case element(1, X) of
+      ok    -> X;
+      error -> X;
+      _     -> {ok, X}
+   end;
+fmap(X) ->
+   {ok, X}.
+
+fmap(A, X)
+ when is_tuple(X) ->
+   case element(1, X) of
+      ok    -> X;
+      error -> X;
+      _     -> {ok, A, X}
+   end;
+fmap(A, X) ->
+   {ok, A, X}.
+
 
 %%
 %% map compose to expression 
@@ -49,7 +86,7 @@ partial({either, VarX, {'case', Ln, _, _} = Expr}) ->
    {'fun', Ln,
       {clauses, [
          {clause, Ln,
-            [{var, Ln, VarX}],
+            [{var, Ln, X} || X <- VarX],
             [],
             [Expr]
          }
@@ -60,14 +97,3 @@ partial({either, VarX, {'case', Ln, _, _} = Expr}) ->
 %% unique variable
 uuid() ->
    list_to_atom("_Vx" ++ integer_to_list(erlang:unique_integer([monotonic, positive]))).
-
-%%
-%% set blank variable to 
-set_blank_variable(X, [{var, _, '_'}|T]) ->
-   [X|set_blank_variable(X, T)];
-
-set_blank_variable(X, [H|T]) ->
-   [H|set_blank_variable(X, T)];
-
-set_blank_variable(_, []) ->
-   [].  

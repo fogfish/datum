@@ -2,7 +2,7 @@
 %%   category pattern: function category
 -module(datum_cat_f).
 
--export(['.'/2, expr/1, partial/1]).
+-export(['.'/2, fmap/1, expr/1, partial/1]).
 
 %%
 %% compose function(s) using AST notation
@@ -15,6 +15,10 @@
 '.'({call, _, _, _} = G, {call, _, _, _} = F) ->
    '.'({f, [G]}, F).
 
+%%
+%%
+fmap(X) ->
+   X.
 
 %%
 %% map compose to expression 
@@ -23,7 +27,7 @@ expr({f, Expr}) ->
    join(Expr).
 
 join([{call, _, _, _} = F, {call, Ln, Gf0, Ga0}|T]) ->
-   Expr = {call, Ln, Gf0, set_blank_variable(F, Ga0)},
+   Expr = {call, Ln, Gf0, datum_cat:cc_bind_var(F, Ga0)},
    join([Expr|T]);
 
 join([{call, _, _, _} = F]) ->
@@ -34,7 +38,7 @@ join([{call, _, _, _} = F]) ->
 %%
 partial({f, [{call, Ln, Ff0, Fa0} | T]}) ->
    VarX = uuid(),
-   Expr = {call, Ln, Ff0, set_blank_variable({var, Ln, VarX}, Fa0)},
+   Expr = {call, Ln, Ff0, datum_cat:cc_bind_var({var, Ln, VarX}, Fa0)},
    {'fun', Ln,
       {clauses, [
          {clause, Ln,
@@ -49,14 +53,3 @@ partial({f, [{call, Ln, Ff0, Fa0} | T]}) ->
 %% unique variable
 uuid() ->
    list_to_atom("_Vx" ++ integer_to_list(erlang:unique_integer([monotonic, positive]))).
-
-%%
-%% set blank variable to 
-set_blank_variable(X, [{var, _, '_'}|T]) ->
-   [X|set_blank_variable(X, T)];
-
-set_blank_variable(X, [H|T]) ->
-   [H|set_blank_variable(X, T)];
-
-set_blank_variable(_, []) ->
-   [].  

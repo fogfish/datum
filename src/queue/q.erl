@@ -36,6 +36,7 @@
   ,split/2
   ,splitwith/2
   ,list/1
+  ,map/2
 ]).
 
 %%
@@ -194,6 +195,15 @@ list({q, _, Tail, Head}) ->
    Head ++ lists:reverse(Tail, []);
 list(?NULL) ->
    [].
+
+%%
+%%
+-spec map(fun((_) -> _), datum:q()) -> datum:q().
+
+map(_, ?NULL) ->
+   ?NULL;
+map(Fun, {q, N, Tail, Head}) ->
+   {q, N, lists:map(Fun, Tail), lists:map(Fun, Head)}.
 
 %%%------------------------------------------------------------------
 %%%

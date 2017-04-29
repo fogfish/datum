@@ -17,21 +17,44 @@
 %%   either monad
 -module(m_either).
 
--export([return/1, fail/1, '>>='/2]).
+-export([return/1, yield/1, fail/1, '>>='/2]).
+
+-type m(A)    :: {ok, A} | {error, _}.
+-type f(A, B) :: fun((A) -> m(B)).
+
+%%
+%%
+-spec return(A) -> m(A).
 
 return(ok) -> 
-   ok;
+   {ok, undefined};
 return(X)  -> 
    {ok, X}.
 
+%%
+%%
+-spec yield(A) -> m(A).
+
+yield([_|_] = X) ->
+   erlang:list_to_tuple([ok|X]);
+yield(X) ->
+   {ok, X}.
+
+%%
+%%
+-spec fail(_) -> _.
 
 fail(X) ->
    {error, X}.
+
+%%
+%%
+-spec '>>='(m(A), f(A, B)) -> m(B).
 
 
 '>>='({ok, X}, Fun) ->
    Fun(X);
 '>>='(ok, Fun) ->
-   Fun();
+   Fun(undefined);
 '>>='({error, _} = Error, _) ->
    Error.
