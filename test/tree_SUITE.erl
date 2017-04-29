@@ -31,7 +31,8 @@
 ]).
 
 -export([
-   new/1, build/1, apply/1, lookup/1
+   new/1, build/1, apply/1, lookup/1, minmax/1, map/1, fold/1, 
+   splitwith/1, dropwhile/1, takewhile/1, take/1, drop/1
 ]).
 
 %%%----------------------------------------------------------------------------   
@@ -42,15 +43,13 @@
 all() ->
    [
       {group, bst}
-     % ,{group, interface}
-     % ,{group, utility}
-     % ,{group, algorithm}
    ].
 
 groups() ->
    [
       {bst, [parallel], 
-         [new, build, apply, lookup]}
+         [new, build, apply, lookup, minmax, map, fold,
+         splitwith, dropwhile, takewhile, take, drop]}
    ].
 
 %%%----------------------------------------------------------------------------   
@@ -79,6 +78,7 @@ end_per_group(_, _Config) ->
 %%% tree primitives
 %%%
 %%%----------------------------------------------------------------------------   
+-define(N,    10).
 -define(PAIR, [{1, $a}, {2, $b}, {3, $c}, {4, $d}, {5, $e}, {6, $f}, {7, $g}, {8, $h}, {9, $i}, {10, $j}]).
 
 %%
@@ -109,7 +109,76 @@ lookup(Config) ->
 lookup(Type, Key) ->      
    [$.|| Type:build(?PAIR), Type:lookup(Key, _)].
 
+%%
+minmax(Config) ->
+   Type    = ?config(type, Config),
+   Tree    = Type:build(?PAIR),
+   {1,  $a}= Type:min(Tree),
+   {10, $j}= Type:max(Tree).  
 
+%%
+map(Config) ->
+   Type    = ?config(type, Config),
+   Tree    = Type:map(fun(K, V) -> K + V end, Type:build(?PAIR)),
+   Seq     = [{K, K + V} || {K, V} <- ?PAIR],
+   lists:foreach(
+      fun({K, V}) ->
+         V = Type:lookup(K, Tree)
+      end,
+      Seq
+   ).
+
+%%
+fold(Config) ->
+   Type   = ?config(type, Config),
+   Tree   = Type:build(?PAIR),
+   Expect = lists:sum([X || {_, X} <- ?PAIR]),
+   Expect = Type:foldl(fun(_, V, Acc) -> V + Acc end, 0, Tree),
+   Expect = Type:foldr(fun(_, V, Acc) -> V + Acc end, 0, Tree).
+
+
+%%
+splitwith(Config) ->
+   Type   = ?config(type, Config),
+   Tree   = Type:build(?PAIR),
+   {A, B} = Type:splitwith(fun(K) -> K < ?N div 2 end, Tree),
+   {1, _}            = Type:min(A),
+   {?N div 2 - 1, _} = Type:max(A),
+   {?N div 2, _}     = Type:min(B),
+   {?N, _}           = Type:max(B).
+
+%%
+takewhile(Config) ->
+   Type = ?config(type, Config),
+   Tree = Type:build(?PAIR),
+   A    = Type:takewhile(fun(K) -> K < ?N div 2 end, Tree),
+   {1, _}            = Type:min(A),
+   {?N div 2 - 1, _} = Type:max(A).
+
+%%
+dropwhile(Config) ->
+   Type = ?config(type, Config),
+   Tree = Type:build(?PAIR),
+   B    = Type:dropwhile(fun(K) -> K < ?N div 2 end, Tree),
+   {?N div 2, _} = Type:min(B),
+   {?N, _}       = Type:max(B).
+
+%%
+take(Config) ->
+   Type = ?config(type, Config),
+   Tree = Type:build(?PAIR),
+   A    = Type:take(?N div 2, Tree),
+   {1, _}        = Type:min(A),
+   {?N div 2, _} = Type:max(A).
+
+
+%%
+drop(Config) ->
+   Type = ?config(type, Config),
+   Tree = Type:build(?PAIR),
+   B    = Type:drop(?N div 2, Tree),
+   {?N div 2 + 1, _} = Type:min(B),
+   {?N, _}           = Type:max(B).
 
 %%
 %%
