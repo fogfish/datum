@@ -2,7 +2,7 @@
 %%   category pattern: either
 -module(datum_cat_either).
 
--export(['.'/2, fmap/1, fmap/2, expr/1, partial/1]).
+-export(['.'/2, fmap/1, fmap/2, maybeT/2, expr/1, partial/1]).
 
 %%
 %% compose function(s) using AST notation
@@ -72,6 +72,12 @@ fmap(A, X)
 fmap(A, X) ->
    {ok, A, X}.
 
+%%
+%%
+maybeT(Reason, undefined) ->
+   {error, Reason};
+maybeT(_, X) ->
+   {ok, X}.
 
 %%
 %% map compose to expression 

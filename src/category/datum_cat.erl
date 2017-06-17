@@ -117,6 +117,9 @@ compile(Cat, List) ->
 c(Cat, {call, Ln, {atom, _, fmap} = Fn, Fa}) ->
    {call, Ln, {remote, Ln, {atom, Ln, Cat}, Fn}, Fa};
 
+c(Cat, {call, Ln, {remote, Ln, {atom, _, category}, {atom, _, _} = Fn}, Fa}) ->
+   {call, Ln, {remote, Ln, {atom, Ln, Cat}, Fn}, Fa};
+
 c(_, {call, _, _, _} = H) ->
    % explicit call: f(...)
    H;
