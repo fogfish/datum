@@ -26,7 +26,6 @@
    add/2,
    has/2
 ]).
--compile(export_all).
 
 %%
 %% scalable bloom filter
