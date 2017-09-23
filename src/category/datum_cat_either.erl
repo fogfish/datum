@@ -2,7 +2,7 @@
 %%   category pattern: either
 -module(datum_cat_either).
 
--export(['.'/2, fmap/1, fmap/2, maybeT/2, expr/1, partial/1]).
+-export(['.'/2, fmap/1, fmap/2, maybeT/2, sequence/1, expr/1, partial/1]).
 
 %%
 %% compose function(s) using AST notation
@@ -78,6 +78,25 @@ maybeT(Reason, undefined) ->
    {error, Reason};
 maybeT(_, X) ->
    {ok, X}.
+
+%%
+%% 
+-spec sequence( [datum:either(_)] ) -> datum:either([_]).
+
+sequence([{ok, Head} | Seq]) ->
+   case sequence(Seq) of
+      {ok, Tail} ->
+         {ok, [Head|Tail]};
+      {error, _} = Error ->
+         Error
+   end;
+
+sequence([{error, _} = Error | _]) ->
+   Error;
+
+sequence([]) ->
+   {ok, []}.
+
 
 %%
 %% map compose to expression 

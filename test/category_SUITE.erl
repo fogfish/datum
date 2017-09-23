@@ -33,7 +33,7 @@
 
 -export([
    f_syntax/1, f_left_id/1, f_right_id/1, f_associativity/1,
-   x_syntax/1, x_left_id/1, x_right_id/1, x_associativity/1,
+   x_syntax/1, x_left_id/1, x_right_id/1, x_associativity/1, either_sequence/1,
    m_syntax/1, m_left_id/1, m_right_id/1, m_associativity/1
 ]).
 
@@ -55,7 +55,7 @@ groups() ->
          [f_syntax, f_left_id, f_right_id, f_associativity]}
 
      ,{'xor',  [parallel], 
-         [x_syntax, x_left_id, x_right_id , x_associativity]}
+         [x_syntax, x_left_id, x_right_id , x_associativity, either_sequence]}
 
      ,{maybe,  [parallel], 
          [m_syntax, m_left_id, m_right_id , m_associativity]}
@@ -160,6 +160,17 @@ x_associativity(_Config) ->
    B = [$^ || [$^ || fun x_s5/1, fun x_s1/1], fun x_m2/1],
    X = A(5),
    X = B(5).
+
+either_sequence(_Config) ->
+   {ok, [1, 2, 3]} = [either ||
+      category:sequence([{ok, 1}, {ok, 2}, {ok, 3}]),
+      fmap(_)
+   ],
+
+   {error, badarg} = [either ||
+      category:sequence([{ok, 1}, {error, badarg}, {ok, 3}]),
+      fmap(_)
+   ].
 
 %%
 %% xor category
