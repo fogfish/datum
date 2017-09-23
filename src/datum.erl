@@ -23,15 +23,20 @@
 ]).
 
 %%
-%% data types
--type(q()      :: {q, integer(), list(), list()}).
--type(stream() :: {s, _, function()}).
--type(tree()   :: {t, _, _}).
--type(heap()   :: {h, integer(), _}).
--type(ring()   :: tuple()).
+%% types
+-type option(X) :: undefined | X.
+-type either(X) :: {ok, X} | {error, _}.
+
+-type q()       :: {q, integer(), list(), list()}.
+-type stream()  :: {s, _, function()}.
+-type tree()    :: {t, _, _}.
+-type heap()    :: {h, integer(), _}.
+-type ring()    :: tuple().
 
 -export_type([
-   q/0
+   option/1
+  ,either/1
+  ,q/0
   ,stream/0
   ,tree/0
   ,heap/0
