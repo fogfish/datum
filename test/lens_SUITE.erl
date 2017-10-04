@@ -42,12 +42,12 @@
 
 %%
 %% naive lens interface
--export([naive_type_map/1, naive_type_tuple/1, naive_type_list/1]).
+% -export([naive_type_map/1, naive_type_tuple/1, naive_type_list/1]).
 
 %%
 %% pure lens interface
 -export([
-   hd/1, tl/1, list/1, 
+   hd/1, tl/1, takewith/1, 
    t1/1, t2/1, t3/1, tuple/1, tuple_pred/1, 
    map/1, map_pred/1, map_default/1,
    pair/1, pair_default/1
@@ -60,7 +60,7 @@
 %%
 %% omega lenses
 -export([
-   om_hd/1, om_tl/1, om_list/1
+   om_hd/1, om_tl/1, om_takewith/1
 ]).
 
 %%%----------------------------------------------------------------------------   
@@ -70,28 +70,29 @@
 %%%----------------------------------------------------------------------------   
 all() ->
    [
-      {group, naive}
-     ,{group, pure}
+      % {group, naive}
+      {group, pure}
      ,{group, compose}
      ,{group, omega}
    ].
 
 groups() ->
    [
-      {naive, [parallel], 
-         [naive_type_map, naive_type_tuple]}
+      % {naive, [parallel], 
+      %    [naive_type_map, naive_type_tuple]}
 
-     ,{pure,  [parallel], 
-         [hd, tl, list, 
-          t1, t2, t3, tuple, tuple_pred,
-          map, map_pred, map_default,
+      {pure,  [parallel], 
+         [hd, tl, takewith, 
+          t1, t2, t3, tuple, % tuple_pred,
+          map, map_default,
+          % map, map_pred, map_default,
           pair, pair_default]}
 
      ,{compose, [parallel], 
          [c, apply2, apply3, apply4, apply5, apply6, apply7]}
 
      ,{omega, [parallel],
-         [om_hd, om_tl, om_list]}
+         [om_hd, om_tl, om_takewith]}
    ].
 
 %%%----------------------------------------------------------------------------   
@@ -120,32 +121,32 @@ end_per_group(_, _Config) ->
 %%%----------------------------------------------------------------------------   
 
 %%
--define(naive_lens_laws(Ln, X, Y), 
-   begin
-      X  = lens:nput(Ln,    lens:nget(Ln, X), X),
-      d  = lens:nget(Ln,    lens:nput(Ln, d, X)),
-      Y  = lens:nput(Ln, e, lens:nput(Ln, d, X))
-   end
-).
+% -define(naive_lens_laws(Ln, X, Y), 
+%    begin
+%       X  = lens:nput(Ln,    lens:nget(Ln, X), X),
+%       d  = lens:nget(Ln,    lens:nput(Ln, d, X)),
+%       Y  = lens:nput(Ln, e, lens:nput(Ln, d, X))
+%    end
+% ).
 
-naive_type_map(_Config) ->
-   Ln = lens:naive(b),
-   X  = #{a => 1, b => 2, c => 3},
-   Y  = #{a => 1, b => e, c => 3},
-   ?naive_lens_laws(Ln, X, Y).
+% naive_type_map(_Config) ->
+%    Ln = lens:naive(b),
+%    X  = #{a => 1, b => 2, c => 3},
+%    Y  = #{a => 1, b => e, c => 3},
+%    ?naive_lens_laws(Ln, X, Y).
    
-naive_type_tuple(_Config) ->
-   Ln = lens:naive(2),
-   X  = {1, 2, 3},
-   Y  = {1, e, 3},
-   ?naive_lens_laws(Ln, X, Y).
+% naive_type_tuple(_Config) ->
+%    Ln = lens:naive(2),
+%    X  = {1, 2, 3},
+%    Y  = {1, e, 3},
+%    ?naive_lens_laws(Ln, X, Y).
 
-naive_type_list(_Config) ->
-   %% @todo: requires fix
-   Ln = lens:naive(b),
-   X  = [{a, 1}, {b, 2}, {c, 3}],
-   Y  = [{a, 1}, {b, e}, {c, 3}],
-   ?naive_lens_laws(Ln, X, Y).
+% naive_type_list(_Config) ->
+%    %% @todo: requires fix
+%    Ln = lens:naive(b),
+%    X  = [{a, 1}, {b, 2}, {c, 3}],
+%    Y  = [{a, 1}, {b, e}, {c, 3}],
+%    ?naive_lens_laws(Ln, X, Y).
 
 %%%----------------------------------------------------------------------------   
 %%%
@@ -176,8 +177,8 @@ tl(_Config) ->
    Y  = [1|e],
    ?LAWS(Ln, X, Y).
 
-list(_Config) ->
-   Ln = lens:list(fun erlang:is_atom/1),
+takewith(_Config) ->
+   Ln = lens:takewith(fun erlang:is_atom/1),
    X  = [1, 2, a, 3, 4],
    Y  = [1, 2, e, 3, 4],
    ?LAWS(Ln, X, Y).
@@ -273,32 +274,35 @@ c(_Config) ->
 apply2(_Config) ->
    Ln1 = lens:hd(),
    Ln2 = lens:t1(),
+   LnC = lens:c(Ln1, Ln2),
    X   = [{1,2}],
    Y   = [{e,2}],  
-   X = lens:put(Ln1, Ln2,    lens:get(Ln1, Ln2, X), X),
-   d = lens:get(Ln1, Ln2,    lens:put(Ln1, Ln2, d, X)),
-   Y = lens:put(Ln1, Ln2, e, lens:put(Ln1, Ln2, d, X)).
+   X = lens:put(LnC,    lens:get(LnC, X), X),
+   d = lens:get(LnC,    lens:put(LnC, d, X)),
+   Y = lens:put(LnC, e, lens:put(LnC, d, X)).
 
 apply3(_Config) ->
    Ln1 = lens:tl(),
    Ln2 = lens:hd(),
    Ln3 = lens:t1(),
+   LnC = lens:c(Ln1, Ln2, Ln3),
    X   = [head, {1,2}],
    Y   = [head, {e,2}],  
-   X = lens:put(Ln1, Ln2, Ln3,    lens:get(Ln1, Ln2, Ln3, X), X),
-   d = lens:get(Ln1, Ln2, Ln3,    lens:put(Ln1, Ln2, Ln3, d, X)),
-   Y = lens:put(Ln1, Ln2, Ln3, e, lens:put(Ln1, Ln2, Ln3, d, X)).
+   X = lens:put(LnC,    lens:get(LnC, X), X),
+   d = lens:get(LnC,    lens:put(LnC, d, X)),
+   Y = lens:put(LnC, e, lens:put(LnC, d, X)).
 
 apply4(_Config) ->
    Ln1 = lens:tl(),
    Ln2 = lens:hd(),
    Ln3 = lens:t1(),
    Ln4 = lens:hd(),
+   LnC = lens:c(Ln1, Ln2, Ln3, Ln4),
    X   = [a, {[1],2}],
    Y   = [a, {[e],2}],  
-   X = lens:put(Ln1, Ln2, Ln3, Ln4,    lens:get(Ln1, Ln2, Ln3, Ln4, X), X),
-   d = lens:get(Ln1, Ln2, Ln3, Ln4,    lens:put(Ln1, Ln2, Ln3, Ln4, d, X)),
-   Y = lens:put(Ln1, Ln2, Ln3, Ln4, e, lens:put(Ln1, Ln2, Ln3, Ln4, d, X)).
+   X = lens:put(LnC,    lens:get(LnC, X), X),
+   d = lens:get(LnC,    lens:put(LnC, d, X)),
+   Y = lens:put(LnC, e, lens:put(LnC, d, X)).
 
 apply5(_Config) ->
    Ln1 = lens:tl(),
@@ -306,11 +310,12 @@ apply5(_Config) ->
    Ln3 = lens:t1(),
    Ln4 = lens:hd(),
    Ln5 = lens:t1(),
+   LnC = lens:c(Ln1, Ln2, Ln3, Ln4, Ln5),
    X   = [a, {[{1, 2}],2}],
    Y   = [a, {[{e, 2}],2}],  
-   X = lens:put(Ln1, Ln2, Ln3, Ln4, Ln5,    lens:get(Ln1, Ln2, Ln3, Ln4, Ln5, X), X),
-   d = lens:get(Ln1, Ln2, Ln3, Ln4, Ln5,    lens:put(Ln1, Ln2, Ln3, Ln4, Ln5, d, X)),
-   Y = lens:put(Ln1, Ln2, Ln3, Ln4, Ln5, e, lens:put(Ln1, Ln2, Ln3, Ln4, Ln5, d, X)).
+   X = lens:put(LnC,    lens:get(LnC, X), X),
+   d = lens:get(LnC,    lens:put(LnC, d, X)),
+   Y = lens:put(LnC, e, lens:put(LnC, d, X)).
 
 apply6(_Config) ->
    Ln1 = lens:tl(),
@@ -319,11 +324,12 @@ apply6(_Config) ->
    Ln4 = lens:hd(),
    Ln5 = lens:t1(),
    Ln6 = lens:hd(),
+   LnC = lens:c(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6),
    X   = [a, {[{[1], 2}],2}],
    Y   = [a, {[{[e], 2}],2}],  
-   X = lens:put(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6,    lens:get(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6, X), X),
-   d = lens:get(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6,    lens:put(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6, d, X)),
-   Y = lens:put(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6, e, lens:put(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6, d, X)).
+   X = lens:put(LnC,    lens:get(LnC, X), X),
+   d = lens:get(LnC,    lens:put(LnC, d, X)),
+   Y = lens:put(LnC, e, lens:put(LnC, d, X)).
 
 apply7(_Config) ->
    Ln1 = lens:tl(),
@@ -333,11 +339,12 @@ apply7(_Config) ->
    Ln5 = lens:t1(),
    Ln6 = lens:hd(),
    Ln7 = lens:t1(),
+   LnC = lens:c(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6, Ln7),
    X   = [a, {[{[{1}], 2}],2}],
    Y   = [a, {[{[{e}], 2}],2}],  
-   X = lens:put(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6, Ln7,    lens:get(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6, Ln7, X), X),
-   d = lens:get(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6, Ln7,    lens:put(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6, Ln7, d, X)),
-   Y = lens:put(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6, Ln7, e, lens:put(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6, Ln7, d, X)).
+   X = lens:put(LnC,    lens:get(LnC, X), X),
+   d = lens:get(LnC,    lens:put(LnC, d, X)),
+   Y = lens:put(LnC, e, lens:put(LnC, d, X)).
 
 
 %%%----------------------------------------------------------------------------   
@@ -356,8 +363,8 @@ om_tl(_Config) ->
    [e] = lens:get(Ln, []),
    [x] = lens:put(Ln, [x], []).
 
-om_list(_Config) ->
-   Ln  = lens:list(fun(X) -> X =:= a end, b),
+om_takewith(_Config) ->
+   Ln  = lens:takewith(fun(X) -> X =:= a end, b),
    b   = lens:get(Ln, [c,c]),
    [c, c, z] = lens:put(Ln, z, [c,c]).
 

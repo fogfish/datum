@@ -710,7 +710,7 @@ is_partial_application(_) ->
 
 
 transform_partial_application(N, Line, F0, As0) ->
-   Ids = [list_to_atom("_Vpa" ++ integer_to_list(X)) || X <- lists:seq(1, N)],
+   Ids = [uuid() || _ <- lists:seq(1, N)],
    As1 = partial_application_args(Ids, As0),
    F1  = partial_application_call(hd(Ids), Line, F0, As1),
    partial_application_curry(tl(Ids), Line, F1).
@@ -748,3 +748,8 @@ partial_application_curry([H|T], Line, F0) ->
 
 partial_application_curry([], _, F0) ->
    F0.
+
+%%
+%% unique variable
+uuid() ->
+   list_to_atom("_Vpa" ++ integer_to_list(erlang:unique_integer([monotonic, positive]))).

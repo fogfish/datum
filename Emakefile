@@ -1,8 +1,7 @@
-{"src/*", [
-%   native, {hipe, o3},
+{"src/lens/*", [
    report, 
    verbose, 
    {i, "include"}, 
-   {outdir, "ebin"},
+   {outdir, "_build/default/lib/datum/ebin"},
    debug_info 
 ]}.
