@@ -10,15 +10,30 @@
 %%
 %% case f(_) of undefined -> undefined ; X -> g(X) end
 %%
-'.'({option, VarX, G}, {call, Ln, Ff0, Fa0}) ->
+'.'({option, VarX, G}, {call, Ln, Ff0, Fa0} = F) ->
    VarN = uuid(),
    Expr = dot_expr(Ln, VarX, {call, Ln, Ff0, datum_cat:cc_bind_var({var, Ln, VarN}, Fa0)}, G),
    {option, VarN, Expr};
 
-'.'({call, Ln, Ff0, Fa0}, {call, _, _, _} = G) ->
+'.'({option, VarX, G}, {generate, Ln, {var, _, VarN}, F}) ->
+   Expr = dot_expr(Ln, VarN, datum_cat:cc_bind_var({var, Ln, VarX}, F), G),
+   {option, VarX, Expr};
+
+'.'({call, Ln, Ff0, Fa0}, G) ->
    VarN = uuid(),
    Expr = {call, Ln, Ff0, datum_cat:cc_bind_var({var, Ln, VarN}, Fa0)},
    '.'({option, VarN, Expr}, G).
+
+
+% '.'({option, VarX, G}, {call, Ln, Ff0, Fa0}) ->
+%    VarN = uuid(),
+%    Expr = dot_expr(Ln, VarX, {call, Ln, Ff0, datum_cat:cc_bind_var({var, Ln, VarN}, Fa0)}, G),
+%    {option, VarN, Expr};
+
+% '.'({call, Ln, Ff0, Fa0}, {call, _, _, _} = G) ->
+%    VarN = uuid(),
+%    Expr = {call, Ln, Ff0, datum_cat:cc_bind_var({var, Ln, VarN}, Fa0)},
+%    '.'({option, VarN, Expr}, G).
 
 %%
 %%
