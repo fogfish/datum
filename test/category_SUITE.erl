@@ -32,10 +32,22 @@
 ]).
 
 -export([
-   f_syntax/1, f_left_id/1, f_right_id/1, f_associativity/1,
-   x_syntax/1, x_left_id/1, x_right_id/1, x_associativity/1, either_sequence/1,
-   m_syntax/1, m_left_id/1, m_right_id/1, m_associativity/1
+   syntax_identity/1,
+   syntax_option/1,
+   syntax_either/1,
+   laws_identity/1,
+   laws_option/1,
+   laws_either/1,
+   seq_identity/1,
+   seq_option/1,
+   seq_either/1
 ]).
+
+% -export([
+%    f_syntax/1, f_left_id/1, f_right_id/1, f_associativity/1,
+%    x_syntax/1, x_left_id/1, x_right_id/1, x_associativity/1, either_sequence/1,
+%    m_syntax/1, m_left_id/1, m_right_id/1, m_associativity/1
+% ]).
 
 %%%----------------------------------------------------------------------------   
 %%%
@@ -44,21 +56,42 @@
 %%%----------------------------------------------------------------------------   
 all() ->
    [
-      {group, function}
-     ,{group, 'xor'}
-     ,{group, maybe}
+      {group, syntax}
+     ,{group, laws}
+     ,{group, sequence}
+     %  {group, function}
+     % ,{group, 'xor'}
+     % ,{group, maybe}
    ].
 
 groups() ->
    [
-      {function, [parallel], 
-         [f_syntax, f_left_id, f_right_id, f_associativity]}
+      {syntax, [parallel], [
+         syntax_identity,
+         syntax_option,
+         syntax_either
+      ]}
 
-     ,{'xor',  [parallel], 
-         [x_syntax, x_left_id, x_right_id , x_associativity, either_sequence]}
+     ,{laws, [parallel], [
+         laws_identity,
+         laws_option,
+         laws_either
+      ]}
 
-     ,{maybe,  [parallel], 
-         [m_syntax, m_left_id, m_right_id , m_associativity]}
+     ,{sequence, [parallel], [
+         seq_identity,
+         seq_option,
+         seq_either
+     ]}
+
+     %  {function, [parallel], 
+     %     [f_syntax, f_left_id, f_right_id, f_associativity]}
+
+     % ,{'xor',  [parallel], 
+     %     [x_syntax, x_left_id, x_right_id , x_associativity, either_sequence]}
+
+     % ,{maybe,  [parallel], 
+     %     [m_syntax, m_left_id, m_right_id , m_associativity]}
    ].
 
 %%%----------------------------------------------------------------------------   
@@ -87,81 +120,134 @@ end_per_group(_, _Config) ->
 %%%
 %%%----------------------------------------------------------------------------   
 
+-define(cat_compose(Type),
+   [Type ||
+      fmap(1),
+      fmap(2 + _),
+      fmap(3 + _)   
+   ] 
+).
+
+-define(cat_fail(Type), 
+   [Type ||
+      fmap(1),
+      fail(2 + _),
+      fmap(3 + _)
+   ]
+).
+
+-define(cat_arrow(Type),
+   [Type ||
+      A <- fmap(1),
+           fmap(2 + A),
+      B <- fmap(3 + _),
+      C <- fmap(2),
+           fmap(A * B * C)
+   ]
+).
+
+-define(cat_partial(Type), 
+   [Type || 
+      fmap(_),
+      fmap(2 + _),
+      fmap(3 + _)
+   ] 
+).
+
+syntax_identity(_) ->
+   6 = ?cat_compose(identity),
+   3 = (catch ?cat_fail(identity)),
+   12 = ?cat_arrow(identity),
+   6 = (?cat_partial(identity))(1).
+
+syntax_option(_) ->
+   6 = ?cat_compose(option),
+   undefined = ?cat_fail(option),
+   12 = ?cat_arrow(option),
+   6 = (?cat_partial(option))(1).
+
+syntax_either(_) ->
+   {ok, 6} = ?cat_compose(either),
+   {error, 3} = ?cat_fail(either),
+   {ok, 12} = ?cat_arrow(either),
+   {ok, 6} = (?cat_partial(either))(1).
+
+
 %%
-%% function category
-f_id(X) ->
-   X.
+%% Category laws
+%%  1. left identity
+%%  2. right identity
+%%  3. associativity law
+%%
 
-f_m2(X) ->
-   X * 2.
+-define(cat_laws_lid(Type),
+   [Type ||
+      fmap(_),  %% identity function
+      fmap(1 + _)
+   ]
+).
 
-f_s5(X) ->
-   X + 5.
+-define(cat_laws_rid(Type),
+   [Type ||
+      fmap(1 + _),
+      fmap(_)   %% identity function
+   ]
+).
 
-f_s1(X) ->
-   X + 1.
+-define(cat_laws_associativity_1(Type), 
+   [Type ||
+      [Type || fmap(_), fmap(2 + _)],
+      fmap(3 + _)
+   ]
+).
 
-f_syntax(_Config) ->
-   10 = [$. || f_id(5), f_m2(_)],
-   10 = [$. || f_id(5), fun f_m2/1],
-   10 =([$. || f_id(_), f_m2(_)])(5),
-   10 =([$. || fun f_id/1, f_m2(_)])(5),
-   10 =([$. || fun f_id/1, fun f_m2/1])(5),
-   A  = fun f_id/1,
-   B  = fun f_m2/1,
-   10 =([$. || A, B])(5).
+-define(cat_laws_associativity_2(Type), 
+   [Type ||
+      fmap(_),
+      [Type || fmap(2 + _), fmap(3 + _)]
+   ]
+).
 
-f_left_id(_Config) ->
-   10 = [$. || f_id(5), fun f_m2/1].
 
-f_right_id(_Config) ->
-   10 = [$. || f_m2(5), fun f_id/1].
+laws_identity(_) ->
+   2 = (?cat_laws_lid(identity))(1),
+   2 = (?cat_laws_rid(identity))(1),
+   6 = (?cat_laws_associativity_1(identity))(1),
+   6 = (?cat_laws_associativity_2(identity))(1).
 
-f_associativity(_Config) ->
-   A = [$. || fun f_s5/1, [$. || fun f_s1/1, fun f_m2/1]],
-   B = [$. || [$. || fun f_s5/1, fun f_s1/1], fun f_m2/1],
-   X = A(5),
-   X = B(5).
+laws_option(_) ->
+   2 = (?cat_laws_lid(option))(1),
+   2 = (?cat_laws_rid(option))(1),
+   6 = (?cat_laws_associativity_1(option))(1),
+   6 = (?cat_laws_associativity_2(option))(1).
 
+laws_either(_) ->
+   {ok, 2} = (?cat_laws_lid(either))(1),
+   {ok, 2} = (?cat_laws_rid(either))(1),
+   {ok, 6} = (?cat_laws_associativity_1(either))(1),
+   {ok, 6} = (?cat_laws_associativity_2(either))(1).
 
 %%
-%% xor category
-x_id(X) ->
-   {ok, f_id(X)}.
+%%
+seq_identity(_) ->
+   [1, 2, 3] = [identity ||
+      category:sequence([1, 2, 3]),
+      fmap(_)
+   ].
 
-x_m2(X) ->
-   {ok, f_m2(X)}.
+seq_option(_) ->
+   [1, 2, 3] = [option ||
+      category:sequence([1, 2, 3]),
+      fmap(_)
+   ],
 
-x_s5(X) ->
-   {ok, f_s5(X)}.
-
-x_s1(X) ->
-   {ok, f_s1(X)}.
-
-x_syntax(_Config) ->
-   {ok, 10} = [$^ || x_id(5), x_m2(_)],
-   {ok, 10} = [$^ || x_id(5), fun x_m2/1],
-   {ok, 10} =([$^ || x_id(_), x_m2(_)])(5),
-   {ok, 10} =([$^ || fun x_id/1, x_m2(_)])(5),
-   {ok, 10} =([$^ || fun x_id/1, fun x_m2/1])(5),
-   A  = fun x_id/1,
-   B  = fun x_m2/1,
-   {ok, 10} =([$^ || A, B])(5).
+   undefined = [option ||
+      category:sequence([1, undefined, 3]),
+      fmap(_)
+   ].
 
 
-x_left_id(_Config) ->
-   {ok, 10} = [$^ || x_id(5), fun x_m2/1].
-
-x_right_id(_Config) ->
-   {ok, 10} = [$^ || x_m2(5), fun x_id/1].
-
-x_associativity(_Config) ->
-   A = [$^ || fun x_s5/1, [$^ || fun x_s1/1, fun x_m2/1]],
-   B = [$^ || [$^ || fun x_s5/1, fun x_s1/1], fun x_m2/1],
-   X = A(5),
-   X = B(5).
-
-either_sequence(_Config) ->
+seq_either(_Config) ->
    {ok, [1, 2, 3]} = [either ||
       category:sequence([{ok, 1}, {ok, 2}, {ok, 3}]),
       fmap(_)
@@ -171,45 +257,3 @@ either_sequence(_Config) ->
       category:sequence([{ok, 1}, {error, badarg}, {ok, 3}]),
       fmap(_)
    ].
-
-%%
-%% xor category
-m_id(X) ->
-   f_id(X).
-
-m_m2(X) ->
-   f_m2(X).
-
-m_s5(X) ->
-   f_s5(X).
-
-m_s1(X) ->
-   f_s1(X).
-
-m_none(_) ->
-   undefined.
-
-m_syntax(_Config) ->
-   10 = [$? || m_id(5), m_m2(_)],
-   10 = [$? || m_id(5), fun m_m2/1],
-   10 =([$? || m_id(_), m_m2(_)])(5),
-   10 =([$? || fun m_id/1, m_m2(_)])(5),
-   10 =([$? || fun m_id/1, fun m_m2/1])(5),
-   A  = fun m_id/1,
-   B  = fun m_m2/1,
-   10 =([$? || A, B])(5),
-   undefined = [$? || m_id(5), fun m_none/1].
-
-
-m_left_id(_Config) ->
-   10 = [$? || m_id(5), fun m_m2/1].
-
-m_right_id(_Config) ->
-   10 = [$? || m_m2(5), fun m_id/1].
-
-m_associativity(_Config) ->
-   A = [$? || fun m_s5/1, [$? || fun m_s1/1, fun m_m2/1]],
-   B = [$? || [$? || fun m_s5/1, fun m_s1/1], fun m_m2/1],
-   X = A(5),
-   X = B(5).
-

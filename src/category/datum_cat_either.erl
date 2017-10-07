@@ -2,7 +2,11 @@
 %%   category pattern: either
 -module(datum_cat_either).
 
--export(['.'/2, fmap/1, fmap/2, maybeT/2, sequence/1, expr/1, partial/1]).
+%% (.) operation
+-export(['.'/2, chain/1, curry/1]).
+
+%% category utility
+-export([fmap/1, fmap/2, fail/1, sequence/1, optionT/2, maybeT/2]).
 
 %%
 %% compose function(s) using AST notation
@@ -24,19 +28,10 @@
    {Fa1, VarN} = datum_cat:cc_derive(Fa0, []),
    '.'({either, VarN, {call, Ln, Ff0, Fa1}}, G).
 
-% '.'({either, VarX, G}, {call, Ln, Ff0, Fa0}) ->
-%    {Fa1, VarN} = datum_cat:cc_derive(Fa0, []),
-%    Expr = dot_expr(Ln, VarX, {call, Ln, Ff0, Fa1}, G),
-%    {either, VarN, Expr};
-
-% '.'({call, Ln, Ff0, Fa0}, {call, _, _, _} = G) ->
-%    {Fa1, VarN} = datum_cat:cc_derive(Fa0, []),
-%    '.'({either, VarN, {call, Ln, Ff0, Fa1}}, G).
-
 %%
 %%
 dot_expr(Ln, [], F, G) ->
-   Err = uuid(),
+   Err = datum_cat:uuid(),
    {'case', Ln, F, [
       {clause, Ln, 
          [{match, Ln, {tuple, Ln, [{atom, Ln, error}, {var, Ln, '_'}]}, {var, Ln, Err}}],
@@ -50,7 +45,7 @@ dot_expr(Ln, [], F, G) ->
       }
    ]};
 dot_expr(Ln, VarX, F, G) ->
-   Err = uuid(),
+   Err = datum_cat:uuid(),
    Pat = [{var, Ln, X} || X <- VarX],
    {'case', Ln, F, [
       {clause, Ln,
@@ -64,6 +59,26 @@ dot_expr(Ln, VarX, F, G) ->
          [{var, Ln, Err}]
       }
    ]}.
+
+%%
+%% map compose to expression 
+%% 
+chain({either, _, Expr}) -> 
+   Expr.
+
+%%
+%% map compose to partial expression
+%%
+curry({either, VarX, {'case', Ln, _, _} = Expr}) ->
+   {'fun', Ln,
+      {clauses, [
+         {clause, Ln,
+            [{var, Ln, X} || X <- VarX],
+            [],
+            [Expr]
+         }
+      ]}
+   }.
 
 %%
 %%
@@ -89,10 +104,8 @@ fmap(A, X) ->
 
 %%
 %%
-maybeT(Reason, undefined) ->
-   {error, Reason};
-maybeT(_, X) ->
-   {ok, X}.
+fail(X) ->
+   {error, X}.
 
 %%
 %% 
@@ -113,27 +126,17 @@ sequence([]) ->
    {ok, []}.
 
 
-%%
-%% map compose to expression 
-%% 
-expr({either, _, Expr}) -> 
-   Expr.
 
 %%
-%% map compose to partial expression
 %%
-partial({either, VarX, {'case', Ln, _, _} = Expr}) ->
-   {'fun', Ln,
-      {clauses, [
-         {clause, Ln,
-            [{var, Ln, X} || X <- VarX],
-            [],
-            [Expr]
-         }
-      ]}
-   }.
+-spec optionT(_, datum:option(_) ) -> datum:either(_). 
 
-%%
-%% unique variable
-uuid() ->
-   list_to_atom("_Vx" ++ integer_to_list(erlang:unique_integer([monotonic, positive]))).
+optionT(Reason, undefined) ->
+   {error, Reason};
+optionT(_, X) ->
+   {ok, X}.
+
+%% deprecated
+maybeT(Reason, X) ->
+   optionT(Reason, X).
+

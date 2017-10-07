@@ -2,7 +2,11 @@
 %%   category pattern: option category
 -module(datum_cat_option).
 
--export(['.'/2, fmap/1, expr/1, partial/1]).
+%% (.) operation
+-export(['.'/2, chain/1, curry/1]).
+
+%% category utility
+-export([fmap/1, fail/1, sequence/1, eitherT/1]).
 
 
 %%
@@ -11,7 +15,7 @@
 %% case f(_) of undefined -> undefined ; X -> g(X) end
 %%
 '.'({option, VarX, G}, {call, Ln, Ff0, Fa0} = F) ->
-   VarN = uuid(),
+   VarN = datum_cat:uuid(),
    Expr = dot_expr(Ln, VarX, {call, Ln, Ff0, datum_cat:cc_bind_var({var, Ln, VarN}, Fa0)}, G),
    {option, VarN, Expr};
 
@@ -20,26 +24,9 @@
    {option, VarX, Expr};
 
 '.'({call, Ln, Ff0, Fa0}, G) ->
-   VarN = uuid(),
+   VarN = datum_cat:uuid(),
    Expr = {call, Ln, Ff0, datum_cat:cc_bind_var({var, Ln, VarN}, Fa0)},
    '.'({option, VarN, Expr}, G).
-
-
-% '.'({option, VarX, G}, {call, Ln, Ff0, Fa0}) ->
-%    VarN = uuid(),
-%    Expr = dot_expr(Ln, VarX, {call, Ln, Ff0, datum_cat:cc_bind_var({var, Ln, VarN}, Fa0)}, G),
-%    {option, VarN, Expr};
-
-% '.'({call, Ln, Ff0, Fa0}, {call, _, _, _} = G) ->
-%    VarN = uuid(),
-%    Expr = {call, Ln, Ff0, datum_cat:cc_bind_var({var, Ln, VarN}, Fa0)},
-%    '.'({option, VarN, Expr}, G).
-
-%%
-%%
-fmap(X) ->
-   X.   
-
 
 %%
 %% 
@@ -58,15 +45,13 @@ dot_expr(Ln, VarX, F, G) ->
    ]}.
 
 %%
-%% map compose to expression 
-%% 
-expr({option, _, Expr}) -> 
+%% return dot-composition chain. 
+chain({option, _, Expr}) -> 
    Expr.
 
 %%
-%% map compose to partial expression
-%%
-partial({option, VarX, {'case', Ln, _, _} = Expr}) ->
+%% curry do-composition chain into partial application
+curry({option, VarX, {'case', Ln, _, _} = Expr}) ->
    {'fun', Ln,
       {clauses, [
          {clause, Ln,
@@ -79,6 +64,40 @@ partial({option, VarX, {'case', Ln, _, _} = Expr}) ->
 
 
 %%
-%% unique variable
-uuid() ->
-   list_to_atom("_Vx" ++ integer_to_list(erlang:unique_integer([monotonic, positive]))).
+%%
+fmap(X) ->
+   X.   
+
+%%
+%%
+fail(_) ->
+   undefined.
+
+%%
+%% 
+-spec sequence( [datum:option(_)] ) -> datum:option([_]).
+
+sequence([undefined | _]) ->
+   undefined;
+
+sequence([Head | Seq]) ->
+   case sequence(Seq) of
+      undefined ->
+         undefined;
+      Tail ->
+         [Head | Tail]
+   end;
+
+sequence([]) ->
+   [].
+
+%%
+%%
+-spec eitherT( datum:either(_) ) -> datum:option(_).
+
+eitherT({ok, X}) ->
+   X;
+eitherT({error, _}) ->
+   undefined.
+
+
