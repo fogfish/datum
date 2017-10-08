@@ -35,19 +35,16 @@
    syntax_identity/1,
    syntax_option/1,
    syntax_either/1,
+   syntax_pattern/1,
    laws_identity/1,
    laws_option/1,
    laws_either/1,
+   laws_pattern/1,
    seq_identity/1,
    seq_option/1,
    seq_either/1
 ]).
 
-% -export([
-%    f_syntax/1, f_left_id/1, f_right_id/1, f_associativity/1,
-%    x_syntax/1, x_left_id/1, x_right_id/1, x_associativity/1, either_sequence/1,
-%    m_syntax/1, m_left_id/1, m_right_id/1, m_associativity/1
-% ]).
 
 %%%----------------------------------------------------------------------------   
 %%%
@@ -59,9 +56,6 @@ all() ->
       {group, syntax}
      ,{group, laws}
      ,{group, sequence}
-     %  {group, function}
-     % ,{group, 'xor'}
-     % ,{group, maybe}
    ].
 
 groups() ->
@@ -69,13 +63,15 @@ groups() ->
       {syntax, [parallel], [
          syntax_identity,
          syntax_option,
-         syntax_either
+         syntax_either,
+         syntax_pattern
       ]}
 
      ,{laws, [parallel], [
          laws_identity,
          laws_option,
-         laws_either
+         laws_either,
+         laws_pattern
       ]}
 
      ,{sequence, [parallel], [
@@ -83,15 +79,6 @@ groups() ->
          seq_option,
          seq_either
      ]}
-
-     %  {function, [parallel], 
-     %     [f_syntax, f_left_id, f_right_id, f_associativity]}
-
-     % ,{'xor',  [parallel], 
-     %     [x_syntax, x_left_id, x_right_id , x_associativity, either_sequence]}
-
-     % ,{maybe,  [parallel], 
-     %     [m_syntax, m_left_id, m_right_id , m_associativity]}
    ].
 
 %%%----------------------------------------------------------------------------   
@@ -172,6 +159,12 @@ syntax_either(_) ->
    {ok, 12} = ?cat_arrow(either),
    {ok, 6} = (?cat_partial(either))(1).
 
+syntax_pattern(_) ->
+   {ok, 6} = (?cat_compose(pattern))(undefined),
+   {error, 3} = (?cat_fail(pattern))(undefined),
+   {ok, 12} = (?cat_arrow(pattern))(undefined),
+   {ok, 6} = ((?cat_partial(pattern))(1))(undefined).
+
 
 %%
 %% Category laws
@@ -226,6 +219,14 @@ laws_either(_) ->
    {ok, 2} = (?cat_laws_rid(either))(1),
    {ok, 6} = (?cat_laws_associativity_1(either))(1),
    {ok, 6} = (?cat_laws_associativity_2(either))(1).
+
+laws_pattern(_) ->
+   {ok, 2} = ((?cat_laws_lid(pattern))(1))(undefined),
+   {ok, 2} = ((?cat_laws_rid(pattern))(1))(undefined).
+   % Associativity do not work for nested patterns.
+   % {ok, 6} = ((?cat_laws_associativity_1(pattern))(1))(undefined),
+   % {ok, 6} = ((?cat_laws_associativity_2(pattern))(1))(undefined).
+
 
 %%
 %%

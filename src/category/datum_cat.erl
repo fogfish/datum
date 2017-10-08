@@ -21,6 +21,8 @@ is_category({char, _, $^}) ->
    datum_cat_either;
 is_category({atom, _, either}) ->
    datum_cat_either;
+is_category({atom, _, pattern}) ->
+   datum_cat_pattern;
 is_category({tuple, _, [{atom, _, Category}]}) ->
    Category;
 is_category(_) ->
@@ -32,6 +34,9 @@ is_partial([Head | _]) ->
    is_partial(Head);
 
 is_partial({generate, _, _, Arrow}) ->
+   is_partial(Arrow);
+
+is_partial({op, _, _, _, Arrow}) ->
    is_partial(Arrow);
 
 is_partial({call, _, _, Fa0}) ->
@@ -165,6 +170,9 @@ c_arrow(_, {'fun', Line, {clauses, _}} = H) ->
 c_arrow(_, {var, Line, _} = H) ->
    % function reference within variable: X = ... 
    {call, Line, H, [{var, Line, '_'}]};
+
+c_arrow(Cat, {op, Ln, '/=', VarS, Arrow} = X) ->
+   {generate, Ln, VarS, Cat:'/='(Arrow)};
 
 c_arrow(_, H) ->
    exit( lists:flatten(io_lib:format("Category composition do not support the arrow of type: ~p", [H])) ).
