@@ -13,15 +13,14 @@
 %%
 %% case f(_) of {error, _} = Err -> Err ; {ok, X} -> g(X) end
 %%
-'.'({either, VarX, G}, {call, Ln, Ff0, Fa0} = F) ->
+'.'({either, VarX, G}, {call, Ln, Ff0, Fa0}) ->
    {Fa1, VarN} = datum_cat:cc_derive(Fa0, []),
    Expr = dot_expr(Ln, VarX, {call, Ln, Ff0, Fa1}, G),
    {either, VarN, Expr};
 
-'.'({either, VarX, G}, {generate, Ln, {var, _, VarN}, F}) ->
+'.'({either, _VarX, G}, {generate, Ln, {var, _, VarN}, F}) ->
    {Fa1, VarZ} = datum_cat:cc_derive(F, []),
    Expr = dot_expr(Ln, [VarN], Fa1, G),
-   % Expr = dot_expr(Ln, VarN, datum_cat:cc_bind_var({var, Ln, VarX}, F), G),
    {either, VarZ, Expr};
 
 '.'({call, Ln, Ff0, Fa0}, G) ->

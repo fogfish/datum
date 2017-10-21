@@ -36,6 +36,7 @@
    syntax_option/1,
    syntax_either/1,
    syntax_pattern/1,
+   syntax_pattern_interface/1,
    laws_identity/1,
    laws_option/1,
    laws_either/1,
@@ -64,7 +65,8 @@ groups() ->
          syntax_identity,
          syntax_option,
          syntax_either,
-         syntax_pattern
+         syntax_pattern,
+         syntax_pattern_interface
       ]}
 
      ,{laws, [parallel], [
@@ -165,6 +167,18 @@ syntax_pattern(_) ->
    {ok, 12} = (?cat_arrow(pattern))(undefined),
    {ok, 6} = ((?cat_partial(pattern))(1))(undefined).
 
+syntax_pattern_interface(_) ->
+   Pattern = [pattern ||
+      _ /= one(),
+      _ /= one(),
+      _ /= one()
+   ],
+   {ok, 1} = Pattern(1),
+   {error, 2} = Pattern(2).
+
+
+one(1) -> {ok,    1};
+one(X) -> {error, X}. 
 
 %%
 %% Category laws

@@ -171,7 +171,7 @@ c_arrow(_, {var, Line, _} = H) ->
    % function reference within variable: X = ... 
    {call, Line, H, [{var, Line, '_'}]};
 
-c_arrow(Cat, {op, Ln, '/=', VarS, Arrow} = X) ->
+c_arrow(Cat, {op, Ln, '/=', VarS, Arrow}) ->
    {generate, Ln, VarS, Cat:'/='(Arrow)};
 
 c_arrow(_, H) ->

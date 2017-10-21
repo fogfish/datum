@@ -168,3 +168,4 @@ tbd
 1. http://stenmans.org/happi_blog/?p=181
 2. http://www.rabbitmq.com/blog/2011/05/17/can-you-hear-the-drums-erlando/
 3. https://github.com/rabbitmq/erlando
+4. https://typelevel.org/blog/2017/05/02/io-monad-for-cats.html

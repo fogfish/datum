@@ -11,8 +11,6 @@
 %% category utility
 -export([fmap/1, fmap/2, fail/1, sequence/1, optionT/2, maybeT/2]).
 
-%% {call,8,{atom,8,b},[]}
-%% {call,8,{remote,8,{atom,8,x},{atom,8,b}},[]}
 
 '/='({call, Ln, Ff0, Fa0}) ->
    Fa1 = Fa0 ++ [{var, Ln, '_PatternGlobalEnvironment'}],
@@ -26,20 +24,23 @@
 %%
 %% case f(_) of {error, _} = Err -> Err ; {ok, X} -> g(X) end
 %%
-'.'({either, VarX, G}, {call, Ln, Ff0, Fa0} = F) ->
+'.'({either, VarX, G}, {call, Ln, Ff0, Fa0}) ->
    {Fa1, VarN} = datum_cat:cc_derive(Fa0, []),
    Expr = dot_expr(Ln, VarX, {call, Ln, Ff0, Fa1}, G),
    {either, VarN, Expr};
 
-'.'({either, VarX, G}, {generate, Ln, {var, _, VarN}, F}) ->
+'.'({either, _VarX, G}, {generate, Ln, {var, _, VarN}, F}) ->
    {Fa1, VarZ} = datum_cat:cc_derive(F, []),
    Expr = dot_expr(Ln, [VarN], Fa1, G),
-   % Expr = dot_expr(Ln, VarN, datum_cat:cc_bind_var({var, Ln, VarX}, F), G),
    {either, VarZ, Expr};
 
 '.'({call, Ln, Ff0, Fa0}, G) ->
    {Fa1, VarN} = datum_cat:cc_derive(Fa0, []),
-   '.'({either, VarN, {call, Ln, Ff0, Fa1}}, G).
+   '.'({either, VarN, {call, Ln, Ff0, Fa1}}, G);
+
+'.'({generate, _Ln, _Var, F}, G) ->
+   %% ignore tail arrow
+   '.'(F, G).
 
 %%
 %%
@@ -90,7 +91,7 @@ chain({either, _, {'case', Ln, _, _} = Expr}) ->
 %%
 %% map compose to partial expression
 %%
-curry({either, VarX, {'case', Ln, _, _} = Expr} = Either) ->
+curry({either, VarX, {'case', Ln, _, _}} = Either) ->
    {'fun', Ln,
       {clauses, [
          {clause, Ln,

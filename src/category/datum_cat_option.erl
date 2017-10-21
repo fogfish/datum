@@ -14,7 +14,7 @@
 %%
 %% case f(_) of undefined -> undefined ; X -> g(X) end
 %%
-'.'({option, VarX, G}, {call, Ln, Ff0, Fa0} = F) ->
+'.'({option, VarX, G}, {call, Ln, Ff0, Fa0}) ->
    VarN = datum_cat:uuid(),
    Expr = dot_expr(Ln, VarX, {call, Ln, Ff0, datum_cat:cc_bind_var({var, Ln, VarN}, Fa0)}, G),
    {option, VarN, Expr};

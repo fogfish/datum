@@ -25,7 +25,9 @@
 %%
 %% types
 -type option(X) :: undefined | X.
+-type either()  :: ok | {error, _}.
 -type either(X) :: {ok, X} | {error, _}.
+-type either(X, Y) :: {ok, X, Y} | {error, _}.
 
 -type q()       :: {q, integer(), list(), list()}.
 -type stream()  :: {s, _, function()}.
@@ -35,7 +37,9 @@
 
 -export_type([
    option/1
+  ,either/0   
   ,either/1
+  ,either/2
   ,q/0
   ,stream/0
   ,tree/0
