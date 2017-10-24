@@ -23,14 +23,17 @@
    new/1,
    new/2,
    new/3,
+   new/4,
    add/2,
    has/2
 ]).
+
 
 %%
 %% scalable bloom filter
 -record(sbf, {
    r    :: integer(),
+   s    :: integer(),
    size :: integer(),
    list :: [_]
 }).
@@ -50,18 +53,30 @@
 
 %%
 %% create new scalable bloom filter
-new(B) ->
-   new(B, 0.001).
+%%  C - initial capacity 
+%%  P - false positive probability
+%%  R - tightening ratio of error probability (as defined by paper)
+%%  S - growth ratio (as defined by paper)
+new(C) ->
+   new(C, 0.001).
 
-new(B, P) ->
-   new(B, P, 0.85).
+new(C, P) ->
+   new(C, P, 0.85).
 
-new(B, P, R) ->
-   #sbf{r = R, size = 0, list = [bf_new(B, P)]}.
+new(C, P, R) ->
+   new(C, P, R, 1).
+
+new(C, P, R, S) ->
+   %% n ≈ -m ln (1 - p)
+   P0 = P * (1 - R),
+   K  = bf_k(P0),
+   Pk = math:pow(P0, 1 / K),
+   M  = 1 + trunc(log2(-C / math:log(1 - Pk))), 
+   #sbf{r = R, s = S, size = 0, list = [bf_new(M, P0)]}.
 
 %%
 %% add element 
-add(E, #sbf{r = R, size = Size, list = [H | T]} = State) ->
+add(E, #sbf{r = R, s = S, size = Size, list = [H | T]} = State) ->
    case has(E, State) of
       true  ->
          State;
@@ -69,7 +84,7 @@ add(E, #sbf{r = R, size = Size, list = [H | T]} = State) ->
          case bf_add(E, H) of
             %% filter overflow
             #bf{n = N, size = N} = F ->
-               State#sbf{size = Size + 1, list = [bf_scale(R, F), F | T]};
+               State#sbf{size = Size + 1, list = [bf_scale(S, R, F), F | T]};
       
             F ->
                State#sbf{size = Size + 1, list = [F | T]}
@@ -88,37 +103,31 @@ has(E, #sbf{list = List}) ->
 %%%
 %%%------------------------------------------------------------------
 
-%% B - approximate filter size in kilobytes 
+%% M - segment modulo 
 %% P - desired error probability
-bf_new(B, P) ->
+bf_new(M, P) ->
    K = bf_k(P),
-   M = bf_m(B, K),
+   Pk= math:pow(P, 1 / K),
+   N = trunc(-(1 bsl M) * math:log(1 - Pk)),
    #bf{
       p    = P,
       k    = K,
       m    = M,
-      n    = bf_n(M * K, P),
+      n    = N, 
       size = 0,
-      bits = [bits_new(M) || _ <- lists:seq(1, K)]
+      bits = [bits_new(1 bsl M) || _ <- lists:seq(1, K)]
    }.
 
 %% number of hash functions with 50% fill rate (optimal rate)
 bf_k(P) ->
    1 + erlang:trunc(log2(1 / P)).
 
-%% number of bits per slice m = M / k aligned to x^2
-bf_m(B, K) ->
-   1 bsl (1 + erlang:trunc(log2(B * 8 * 1024 / K))).
-
-%% number of elements n ≈ M * (ln 2)^2 / |ln P|
-bf_n(M, P) ->
-   1 + erlang:trunc(M * math:pow(math:log(2), 2) / erlang:abs(math:log(P))).
-
 %%
 %% insert element to set
 bf_add(E, #bf{m = M, k = K, size = Size, bits = Bits0} = State) ->
-   Hash = hashes(E, K),
-   {Bool, Bits} = lists:unzip([bits_set(H rem M, B) || {H, B} <- lists:zip(Hash, Bits0)]),
+   Mask = 1 bsl M - 1,
+   Hash = hashes(E, Mask, K),
+   {Bool, Bits} = lists:unzip([bits_set(H, B) || {H, B} <- lists:zip(Hash, Bits0)]),
    case lists:all(fun(X) -> not X end, Bool) of
       true  ->
          State;
@@ -129,8 +138,9 @@ bf_add(E, #bf{m = M, k = K, size = Size, bits = Bits0} = State) ->
 %%
 %% lookup element membership
 bf_has(E, #bf{m = M, k = K, bits = Bits0}) ->
-   Hash = hashes(E, K),
-   Bool = [bits_get(H rem M, B) || {H, B} <- lists:zip(Hash, Bits0)],
+   Mask = 1 bsl M - 1,
+   Hash = hashes(E, Mask, K),
+   Bool = [bits_get(H, B) || {H, B} <- lists:zip(Hash, Bits0)],
    lists:all(fun(X) -> X end, Bool).
 
 
@@ -139,9 +149,8 @@ bf_has(E, #bf{m = M, k = K, bits = Bits0}) ->
 %% P1 = P0 * r error probability, where r is the tightening ratio with 0 < r < 1.
 %% k0 = log2 P0 ^ −1
 %% ki = log2 Pi ^ −1
-bf_scale(R, #bf{p = P, k = K, m = M}) ->
-   B = erlang:trunc((K * M) / (8 * 1024)),
-   bf_new(B, P * R).
+bf_scale(S, R, #bf{p = P, m = M}) ->
+   bf_new(M + S, P * R).
 
 %%%------------------------------------------------------------------
 %%%
@@ -191,10 +200,11 @@ log2(X) ->
 -define(HASH1(X), erlang:phash2([X], 1 bsl 32)).
 -define(HASH2(X), erlang:phash2({X}, 1 bsl 32)).
 
-hashes(X, K) ->
-   hashes(?HASH1(X), ?HASH2(X), K).
-hashes(_, _, 0) ->
-   [];
-hashes(A, B, K) ->
-   [ (A band (K * B)) | hashes(A, B, K - 1)].
+hashes(X, Mask, K) ->
+   hashes(?HASH1(X), ?HASH2(X), Mask, K).
 
+hashes(_, _, _, 0) ->
+   [];
+hashes(A, B, Mask, K) ->
+   X = (A + B) band Mask,
+   [ X | hashes(A, X, Mask, K - 1) ].
