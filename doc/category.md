@@ -85,7 +85,7 @@ We define a syntactic extension to *composition* operator that **yields the stat
 [Category || Var1 <- Arrow1, ..., VarN <- ArrowN]
 ```
 
-Here, Category is an identity of category and each Arrow is a morphism applied to objects, `Var` is a named or blank variable that preserve intermediate state. Formally, this is a composition of functions: `f . update . g`.
+Here, `Category` is an identity of category and each `Arrow` is a morphism applied to objects, `Var` is a named or blank variable that preserve intermediate state. Formally, this is a composition of functions: `f . update . g`.
 
 Our example becomes... 
 
@@ -115,7 +115,7 @@ Transformers are written using following syntax
 [Category || cats:transform(...), ..., VarN /= transform(...) ]
 ```
 
-Here, Category is an identity of category, `cats:` is reserved prefix that executes the defined transformation as part of the composition, `/= `yields the result of transformation to the state. Formally, this is a composition of functions: `f . transform . update . g`.
+Here, `Category` is an identity of category, `cats:` is reserved prefix that executes the defined transformation as part of the composition, `/= `yields the result of transformation to the state. Formally, this is a composition of functions: `f . transform . update . g`.
 
 
 ## Categories
