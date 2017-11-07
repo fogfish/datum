@@ -260,7 +260,11 @@ The category implements transformers
 
 > A monad is just a monoid in the category of endofunctors... 
 
-We are using a category pattern to implement the category of monadic functions, which generalises ordinary functions. 
+We are using a category pattern to implement the category of monadic functions, which generalises ordinary functions. We will skip the monad definitions here. These documents provide excessive explanation of monads:
+
+* [Monads in functional programming](https://en.wikipedia.org/wiki/Monad_(functional_programming))
+* [A Fistful of Monads](http://learnyouahaskell.com/a-fistful-of-monads) 
+* [Monads for functional programming](http://homepages.inf.ed.ac.uk/wadler/papers/marktoberdorf/baastad.pdf)
 
 
 ```erlang
@@ -281,6 +285,8 @@ m_state:'>>='(f(),
    end
 ).
 ```
+
+The library implements rough Haskell's equivalent of **do-notation**, so called monadic binding form. This construction decorates computation pipeline(s) with additional rules implemented by monad, they defines programmable commas. The used syntax expresses various programming concepts in terms of a monad structures: side-effects, variable assignment, error handling, parsing, concurrency, domain specific languages, etc. 
 
 
 ## References
