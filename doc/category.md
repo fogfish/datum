@@ -273,7 +273,7 @@ We are using a category pattern to implement the category of monadic functions, 
 %% it is transformed into
 m_state:'>>='(f(),
    fun(X) ->
-      m_state:'>>='(b(X),
+      m_state:'>>='(g(X),
          fun(Y) ->
             m_state:unit(Y)
          end

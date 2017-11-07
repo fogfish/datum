@@ -22,7 +22,15 @@ is_category({char, _, $^}) ->
 is_category({atom, _, either}) ->
    datum_cat_either;
 is_category({atom, _, pattern}) ->
+   %% todo: reader
    datum_cat_pattern;
+is_category({atom, _, Category}) ->
+   case erlang:atom_to_list(Category) of
+      "m_" ++ _ ->
+         {datum_cat_kleisli, Category};
+      _ ->
+         false
+   end;
 is_category({tuple, _, [{atom, _, Category}]}) ->
    Category;
 is_category(_) ->
@@ -52,6 +60,11 @@ is_partial({var, _, _}) ->
 %%
 %%
 -spec category(atom(), erl_parse:abstract_expr()) -> erl_parse:abstract_expr().
+
+category({Cat, Mod}, Expr0) ->
+   Expr1 = compile(Cat, Expr0),
+   Expr2 = join(Mod, fun Cat:'.'/3, Expr1),
+   category(is_partial(Expr0), Cat, Expr2);
 
 category(Cat, Expr0) ->
    Expr1 = compile(Cat, Expr0),
@@ -175,7 +188,7 @@ c_arrow(Cat, {op, Ln, '/=', VarS, Arrow}) ->
    {generate, Ln, VarS, Cat:'/='(Arrow)};
 
 c_arrow(_, H) ->
-   exit( lists:flatten(io_lib:format("Category composition do not support the arrow of type: ~p", [H])) ).
+   exit( lists:flatten(io_lib:format("Category composition do not support: ~p", [H])) ).
 
 
 %%
@@ -183,4 +196,11 @@ c_arrow(_, H) ->
 join(Fun, [F, G | T]) ->
    join(Fun, [Fun(F, G)|T]);
 join(_, [Expr]) ->
+   Expr.
+
+%%
+%% join
+join(Mod, Fun, [F, G | T]) ->
+   join(Mod, Fun, [Fun(Mod, F, G)|T]);
+join(_, _, [Expr]) ->
    Expr.

@@ -11,7 +11,7 @@
 %%
 %% compose function(s) using AST notation
 %%
-%% case f(_) of {error, _} = Err -> Err ; {ok, X} -> g(X) end
+%% f(_) . g(_) -> case f(_) of {error, _} = Err -> Err ; {ok, X} -> g(X) end
 %%
 '.'({either, VarX, G}, {call, Ln, Ff0, Fa0}) ->
    {Fa1, VarN} = datum_cat:cc_derive(Fa0, []),

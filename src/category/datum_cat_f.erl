@@ -1,5 +1,5 @@
 %% @doc
-%%   category pattern: function category
+%%   category pattern: the category of ordinal functions
 -module(datum_cat_f).
 
 %% (.) operation

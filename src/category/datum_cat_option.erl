@@ -12,7 +12,7 @@
 %%
 %% compose function(s) using AST notation
 %%
-%% case f(_) of undefined -> undefined ; X -> g(X) end
+%% f(_) . g(_) -> case f(_) of undefined -> undefined ; X -> g(X) end
 %%
 '.'({option, VarX, G}, {call, Ln, Ff0, Fa0}) ->
    VarN = datum_cat:uuid(),
