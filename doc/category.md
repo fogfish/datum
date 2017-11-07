@@ -36,11 +36,15 @@ h(X) -> ('.'(fun f/1, fun g/1))(X).  %% g(f(X)).
 
 Erlang do not support infix notation. This notation improves readability of functional *composition* and allows to implement complex compositions. The chaining of ordinary functions do not allow us to make arbitrary program.  
 
-The `parse_transform` feature implements a syntax sugar for *composition*, which is compiled into valid Erlang code, using defined composition operator at compile-time.  
+The `parse_transform` feature implements a syntax sugar for *composition*, which is compiled into valid Erlang code using defined composition operator at compile-time.
+
+```erlang
+-compile({parse_transform, category}).
+```
 
 The *function composition* within the category are written with the following syntax
 
-```
+```erlang
 [Category || Arrow1, ..., ArrowN]
 ```
 Here, `Category` is an identity of category and each `Arrow` is a morphism applied to objects. 
@@ -81,7 +85,7 @@ f(X, Y, R) ->
    
 We define a syntactic extension to *composition* operator that **yields the state** into variable. It is written with the following syntax
 
-```
+```erlang
 [Category || Var1 <- Arrow1, ..., VarN <- ArrowN]
 ```
 
@@ -107,11 +111,11 @@ The usage of intermediate state do not benefit for chains of ordinary functions.
 
 ### Composition with transformers
 
-Category pattern provides a powerful abstraction to build computations. Each category is specialises to compose one type of *objects*. In reality, we need to use several categories at once. The composition requires a transformations such as category to category or object within category, as an example a lifting of the object into category.
+Category pattern provides a powerful abstraction to build computations. Each category is specialises to compose one type of *objects*. In reality, we need to use several categories at once. The composition requires a transformation: category to category, types within category. As an example, a lifting of the object into category.
 
 Transformers are written using following syntax
 
-```
+```erlang
 [Category || cats:transform(...), ..., VarN /= transform(...) ]
 ```
 
@@ -120,53 +124,164 @@ Here, `Category` is an identity of category, `cats:` is reserved prefix that exe
 
 ## Categories
 
+The library defines a category pattern and implements few categories. It also provides an interface for developers to implement own categories.
+
+
 ### Identity
+
+The identity category chains ordinary functions.
+
+```erlang
+-type category() :: $. | identity.
+-type object ()  :: _.
+-type arrows()   :: fun((_) -> object()).
+
+[identity || f(), g(_)].
+
+%% it is transformed into
+g(f()).
+```
 
 ### Option
 
+The category operates with objects of polymorphic type that represents encapsulation of an optional value. Its arrows are functions that may or may not returns meaningful value. In Erlang, we are using `undefined` atom as empty constructor. The composition implements earlier exit, we stop chain execution, not continue in some undefined state.
+
+```erlang
+-type category() :: $? | option.
+-type object()   :: option(_).
+-type option(T)  :: undefined | T.
+-type arrows()   :: fun((_) -> option(_)).
+
+[option || f(), g(_)].
+
+%% it is transformed into
+case f() of
+   undefined -> 
+      undefined;
+   X ->
+      g(X)
+ends
+```
+
+The category implements transformers
+
+```erlang
+%% Transforms `either` category into `option`, 
+%% it maps right branch into meaningful value,
+%% left branch to `undefined`
+-spec eitherT(either(_, _)) -> option(_).
+
+%% Transforms sequence of options into optional sequence. 
+%% The sequence is not undefined if input has any undefined value.
+-spec sequence([option()]) -> option([_]).
+```
+
 ### Either
+
+The category operates with objects of polymorphic type that represents a value of two possible types either an instance of left or right. A typical usage is a representation of either correct -- right value or an error -- left value. The category requires that arrows returns a tagged tuple to represent left/right branches. The category uses `{ok, _}` as right and `{error, _}` as left notations for tuples. The composition implements earlier exit, we stop chain execution, not continue in some broken state.
+
+```erlang
+-type category() :: $^ | either.
+-type object()   :: either(_, _).
+-type either(L,R):: {ok, R} | {error, L}.
+-type arrows()   :: fun((_) -> either(_, _)).
+
+[either || f(), g(_)].
+
+%% it is transformed into
+case f() of
+   {error, _} = Error -> 
+      Error;
+   {ok, X} ->
+      g(X)
+ends
+```
+
+The category implements transformers
+
+```erlang
+%%  Lifts value into right branch of either type
+-spec unit(_) -> either(_, _). 
+
+%% Transforms `option` category into `either`, 
+%% it maps meaningful value into right branch,
+%% `undefined` value into left.
+-spec optionT(_, option(_)) -> either(_, _).
+
+%% Transforms sequence of either values into either sequence.
+-spec sequence([either()]) -> either(_, [_]).
+```
 
 ### Reader
 
+Often computations require access to shared environment. These computations read values from environment, apply morphism and execute sub-computation but they do not require to understand the type of environment, write anything back, etc. 
+
+Consider the problem of instantiating templates, you need to substitute variables with they values. We can represent a shared environment of all know variables through reader category. When a variable substitution is encountered, we can ask reader to lookup the value of the variable from environment. 
+
+The reader category defines an abstraction of readonly environments and lenses to focus inside it. In other words, the category represents the environment as an "invisible" side-effect of the composition. 
+
+This implementation of Reader category pattern is similar to Either category. It abstracts the environment as a function from the environment to a value of computation, transformers have access to the shared environment.  
+
+```erlang
+-type category() :: reader.
+-type object()   :: either(_, _).
+-type either(L,R):: {ok, R} | {error, L}.
+-type arrows()   :: fun((_) -> either(_, _)).
+
+[reader || f(), _ /= g(_)].
+
+%% it is transformed into
+fun(Env) ->
+   case f() of
+      {error, _} = Error -> 
+         Error;
+      {ok, X} ->
+         g(X, Env)
+   end.
+```
+
+The category implements transformers
+
+```erlang
+%%  Lifts value into right branch of either type
+-spec unit(_) -> either(_, _). 
+
+%% Transforms `option` category into `either`, 
+%% it maps meaningful value into right branch,
+%% `undefined` value into left.
+-spec optionT(_, option(_)) -> either(_, _).
+
+%% Transforms sequence of either values into either sequence.
+-spec sequence([either()]) -> either(_, [_]).
+```
+
+
 ### Kleisli (Monads)
 
+> A monad is just a monoid in the category of endofunctors... 
 
+We are using a category pattern to implement the category of monadic functions, which generalises ordinary functions. 
 
-
-# `$^` either
 
 ```erlang
-[$^|| a(), b(_)].
+-type category() :: atom().
+-type object()   :: m(_).
+-type arrows()   :: fun((m(_)) -> m(_)).
 
-case a() of
-   {ok, X} -> 
-      b(X);
-   {error, _} = Error ->
-      Error
-end.
+[m_state || f(), g(_)].
+
+%% it is transformed into
+m_state:'>>='(f(),
+   fun(X) ->
+      m_state:'>>='(b(X),
+         fun(Y) ->
+            m_state:unit(Y)
+         end
+      )
+   end
+).
 ```
 
-```erlang
-[$^|| a(), b(_, _)].
-
-case a() of
-   {ok, X, Y} -> 
-      b(X, Y);
-   {error, _} = Error ->
-      Error
-end.
-```
-
-```erlang
-[$^|| a(), b()].
-
-case a() of
-   {error, _} = Error ->
-      Error
-   _ -> 
-      b();
-end.
-```
 
 ## References
 
