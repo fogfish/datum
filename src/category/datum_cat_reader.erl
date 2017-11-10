@@ -1,15 +1,15 @@
 %% @doc
 %%   category pattern: pattern match
--module(datum_cat_pattern).
+-module(datum_cat_reader).
 
 %% (/=)
 -export(['/='/1]).
 
 %% (.) operation
--export(['.'/2, chain/1, curry/1]).
+-export(['.'/3, chain/1, curry/1]).
 
 %% category utility
--export([fmap/1, fmap/2, fail/1, sequence/1, optionT/2, maybeT/2]).
+-export([unit/1, fail/1, sequence/2, optionT/3, flatten/2]).
 
 
 '/='({call, Ln, Ff0, Fa0}) ->
@@ -24,23 +24,23 @@
 %%
 %% case f(_) of {error, _} = Err -> Err ; {ok, X} -> g(X) end
 %%
-'.'({either, VarX, G}, {call, Ln, Ff0, Fa0}) ->
+'.'(_, {either, VarX, G}, {call, Ln, Ff0, Fa0}) ->
    {Fa1, VarN} = datum_cat:cc_derive(Fa0, []),
    Expr = dot_expr(Ln, VarX, {call, Ln, Ff0, Fa1}, G),
    {either, VarN, Expr};
 
-'.'({either, _VarX, G}, {generate, Ln, {var, _, VarN}, F}) ->
+'.'(_, {either, _VarX, G}, {generate, Ln, {var, _, VarN}, F}) ->
    {Fa1, VarZ} = datum_cat:cc_derive(F, []),
    Expr = dot_expr(Ln, [VarN], Fa1, G),
    {either, VarZ, Expr};
 
-'.'({call, Ln, Ff0, Fa0}, G) ->
+'.'(Cat, {call, Ln, Ff0, Fa0}, G) ->
    {Fa1, VarN} = datum_cat:cc_derive(Fa0, []),
-   '.'({either, VarN, {call, Ln, Ff0, Fa1}}, G);
+   '.'(Cat, {either, VarN, {call, Ln, Ff0, Fa1}}, G);
 
-'.'({generate, _Ln, _Var, F}, G) ->
+'.'(Cat, {generate, _Ln, _Var, F}, G) ->
    %% ignore tail arrow
-   '.'(F, G).
+   '.'(Cat, F, G).
 
 %%
 %%
@@ -104,25 +104,9 @@ curry({either, VarX, {'case', Ln, _, _}} = Either) ->
 
 %%
 %%
-fmap(X) 
- when is_tuple(X) ->
-   case element(1, X) of
-      ok    -> X;
-      error -> X;
-      _     -> {ok, X}
-   end;
-fmap(X) ->
+unit(X) ->
    {ok, X}.
 
-fmap(A, X)
- when is_tuple(X) ->
-   case element(1, X) of
-      ok    -> X;
-      error -> X;
-      _     -> {ok, A, X}
-   end;
-fmap(A, X) ->
-   {ok, A, X}.
 
 %%
 %%
@@ -131,34 +115,49 @@ fail(X) ->
 
 %%
 %% 
--spec sequence( [datum:either(_)] ) -> datum:either([_]).
+-spec sequence( [datum:either(_)], _ ) -> datum:either([_]).
 
-sequence([{ok, Head} | Seq]) ->
-   case sequence(Seq) of
+sequence([{ok, Head} | Seq], Env) ->
+   case sequence(Seq, Env) of
       {ok, Tail} ->
          {ok, [Head|Tail]};
       {error, _} = Error ->
          Error
    end;
 
-sequence([{error, _} = Error | _]) ->
+sequence([{error, _} = Error | _], _Env) ->
    Error;
 
-sequence([]) ->
+sequence([], _Env) ->
    {ok, []}.
 
 
 
 %%
 %%
--spec optionT(_, datum:option(_) ) -> datum:either(_). 
+-spec optionT(_, datum:option(_), _) -> datum:either(_). 
 
-optionT(Reason, undefined) ->
+optionT(Reason, undefined, _Env) ->
    {error, Reason};
-optionT(_, X) ->
+optionT(_, X, _Env) ->
    {ok, X}.
 
-%% deprecated
-maybeT(Reason, X) ->
-   optionT(Reason, X).
+
+%%
+%%
+-spec flatten(_, _) ->  datum:either(_).
+
+flatten({ok, {ok, _} = X}, Env) ->
+   flatten(X, Env);
+flatten({ok, {error, _} = X}, Env) ->
+   flatten(X, Env);
+flatten({error, {ok, _} = X}, Env) ->
+   flatten(X, Env);
+flatten({error, {error, _} = X}, Env) ->
+   flatten(X, Env);
+flatten({ok, _} = X, _Env) ->
+   X;
+flatten({error, _} = X, _Env) ->
+   X.
+
 

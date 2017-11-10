@@ -17,7 +17,7 @@
 %%   state monad 
 -module(m_state).
 
--export([return/1, yield/1, fail/1, '>>='/2]).
+-export([unit/1, fail/1, '>>='/2]).
 -export([put/2, get/1]).
 
 -type m(A)    :: fun((_) -> [A|_]).
@@ -25,18 +25,9 @@
 
 %%
 %%
--spec return(A) -> m(A).
+-spec unit(A) -> m(A).
 
-return(X) ->
-   fun(State) -> [X|State] end.
-
-%%
-%%
--spec yield(A) -> m(A).
-
-yield([_|_]=X) ->
-   fun(State) -> [erlang:list_to_tuple(X)|State] end;
-yield(X) ->
+unit(X) ->
    fun(State) -> [X|State] end.
 
 
@@ -45,7 +36,7 @@ yield(X) ->
 -spec fail(_) -> _.
 
 fail(X) ->
-   exit(X).
+   throw(X).
 
 
 %%

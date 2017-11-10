@@ -18,7 +18,7 @@
 %%
 -module(m_SUITE).
 -include_lib("common_test/include/ct.hrl").
--compile({parse_transform, monad}).
+-compile({parse_transform, category}).
 
 %%
 %% common test
@@ -31,11 +31,30 @@
   ,end_per_group/2
 ]).
 
--export([id_do/1]).
--export([maybe_do/1, maybe_none/1]).
--export([xor_do/1, xor_fail/1]).
--export([io_do/1]).
--export([state_do/1, state_get/1, state_put/1]).
+-export([
+   syntax_identity_expr/1,
+   syntax_identity_unit/1,
+   syntax_identity_fail/1,
+   syntax_identity_state/1,
+   syntax_identity_transformer/1,
+   syntax_identity_partial/1,
+
+   syntax_io_expr/1,
+   syntax_io_unit/1,
+   syntax_io_fail/1,
+   syntax_io_state/1,
+   syntax_io_transformer/1,
+   syntax_io_partial/1,
+
+   syntax_state_expr/1,
+   syntax_state_unit/1,
+   syntax_state_fail/1,
+   syntax_state_state/1,
+   syntax_state_transformer/1,
+   syntax_state_partial/1,
+   syntax_state_lenses/1
+]).
+
 
 
 %%%----------------------------------------------------------------------------   
@@ -45,30 +64,34 @@
 %%%----------------------------------------------------------------------------   
 all() ->
    [
-      {group, id}
-     ,{group, maybe}
-     ,{group, 'xor'}
-     ,{group, io}
-     ,{group, state}
+      {group, syntax}
    ].
 
 groups() ->
    [
-      {id, [parallel], 
-         [id_do]}
+      {syntax, [parallel], [
+         syntax_identity_expr,
+         syntax_identity_unit,
+         syntax_identity_fail,
+         syntax_identity_state,
+         syntax_identity_transformer,
+         syntax_identity_partial,
 
-     ,{maybe,  [parallel], 
-         [maybe_do, maybe_none]}
+         syntax_io_expr,
+         syntax_io_unit,
+         syntax_io_fail,
+         syntax_io_state,
+         syntax_io_transformer,
+         syntax_io_partial,
 
-     ,{'xor',  [parallel], 
-         [xor_do, xor_fail]}
-
-     ,{io, [parallel], 
-         [io_do]}
-
-     ,{state, [parallel], 
-         [state_do, state_put, state_get]}
-
+         syntax_state_expr,
+         syntax_state_unit,
+         syntax_state_fail,
+         syntax_state_state,
+         syntax_state_transformer,
+         syntax_state_partial,
+         syntax_state_lenses
+      ]}
    ].
 
 %%%----------------------------------------------------------------------------   
@@ -93,126 +116,161 @@ end_per_group(_, _Config) ->
 
 %%%----------------------------------------------------------------------------   
 %%%
-%%% unit(s) 
+%%% unit(s) : syntax  
 %%%
 %%%----------------------------------------------------------------------------   
 
-%%
-%%
-id_do(_Config) ->
-   111 = do_M(m_id).
+x(X) -> X.
 
-%%
-%%
-maybe_do(_Config) ->
-   111 = do_M(m_maybe).
+a(m_identity,   X) -> X;
+a(m_io,         X) -> fun( ) -> X end;
+a(m_state,      X) -> fun(S) -> [X|S] end.
 
-%%
-%%
-maybe_none(_Config) ->
-   undefined = do_M_fail(m_maybe).
+b(m_identity,   X) -> X + 2;
+b(m_io,         X) -> fun( ) -> X + 2 end;
+b(m_state,      X) -> fun(S) -> [X + 2|S] end.
 
+c(m_identity,   X) -> X + 3;
+c(m_io,         X) -> fun( ) -> X + 3 end;
+c(m_state,      X) -> fun(S) -> [X + 3|S] end.
 
-%%
-%%
-xor_do(_Config) ->
-   {ok, 111} = do_M(m_either).
+d(m_identity,   X, Y, Z) -> X * Y * Z;
+d(m_io,         X, Y, Z) -> fun( ) -> X * Y * Z end;
+d(m_state,      X, Y, Z) -> fun(S) -> [X * Y * Z|S] end.
 
-%%
-%%
-xor_fail(_Config) ->
-   {error, 1} = do_M_fail(m_either).
+t(m_identity,   X) -> X + 2;
+t(m_io,         X) -> fun( ) -> X + 2 end;
+t(m_state,      X) -> fun(S) -> [X + 2|S] end.
 
 
+%% eq 6.
+-define(cat_compose_expr(Type),
+   [Type ||
+      a(Type, 1),  %% 1
+      b(Type, _),  %% 3
+      c(Type, _)   %% 6
+   ]
+).
 
-%%
-%%
-io_do(_Config) ->
-   "a:b:c:d" = ( io_do_m() )().
-   
-io_do_m() ->
-   do([m_io ||
-      A =< "a",
-      B <- io_req(A, "b"),
-      C <- io_req(B, "c"),
-      D <- io_req(C, "d"),
-      return(D)
-   ]).
+%% eq 6.
+-define(cat_compose_unit(Type),
+   [Type ||
+      A =< x(1),
+      unit(A + 0), %% 1
+      unit(_ + 2), %% 3
+      unit(_ + 3)  %% 6  
+   ]
+).
 
-io_req(State, X) ->
-   do([m_id ||
-      A <- io_struct(X),
-      io_action(State, A)
-   ]).
+%% eq error
+-define(cat_compose_fail(Type),
+   [Type ||
+      a(Type, 1),
+      fail(_ + 2),
+      c(Type, _)
+   ]
+).
 
-io_struct(X) ->
-   X.
+%% eq 12.
+-define(cat_compose_state(Type),
+   [Type ||
+      A <- a(Type, 1),      %% 1
+           b(Type, A),      
+      B <- c(Type, _),      %% 6
+      C <- a(Type, 2),      %% 2
+           d(Type, A, B, C) %% 12
+   ]
+).
 
-io_action(State, X) ->
-   fun() ->
-      State ++ ":" ++ X
-   end. 
+%% eq 24.
+-define(cat_compose_transformer(Type),
+   [Type ||
+      A <- a(Type, 1),      %% 1
+           b(Type, A),
+      B <- c(Type, _),      %% 6
+           a(Type, 2),      %% 2
+           cats:unit(_),    
+      C /= t(Type, _),      %% 4
+           d(Type, A, B, C) %% 24   
+   ]
+).
 
-%%
-%%
-state_do(_Config) ->
-   [111|{0}] = ( do_M(m_state) )({0}).
-
-%%
-%%
-state_put(_Config) ->
-   [3|{3}] = (state_put_m())({0}).
-
-
-state_put_m() ->
-   do([m_state || 
-      A =< 1,
-      B =< 2,
-      _ /= put(lens:t1(), A + B),
-      return(A + B)
-   ]).
-
-%%
-%%
-state_get(_Config) ->
-   [3|{2}] = (state_get_m())({2}).
-
-state_get_m() ->
-   do([m_state ||
-      A =< 1,
-      B /= get(lens:t1()),
-      return(A + B)
-   ]).
+-define(cat_compose_partial(Type),
+   [Type || 
+      a(Type, _),
+      b(Type, _),
+      c(Type, _)
+   ]
+).
 
 
-%%%----------------------------------------------------------------------------   
-%%%
-%%% private
-%%%
-%%%----------------------------------------------------------------------------   
 
 %%
-%% successful computation 
-do_M(Mtype) ->
-   do([Mtype ||
-      A <- value(Mtype),
-      B <- return(10),
-      C =< 1,
-      return(A + B + C)
-   ]).
+syntax_identity_expr(_) ->
+   6 = ?cat_compose_expr(m_identity).
 
-value(Mtype) -> 
-   Mtype:return(100).
+syntax_identity_unit(_) ->
+   6 = ?cat_compose_unit(m_identity).
+
+syntax_identity_fail(_) ->
+   3 = (catch ?cat_compose_fail(m_identity)).
+
+syntax_identity_state(_) ->
+   12 = ?cat_compose_state(m_identity).
+
+syntax_identity_transformer(_) ->
+   24 = ?cat_compose_transformer(m_identity).
+
+syntax_identity_partial(_) ->
+   6 = (?cat_compose_partial(m_identity))(1).
+
 
 %%
-%% failed computation
-do_M_fail(Mtype) ->
-   do([Mtype ||
-      A >= 1,
-      B =< 2,
-      return(A, B)
-   ]).
+syntax_io_expr(_) ->
+   6 = (?cat_compose_expr(m_io))().
+
+syntax_io_unit(_) ->
+   6 = (?cat_compose_unit(m_io))().
+
+syntax_io_fail(_) ->
+   3 = (catch (?cat_compose_fail(m_io))()).
+
+syntax_io_state(_) ->
+   12 = (?cat_compose_state(m_io))().
+
+syntax_io_transformer(_) ->
+   24 = (?cat_compose_transformer(m_io))().
+
+syntax_io_partial(_) ->
+   6 = ((?cat_compose_partial(m_io))(1))().
 
 
+%%
+syntax_state_expr(_) ->
+   [6|state] = (?cat_compose_expr(m_state))(state).
 
+syntax_state_unit(_) ->
+   [6|state] = (?cat_compose_unit(m_state))(state).
+
+syntax_state_fail(_) ->
+   3 = (catch (?cat_compose_fail(m_state))(state)).
+
+syntax_state_state(_) ->
+   [12|state] = (?cat_compose_state(m_state))(state).
+
+syntax_state_transformer(_) ->
+   [24|state] = (?cat_compose_transformer(m_state))(state).
+
+syntax_state_partial(_) ->
+   [6|state] = ((?cat_compose_partial(m_state))(1))(state).
+
+
+syntax_state_lenses(_) ->
+   Expr = [m_state ||
+      X /= cats:get(lens:at(a)),
+      unit(X + 10),
+      cats:put(lens:at(b), _)
+   ],
+
+   [11|#{a := 1, b := 11}] = Expr(#{a => 1, b => 0}).
 

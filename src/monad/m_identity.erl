@@ -14,47 +14,31 @@
 %%   limitations under the License.
 %%
 %% @doc
-%%   either monad
--module(m_either).
+%%   identity monad
+-module(m_identity).
 
--export([return/1, yield/1, fail/1, '>>='/2]).
+-export([unit/1, fail/1, '>>='/2]).
 
--type m(A)    :: {ok, A} | {error, _}.
+-type m(A)    :: A.
 -type f(A, B) :: fun((A) -> m(B)).
 
 %%
 %%
--spec return(A) -> m(A).
+-spec unit(A) -> m(A).
 
-return(ok) -> 
-   {ok, undefined};
-return(X)  -> 
-   {ok, X}.
-
-%%
-%%
--spec yield(A) -> m(A).
-
-yield([_|_] = X) ->
-   erlang:list_to_tuple([ok|X]);
-yield(X) ->
-   {ok, X}.
+unit(X) ->
+   X. 
 
 %%
 %%
 -spec fail(_) -> _.
 
 fail(X) ->
-   {error, X}.
+   throw(X).
 
 %%
 %%
 -spec '>>='(m(A), f(A, B)) -> m(B).
 
-
-'>>='({ok, X}, Fun) ->
-   Fun(X);
-'>>='(ok, Fun) ->
-   Fun(undefined);
-'>>='({error, _} = Error, _) ->
-   Error.
+'>>='(X, Fun) ->
+   Fun(X).

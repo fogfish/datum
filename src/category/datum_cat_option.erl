@@ -2,31 +2,42 @@
 %%   category pattern: option category
 -module(datum_cat_option).
 
+%% (/=)
+-export(['/='/1]).
+
 %% (.) operation
--export(['.'/2, chain/1, curry/1]).
+-export(['.'/3, chain/1, curry/1]).
 
-%% category utility
--export([fmap/1, fail/1, sequence/1, eitherT/1]).
+%% transformers
+-export([unit/1, fail/1, sequence/1, eitherT/1]).
 
+%%
+%%
+'/='(Arrow) ->
+   Arrow.
 
 %%
 %% compose function(s) using AST notation
 %%
 %% f(_) . g(_) -> case f(_) of undefined -> undefined ; X -> g(X) end
 %%
-'.'({option, VarX, G}, {call, Ln, Ff0, Fa0}) ->
+'.'(_, {option, VarX, G}, {call, Ln, Ff0, Fa0}) ->
    VarN = datum_cat:uuid(),
    Expr = dot_expr(Ln, VarX, {call, Ln, Ff0, datum_cat:cc_bind_var({var, Ln, VarN}, Fa0)}, G),
    {option, VarN, Expr};
 
-'.'({option, VarX, G}, {generate, Ln, {var, _, VarN}, F}) ->
+'.'(_, {option, VarX, G}, {generate, Ln, {var, _, VarN}, F}) ->
    Expr = dot_expr(Ln, VarN, datum_cat:cc_bind_var({var, Ln, VarX}, F), G),
    {option, VarX, Expr};
 
-'.'({call, Ln, Ff0, Fa0}, G) ->
+'.'(Cat, {call, Ln, Ff0, Fa0}, G) ->
    VarN = datum_cat:uuid(),
    Expr = {call, Ln, Ff0, datum_cat:cc_bind_var({var, Ln, VarN}, Fa0)},
-   '.'({option, VarN, Expr}, G).
+   '.'(Cat, {option, VarN, Expr}, G);
+
+'.'(Cat, {generate, _Ln, _Var, F}, G) ->
+   %% ignore tail arrow
+   '.'(Cat, F, G).
 
 %%
 %% 
@@ -65,7 +76,7 @@ curry({option, VarX, {'case', Ln, _, _} = Expr}) ->
 
 %%
 %%
-fmap(X) ->
+unit(X) ->
    X.   
 
 %%

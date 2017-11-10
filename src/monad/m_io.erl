@@ -17,33 +17,24 @@
 %%   IO monad
 -module(m_io).
 
--export([return/1, yield/1, fail/1, '>>='/2]).
+-export([unit/1, fail/1, '>>='/2]).
 
 -type m(A)    :: fun(( ) -> A).
 -type f(A, B) :: fun((A) -> m(B)).
 
 %%
 %%
--spec return(A) -> m(A).
+-spec unit(A) -> m(A).
 
-return(X) ->
+unit(X) ->
    fun() -> X end.
-
-%%
-%%
--spec yield(A) -> m(A).
-
-yield([_|_] = X) ->
-   fun() -> erlang:list_to_tuple(X) end;
-yield(X) ->
-   fun() -> X end.   
 
 %%
 %%
 -spec fail(_) -> _.
 
 fail(X) ->
-   exit(X).
+   throw(X).
 
 %%
 %%

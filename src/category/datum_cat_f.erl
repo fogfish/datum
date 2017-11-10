@@ -2,23 +2,31 @@
 %%   category pattern: the category of ordinal functions
 -module(datum_cat_f).
 
+%% (/=)
+-export(['/='/1]).
+
 %% (.) operation
--export(['.'/2, chain/1, curry/1]).
+-export(['.'/3, chain/1, curry/1]).
 
-%% category utility
--export([fmap/1, fail/1, sequence/1]).
+%% transformers
+-export([unit/1, fail/1, sequence/1]).
 
+%%
+%%
+'/='(Arrow) ->
+   Arrow.
 
 %%
 %% compose function(s) using AST notation
 %%
 %% f(_) . g(_) -> g(f(_))
 %%
-'.'(G, {call, _, _, _} = F) ->
+'.'(_, G, {call, _, _, _} = F) ->
    datum_cat:cc_bind_var(F, G);
 
-'.'(G, {generate, Ln, VarS, F}) ->
+'.'(_, G, {generate, Ln, VarS, F}) ->
    dot_arrow_state(Ln, VarS, F, G).
+
 
 %%
 %%
@@ -53,7 +61,7 @@ curry({_, Ln, _, _} = Expr) ->
 
 %%
 %%
-fmap(X) ->
+unit(X) ->
    X.
 
 %%

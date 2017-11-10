@@ -3,6 +3,7 @@
 The library facilitates a pure functional programming by providing a set of utility functions to work with monads. It also provides the definition of several common monads and defines extension interface using Erlang parse-transform so that users can define their own monads. 
 
 We will skip the monad definitions here. These documents provide excessive explanation of monads:
+
 * [Monads in functional programming](https://en.wikipedia.org/wiki/Monad_(functional_programming))
 * [A Fistful of Monads](http://learnyouahaskell.com/a-fistful-of-monads) 
 * [Monads for functional programming](http://homepages.inf.ed.ac.uk/wadler/papers/marktoberdorf/baastad.pdf)
@@ -13,38 +14,35 @@ We will skip the monad definitions here. These documents provide excessive expla
 The library implements rough Haskell's equivalent of "do"-notation, so called monadic binding form, using parse-transforms and special form of list comprehension. We used a techniques similar to [erlando](https://github.com/rabbitmq/erlando). This construction decorates computation pipeline(s) with additional rules implemented by monad, they defines programmable commas. 
 
 ```erlang
--compile({parse_transform, monad}).
+-compile({parse_transform, category}).
+
 f() ->
-   do([m_id ||
+   [m_identity ||
       X <- 10,
       Y <- 11,
-      return(X + Y)
-   ]).
+      unit(X + Y)
+   ].
 ```
 
 The used syntax expresses various programming concepts in terms of a monad structures: side-effects, variable assignment, error handling, parsing, concurrency, domain specific languages, etc. 
 
-The library transforms `do([ atom() || ... ])` syntax construction to monadic binding using `atom()` as identity of monad module. List comprehension generators `X <- ...` are transformed into symbol pattern matching rules. For example the following computation produces a list `[1, 2, 100, 101]`
+The library transforms `[ atom() || ... ]` syntax construction to monadic binding using `atom()` as identity of monad module if it starts with **`m_`** prefix (e.g. `m_identity`, `m_state`). List comprehension generators `X <- ...` are transformed into symbol pattern matching rules. For example the following computation produces a list `[1, 2, 100, 101]`
 
 ```erlang
 f() ->
-   do([m_id ||
-      [X, Y] <- [1, 2],
-      {A, B} <- {100, 101},
-      return([X, Y, A, B])
-   ]).
+   [m_identity ||
+      [X, Y] <- unit([1, 2]),
+      {A, B} <- unit({100, 101}),
+      unit([X, Y, A, B])
+   ].
 ```  
 
-Note the use of return as final "statement" of the do-notation is mandatory. It is appropriate `return` functions in the specified monad. It injects bounds value into the monadic value (container).
-
-The library implements only "do"-notation syntax sugar for Erlang. Your application benefits from the notation once it implements either own monad or utilize provided implementations.   
-
-Monads are defined in terms of `return`, `bind` and `fail` operations
+Monads are defined in terms of `unit`, `bind` and `fail` operations
 
 ```erlang
 %% 
 %% return :: a -> m a
--spec return(A) -> m(A).
+-spec unit(A) -> m(A).
 
 %%
 %% (>>=) :: m a -> (a -> m b) -> m b
@@ -60,108 +58,61 @@ Let's show these operation at "do"-notation
 ```erlang
 -compile({parse_transform, monad}).
 f() ->
-   do([m_id ||         %% (Monad m)
+   [m_identity ||      %% (Monad m)
       X <- one(),      %% (>>=) :: m a -> (a -> m b) -> m b
       Y <- two(),      %% (>>=) :: m a -> (a -> m b) -> m b
-      return(X + Y)    %% return :: (Monad m) => a -> m a
-   ]).
+      unit(X + Y)      %% return :: (Monad m) => a -> m a
+   ].
 ```
 
 
-### return
+### unit
 
-The operation takes non-monadic value or plain type expression and "lifts" it into container using monadic constructor. The library also implements an operand `=<` as syntax equivalence of `return` to lift expression into monad. For instance, next computation produces `{ok, 4}`. 
+The operation takes non-monadic value or plain type expression and "lifts" it into container using monadic constructor. The library also implements an operand `=<` as syntax equivalence of `unit` to lift expression into monad. For instance, next computation produces a function that returns `4`. 
 
 ```erlang
 f() ->
-   do([m_xor ||
-      X <- return(2),
+   [m_io ||
+      X <- unit(2),
       Y =< X * X,
-      return(Y)
-   ]).
+      unit(Y)
+   ].
 ```
 
 
 ### fail
 
-The operation enable failures in a special syntactic construct for monads. The operation is rarely used but allows to escalate failure within computation. The failure is either indicated using `fail` operation from specified monad or `>=` operand.
+The operation enable failures in a special syntactic construct for monads. The operation is rarely used but allows to escalate failure within computation. The failure is either indicated using `fail` operation from specified monad.
 
 
 ## anonymous variables
 
-The library defines a special syntax to chain computations and they result through do-notation without explicit definition of binding variables. An anonymous variable `_` hold the result of previous pattern match statement. For example, the computation holds the result `{ok, 10}` 
+The library defines a special syntax to chain computations and they result through do-notation without explicit definition of binding variables. An anonymous variable `_` hold the result of previous statement. For example, the computation holds the result `15` 
 
 ```erlang
 f() ->
-   do([m_error ||
-      _ <- return(2), %% _ <- 2 
-      _ =< _ * _,     %% _ <- 2 * 2 ( 4)
-      _ =< _ + 1,     %% _ <- 4 + 1 ( 5)
-      _ =< _ * 2,     %% _ <- 5 * 2 (10)
-      return(_)       %% 10
-   ]).
+   [m_identity ||
+      unit(2),         %% _ <- 2 
+      unit(_ * 2),     %% _ <- 2 * 2 ( 4)
+      unit(_ + 1),     %% _ <- 4 + 1 ( 5)
+      unit(_ * 3)      %% _ <- 5 * 3 (15)
+   ].
 ```
 
 
-## composition
+## transforms
 
-```erlang
-f(File) ->
-   do([m_xor ||
-      X <- file:open(File),
-      Y <- read(X),
-      _ <- file:close(X),
-      return(Y)
-   ]).
-
-read(FD) ->
-   do([m_xor ||
-      X <- file:read(FD, 4),
-      Y <- file:read(FD, 4),      
-      return(X + Y)
-   ]).
-```
-
-
-## utility operation
-
-Monads provides utility operation. These function are defined by the monad class and allows to transform monadic values, executed side effect, etc. The library defines operand `/=` to call utility operation from specified monad. For example, following computation holds result 3 and puts it to state. 
+Monads provides transforms. These function are defined by the monad class and allows to transform monadic values, executed side effect, etc. The library defines operand `/=` to call utility operation from specified monad. For example, following computation holds result 3 and puts it to state. 
 
 ```erlang
 f() ->
-   do([m_state || 
+   [m_state || 
       A =< 1,
       B =< 2,
       C =< A + B,
-      _ /= put(lens:t1(), C),
-      return(C)
-   ]).
+      cats:put(lens:t1(), C)
+   ].
 ```
-
-## bundled monads
-
-### identity (`m_id`)
-
-tbd
-
-### error (`m_xor`)
-
-tbd
-
-### io-monad (`m_io`)
-
-tbd
-
-### state (`m_state`)
-
-tbd
-
-
-
-## define new monad
-
-tbd
-
 
 ## References
 

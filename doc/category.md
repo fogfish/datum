@@ -293,3 +293,5 @@ The library implements rough Haskell's equivalent of **do-notation**, so called 
 
 1. [The category design pattern](http://www.haskellforall.com/2012/08/the-category-design-pattern.html)
 2. [Category Theory for Computing Science](http://www.math.mcgill.ca/triples/Barr-Wells-ctcs.pdf)
+3. [Category Theory for Programmers](https://github.com/hmemcpy/milewski-ctfp-pdf)
+

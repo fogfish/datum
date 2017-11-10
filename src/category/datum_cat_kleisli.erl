@@ -2,8 +2,17 @@
 %%   category pattern: the category of monadic functions
 -module(datum_cat_kleisli).
 
+%% (/=)
+-export(['/='/1]).
+
 %% (.) operation
 -export(['.'/3, chain/1, curry/1]).
+
+%%
+%%
+'/='(Arrow) ->
+   Arrow.
+
 
 %%
 %% compose function(s) using AST notation

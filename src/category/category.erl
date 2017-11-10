@@ -399,8 +399,8 @@ expr({lc,Line,E0,Qs0}) ->
    case datum_cat:is_category(E0) of
       false ->
          {lc,Line, expr(E0), lc_bc_quals(Qs0)};
-      Category ->
-         datum_cat:category(Category, lc_bc_quals(Qs0))
+      {Category, Instance} ->
+         datum_cat:category(Category, Instance, lc_bc_quals(Qs0))
    end;
 expr({bc,Line,E0,Qs0}) ->
     Qs1 = lc_bc_quals(Qs0),

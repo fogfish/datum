@@ -2,30 +2,44 @@
 %%   category pattern: either
 -module(datum_cat_either).
 
+%% (/=)
+-export(['/='/1]).
+
 %% (.) operation
--export(['.'/2, chain/1, curry/1]).
+-export(['.'/3, chain/1, curry/1]).
 
 %% category utility
--export([fmap/1, fmap/2, fail/1, sequence/1, optionT/2, maybeT/2]).
+-export([unit/1, unit/2, fail/1, sequence/1, optionT/2, flatten/1]).
+
+%%
+%%
+'/='(Arrow) ->
+   Arrow.
+
 
 %%
 %% compose function(s) using AST notation
 %%
 %% f(_) . g(_) -> case f(_) of {error, _} = Err -> Err ; {ok, X} -> g(X) end
 %%
-'.'({either, VarX, G}, {call, Ln, Ff0, Fa0}) ->
+'.'(_, {either, VarX, G}, {call, Ln, Ff0, Fa0}) ->
    {Fa1, VarN} = datum_cat:cc_derive(Fa0, []),
    Expr = dot_expr(Ln, VarX, {call, Ln, Ff0, Fa1}, G),
    {either, VarN, Expr};
 
-'.'({either, _VarX, G}, {generate, Ln, {var, _, VarN}, F}) ->
+'.'(_, {either, _VarX, G}, {generate, Ln, {var, _, VarN}, F}) ->
    {Fa1, VarZ} = datum_cat:cc_derive(F, []),
    Expr = dot_expr(Ln, [VarN], Fa1, G),
    {either, VarZ, Expr};
 
-'.'({call, Ln, Ff0, Fa0}, G) ->
+'.'(Cat, {call, Ln, Ff0, Fa0}, G) ->
    {Fa1, VarN} = datum_cat:cc_derive(Fa0, []),
-   '.'({either, VarN, {call, Ln, Ff0, Fa1}}, G).
+   '.'(Cat, {either, VarN, {call, Ln, Ff0, Fa1}}, G);
+
+'.'(Cat, {generate, _Ln, _Var, F}, G) ->
+   %% ignore tail arrow
+   '.'(Cat, F, G).
+
 
 %%
 %%
@@ -79,27 +93,15 @@ curry({either, VarX, {'case', Ln, _, _} = Expr}) ->
       ]}
    }.
 
+
 %%
 %%
-fmap(X) 
- when is_tuple(X) ->
-   case element(1, X) of
-      ok    -> X;
-      error -> X;
-      _     -> {ok, X}
-   end;
-fmap(X) ->
+unit(X) ->
    {ok, X}.
 
-fmap(A, X)
- when is_tuple(X) ->
-   case element(1, X) of
-      ok    -> X;
-      error -> X;
-      _     -> {ok, A, X}
-   end;
-fmap(A, X) ->
+unit(A, X) ->
    {ok, A, X}.
+
 
 %%
 %%
@@ -135,7 +137,23 @@ optionT(Reason, undefined) ->
 optionT(_, X) ->
    {ok, X}.
 
-%% deprecated
-maybeT(Reason, X) ->
-   optionT(Reason, X).
+
+%%
+%%
+-spec flatten(_) ->  datum:either(_).
+
+flatten({ok, {ok, _} = X}) ->
+   flatten(X);
+flatten({ok, {error, _} = X}) ->
+   flatten(X);
+flatten({error, {ok, _} = X}) ->
+   flatten(X);
+flatten({error, {error, _} = X}) ->
+   flatten(X);
+flatten({ok, _} = X) ->
+   X;
+flatten({error, _} = X) ->
+   X.
+
+
 

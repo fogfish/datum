@@ -3,27 +3,26 @@
 %%   [<compose operator> || <function 0> ... <function n>]
 -module(datum_cat).
 
--export([is_category/1, category/2, cc_bind_var/2, cc_derive/2, uuid/0]).
+-export([is_category/1, category/3, cc_bind_var/2, cc_derive/2, uuid/0]).
 
 %%
 %%
 -spec is_category({char, _, _} | _) -> atom() | false.
 
 is_category({char, _, $.}) ->
-   datum_cat_f;
+   {datum_cat_f, datum_cat_f};
 is_category({atom, _, identity}) ->
-   datum_cat_f;
+   {datum_cat_f, datum_cat_f};
 is_category({char, _, $?}) ->
-   datum_cat_option;
+   {datum_cat_option, datum_cat_option};
 is_category({atom, _, option}) ->
-   datum_cat_option;
+   {datum_cat_option, datum_cat_option};
 is_category({char, _, $^}) ->
-   datum_cat_either;
+   {datum_cat_either, datum_cat_either};
 is_category({atom, _, either}) ->
-   datum_cat_either;
-is_category({atom, _, pattern}) ->
-   %% todo: reader
-   datum_cat_pattern;
+   {datum_cat_either, datum_cat_either};
+is_category({atom, _, reader}) ->
+   {datum_cat_reader, datum_cat_reader};
 is_category({atom, _, Category}) ->
    case erlang:atom_to_list(Category) of
       "m_" ++ _ ->
@@ -31,8 +30,6 @@ is_category({atom, _, Category}) ->
       _ ->
          false
    end;
-is_category({tuple, _, [{atom, _, Category}]}) ->
-   Category;
 is_category(_) ->
    false.
 
@@ -59,22 +56,17 @@ is_partial({var, _, _}) ->
 
 %%
 %%
--spec category(atom(), erl_parse:abstract_expr()) -> erl_parse:abstract_expr().
+-spec category(atom(), atom(), erl_parse:abstract_expr()) -> erl_parse:abstract_expr().
 
-category({Cat, Mod}, Expr0) ->
-   Expr1 = compile(Cat, Expr0),
+category(Cat, Mod, Expr0) ->
+   Expr1 = compile(Cat, Mod, Expr0),
    Expr2 = join(Mod, fun Cat:'.'/3, Expr1),
-   category(is_partial(Expr0), Cat, Expr2);
+   cats(is_partial(Expr0), Cat, Expr2).
 
-category(Cat, Expr0) ->
-   Expr1 = compile(Cat, Expr0),
-   Expr2 = join(fun Cat:'.'/2, Expr1),
-   category(is_partial(Expr0), Cat, Expr2).
-
-category(false, Cat, Expr) ->
+cats(false, Cat, Expr) ->
    Cat:chain(Expr);
 
-category(true, Cat, Expr) ->
+cats(true, Cat, Expr) ->
    Cat:curry(Expr).
 
 
@@ -140,14 +132,14 @@ uuid() ->
 
 %%
 %% compile expression to functional composition (f . g . h ...)
-compile(Cat, List) ->
-   lists:reverse([c(Cat, X) || X <- List]).
+compile(Cat, Mod, List) ->
+   lists:reverse([c(Cat, Mod, X) || X <- List]).
 
-c(Cat, {generate, Line, VarS, Arrow}) ->
-   {generate, Line, VarS, c_arrow(Cat, Arrow)};
+c(Cat, Mod, {generate, Line, VarS, Arrow}) ->
+   {generate, Line, VarS, c_arrow(Cat, Mod, Arrow)};
 
-c(Cat, Arrow) ->
-   c_arrow(Cat, Arrow).
+c(Cat, Mod, Arrow) ->
+   c_arrow(Cat, Mod, Arrow).
 
 
 %%
@@ -155,48 +147,54 @@ c(Cat, Arrow) ->
 %% thing that behaves like a function. It represents [A] process that takes as 
 %% input something of type [B] and outputs something of type [C].
 %%
-c_arrow(Cat, {call, Ln, {atom, _, fmap} = Fn, Fa}) ->
-   {call, Ln, {remote, Ln, {atom, Ln, Cat}, Fn}, Fa};
+c_arrow(_Cat, Mod, {call, Ln, {atom, _, unit} = Fn, Fa}) ->
+   {call, Ln, {remote, Ln, {atom, Ln, Mod}, Fn}, Fa};
 
-c_arrow(Cat, {call, Ln, {atom, _, fail} = Fn, Fa}) ->
-   {call, Ln, {remote, Ln, {atom, Ln, Cat}, Fn}, Fa};
+c_arrow(_Cat, Mod, {call, Ln, {atom, _, fail} = Fn, Fa}) ->
+   {call, Ln, {remote, Ln, {atom, Ln, Mod}, Fn}, Fa};
 
-c_arrow(Cat, {call, Ln, {remote, Ln, {atom, _, category}, {atom, _, _} = Fn}, Fa}) ->
-   {call, Ln, {remote, Ln, {atom, Ln, Cat}, Fn}, Fa};
+c_arrow(_Cat, Mod, {call, Ln, {remote, Ln, {atom, _, cats}, {atom, _, unit} = Fn}, Fa}) ->
+   {call, Ln, {remote, Ln, {atom, Ln, Mod}, Fn}, Fa};
 
-c_arrow(_, {call, _, _, _} = H) ->
+c_arrow(_Cat, Mod, {call, Ln, {remote, Ln, {atom, _, cats}, {atom, _, fail} = Fn}, Fa}) ->
+   {call, Ln, {remote, Ln, {atom, Ln, Mod}, Fn}, Fa};
+
+c_arrow(Cat, Mod, {call, Ln, {remote, Ln, {atom, _, cats}, {atom, _, _} = Fn}, Fa}) ->
+   Cat:'/='({call, Ln, {remote, Ln, {atom, Ln, Mod}, Fn}, Fa});
+
+c_arrow(_Cat, _Mod, {call, _, _, _} = H) ->
    % explicit call: f(...)
    H;
 
-c_arrow(_, {'fun', Line, {function, Id, _}}) ->
+c_arrow(_Cat, _Mod, {'fun', Line, {function, Id, _}}) ->
    % reference to function: fun f/n 
    {call, Line, {atom, Line, Id}, [{var, Line, '_'}]};
 
-c_arrow(_, {'fun', Line, {function, Mod, Fun, _}}) ->
+c_arrow(_Cat, _Mod, {'fun', Line, {function, Mod, Fun, _}}) ->
    % reference to function: fun mod:f/n
    {call, Line, {remote, Line, Mod, Fun}, [{var, Line, '_'}]};
 
-c_arrow(_, {'fun', Line, {clauses, _}} = H) ->
+c_arrow(_Cat, _Mod, {'fun', Line, {clauses, _}} = H) ->
    % inline function: fun(_) -> ... end
    {call, Line, H, [{var, Line, '_'}]};
 
-c_arrow(_, {var, Line, _} = H) ->
+c_arrow(_Cat, _Mod, {var, Line, _} = H) ->
    % function reference within variable: X = ... 
    {call, Line, H, [{var, Line, '_'}]};
 
-c_arrow(Cat, {op, Ln, '/=', VarS, Arrow}) ->
+c_arrow(_Cat, Mod, {op, Ln, '=<', VarS, Arrow}) ->
+   {generate, Ln, VarS, 
+      {call, Ln, {remote, Ln, {atom, Ln, Mod}, {atom, Ln, unit}}, [Arrow]}};
+
+c_arrow(Cat, Mod, {op, Ln, '/=', VarS, {call, Ln, {remote, Ln, {atom, _, cats}, {atom, _, _} = Fn}, Fa}}) ->
+   {generate, Ln, VarS, Cat:'/='({call, Ln, {remote, Ln, {atom, Ln, Mod}, Fn}, Fa})};
+
+c_arrow(Cat, _Mod, {op, Ln, '/=', VarS, Arrow}) ->
    {generate, Ln, VarS, Cat:'/='(Arrow)};
 
-c_arrow(_, H) ->
+c_arrow(_, _, H) ->
    exit( lists:flatten(io_lib:format("Category composition do not support: ~p", [H])) ).
 
-
-%%
-%% join
-join(Fun, [F, G | T]) ->
-   join(Fun, [Fun(F, G)|T]);
-join(_, [Expr]) ->
-   Expr.
 
 %%
 %% join
