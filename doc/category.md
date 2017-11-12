@@ -142,6 +142,16 @@ The identity category chains ordinary functions.
 g(f()).
 ```
 
+The category implements transformers
+
+```erlang
+%% Transforms `either` category into `identity`, 
+%% it maps right branch into meaningful value,
+%% left branch to `undefined`
+-spec eitherT(either(_, _)) -> undefined | _.
+```
+
+
 ### Option
 
 The category operates with objects of polymorphic type that represents encapsulation of an optional value. Its arrows are functions that may or may not returns meaningful value. In Erlang, we are using `undefined` atom as empty constructor. The composition implements earlier exit, we stop chain execution, not continue in some undefined state.

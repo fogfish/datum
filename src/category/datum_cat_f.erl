@@ -9,7 +9,7 @@
 -export(['.'/3, chain/1, curry/1]).
 
 %% transformers
--export([unit/1, fail/1, sequence/1]).
+-export([unit/1, fail/1, sequence/1, eitherT/1]).
 
 %%
 %%
@@ -73,3 +73,12 @@ fail(X) ->
 %%
 sequence(Seq) ->
    Seq.
+
+%%
+%%
+-spec eitherT( datum:either(_) ) -> datum:option(_).
+
+eitherT({ok, X}) ->
+   X;
+eitherT({error, _}) ->
+   undefined.
