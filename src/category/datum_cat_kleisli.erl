@@ -30,8 +30,11 @@
 '.'(Monad, {call, Ln, _, _} = F, G) ->
    VarN = datum_cat:uuid(),
    Expr = {call, Ln, {remote, Ln, {atom, Ln, Monad}, {atom, Ln, unit}}, [{var, Ln, VarN}]},
-   '.'(Monad, '.'(Monad, {monad, VarN, Expr}, F), G).
+   '.'(Monad, '.'(Monad, {monad, VarN, Expr}, F), G);
 
+'.'(Cat, {generate, _Ln, _Var, F}, G) ->
+   %% ignore tail arrow
+   '.'(Cat, F, G).
 
 %%
 %% 
