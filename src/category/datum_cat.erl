@@ -190,7 +190,7 @@ c_arrow(Cat, Mod, {op, Ln, '/=', VarS, {call, Ln, {remote, Ln, {atom, _, cats}, 
    {generate, Ln, VarS, Cat:'/='({call, Ln, {remote, Ln, {atom, Ln, Mod}, Fn}, Fa})};
 
 %
-% it would be nice to have a short syntax for trannsformer
+% it would be nice to have a short syntax for transformer
 %   _ /= x() 
 % 
 % but it limits ability for local transformer definition which is essential feature
