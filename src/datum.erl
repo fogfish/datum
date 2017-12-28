@@ -24,10 +24,15 @@
 
 %%
 %% types
--type option(X) :: undefined | X.
--type either()  :: ok | {error, _}.
--type either(X) :: {ok, X} | {error, _}.
--type either(X, Y) :: {ok, X, Y} | {error, _}.
+-type option(X)    :: undefined | X.
+
+-type either(L, R) :: {error, L} | {ok, R}.
+-type either()     :: {error, _} | ok.
+-type either(R)    :: {error, _} | {ok, R}.
+-type either(L, R1, R2) :: {error, L} | {ok, R1, R2}.
+
+-type foldable(T)    :: T.
+-type traversable(T) :: T.
 
 -type q()       :: {q, integer(), list(), list()}.
 -type stream()  :: {s, _, function()}.
@@ -35,11 +40,18 @@
 -type heap()    :: {h, integer(), _}.
 -type ring()    :: tuple().
 
+-type monoid(T)    :: fun((T, T) -> T).
+-type predicate(T) :: fun((T) -> true | false).
+-type effect(T)    :: fun((T) -> ok).  
+
 -export_type([
    option/1
-  ,either/0   
+  ,either/0
   ,either/1
   ,either/2
+  ,either/3
+  ,foldable/1
+  ,monoid/1
   ,q/0
   ,stream/0
   ,tree/0
