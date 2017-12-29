@@ -18,6 +18,9 @@
 %%   on demand computed elements. Erlang implementation derived from
 %%   scheme stream interface @see http://srfi.schemers.org/srfi-41/srfi-41.html
 -module(stream).
+-behaviour(traversable).
+-behaviour(foldable).
+
 -include("datum.hrl").
 
 %%

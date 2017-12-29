@@ -33,6 +33,7 @@
 
 -type foldable(T)    :: T.
 -type traversable(T) :: T.
+-type maplike()      :: _.
 
 -type q()       :: {q, integer(), list(), list()}.
 -type stream()  :: {s, _, function()}.
@@ -53,6 +54,7 @@
 
   ,foldable/1
   ,traversable/1
+  ,maplike/0
 
   ,q/0
   ,stream/0

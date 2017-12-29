@@ -4,7 +4,8 @@
 * [Either type](#either-type)
 <!-- * [Type safe cast](#type-safe-cast) -->
 * [Foldable](#foldable)
-* [Collections](#collections)
+* [Traversable](#traversable)
+* [Map-like](#map-like)
 * [Trees](#trees)
 * [Queues](#queues)
 * [Streams](#stream)
@@ -82,10 +83,10 @@ q:fold(fun add/1, ...).
 
 ## Traversable
 
-Traversable is a common behaviour for all kinds of Erlang collections. It defines the [`traversable`](src/traversable.erl) interface common to all collections. As an example, it define a `foreach` method with similar signature to apply a side-effect to each element of collection:
+Traversable is a common behaviour for all kinds of collections. It defines the [`traversable`](src/traversable.erl) interface common to all collections. As an example, it define a `foreach` method with similar signature to apply a side-effect to each element of collection:
 
 ```erlang
--spec foreach(_) -> ok.
+-spec foreach(datum:effect(_), datum:traversable(_)) -> ok.
 ``` 
 Collection types provide a concrete `foreach` implementation which traverses all the elements contained in the collection.    
 
@@ -103,6 +104,11 @@ rbtree:map(fun inc/1, ...).
 stream:map(fun inc/1, ...).
 q:map(fun inc/1, ...).
 ```
+
+## Map-like
+
+Map-like is a common behaviour for all kind of collection that associates keys of type `K` to values of type `V`. 
+
 
 ## Trees
 

@@ -10,7 +10,9 @@
 
 ## Key features
 
-The [feature overview](doc/features.md) provides an introduction to datum features, use-cases and reasoning of they existence.   
+The [feature overview](doc/features.md) provides an introduction to datum features, use-cases and reasoning of they existence:
+
+* data structures with common behavior: **foldable**, **traversable** and **map-like**
 
 
 ## Getting started
