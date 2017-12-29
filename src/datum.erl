@@ -50,13 +50,19 @@
   ,either/1
   ,either/2
   ,either/3
+
   ,foldable/1
-  ,monoid/1
+  ,traversable/1
+
   ,q/0
   ,stream/0
   ,tree/0
   ,heap/0
   ,ring/0
+
+  ,monoid/1
+  ,predicate/1
+  ,effect/1
 ]).
 
 %%

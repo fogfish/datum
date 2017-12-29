@@ -22,7 +22,7 @@ behaviour_info(callbacks) ->
       %% length of the collection
       %%
       %% -spec length(datum:traversable(_)) -> integer().
-      {length, 1},
+      % {length, 1},
 
       %%
       %% return the suffix of collection that starts at the next element after nth.
