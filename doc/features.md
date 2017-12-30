@@ -6,6 +6,7 @@
 * [Foldable](#foldable)
 * [Traversable](#traversable)
 * [Map-like](#map-like)
+* [Topological](#topological)
 * [Trees](#trees)
 * [Queues](#queues)
 * [Streams](#stream)
@@ -109,6 +110,15 @@ q:map(fun inc/1, ...).
 
 Map-like is a common behaviour for all kind of collection that associates keys of type `K` to values of type `V`. 
 
+Monoid to fold lists into collection
+
+```erlang
+lists:foldl(fun rbtree:append/2, rbtree:new(), ...).
+```
+
+## Topological
+
+xxx
 
 ## Trees
 

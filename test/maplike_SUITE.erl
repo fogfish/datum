@@ -99,8 +99,8 @@ has(Config) ->
 keys(Config) ->
    Type = ?config(type, Config),
    List = shuffle(?LENGTH),
-   Keys = [Key || {Key, _} <- List],
-   Keys = Type:keys(Type:build(List)).
+   Keys = lists:sort([Key || {Key, _} <- List]),
+   Keys = lists:sort(Type:keys(Type:build(List))).
 
 
 %%

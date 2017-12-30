@@ -7,6 +7,12 @@
 behaviour_info(callbacks) ->
    [
       %%
+      %% append a new key/value pair to collection
+      %%
+      %% -spec append({key(_), val(_)}, datum:maplike(_, _)) -> datum:maplike(_, _).
+      {append, 2},
+
+      %%
       %% insert a new a key/value pair to collection
       %%
       %% -spec insert(key(_), val(_), datum:maplike(_, _)) -> datum:maplike(_, _).
@@ -39,7 +45,7 @@ behaviour_info(callbacks) ->
       %%
       %% optionally apply a function to value associated with key
       %%
-      %% -spec apply(key(), fun((datum:option(_)) -> datum:option(_)), datum:maplike(_, _)) -> datum:maplike(_, _).
+      %% -spec apply(key(_), fun((datum:option(_)) -> _), datum:maplike(_, _)) -> datum:maplike(_, _).
       {apply, 3}
    ];
 behaviour_info(_Other) ->

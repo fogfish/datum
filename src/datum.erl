@@ -35,15 +35,16 @@
 -type traversable(T) :: T.
 -type maplike()      :: _.
 
+-type tree(T)   :: {t, compare(T), _}.
 -type q()       :: {q, integer(), list(), list()}.
 -type stream()  :: {s, _, function()}.
--type tree()    :: {t, _, _}.
 -type heap()    :: {h, integer(), _}.
 -type ring()    :: tuple().
 
 -type monoid(T)    :: fun((T, T) -> T).
 -type predicate(T) :: fun((T) -> true | false).
--type effect(T)    :: fun((T) -> ok).  
+-type effect(T)    :: fun((T) -> ok).
+-type compare(T)   :: fun((T, T) -> eq | gt | lt).
 
 -export_type([
    option/1
@@ -58,13 +59,14 @@
 
   ,q/0
   ,stream/0
-  ,tree/0
+  ,tree/1
   ,heap/0
   ,ring/0
 
   ,monoid/1
   ,predicate/1
   ,effect/1
+  ,compare/1
 ]).
 
 %%
@@ -86,14 +88,9 @@ type(_) -> undefined.
 
 
 %%
-%% order functor
+%% compare two instances, default implementation
 -spec compare(_, _) -> eq | gt | lt.
 
-%%
-%% default ordering functor
 compare(A, B) when A =:= B -> eq;
 compare(A, B) when A  >  B -> gt;
 compare(A, B) when A  <  B -> lt.
-
-
-

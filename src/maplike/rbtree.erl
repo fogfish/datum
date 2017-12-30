@@ -16,6 +16,10 @@
 %% @description
 %%   red-black tree (see Okasaki "Purely Functional Data Structures")
 -module(rbtree).
+-behavior(maplike).
+-behavior(traversable).
+-behavior(foldable).
+
 -include("datum.hrl").
 
 -export([

@@ -28,3 +28,9 @@
 
 -define(EitherL(X),  {error, X}).
 -define(Left(X),     {error, X}).
+
+
+%%
+%% data pattern match macro  
+-define(tree(Ord, T),   {t, Ord, T}).
+
