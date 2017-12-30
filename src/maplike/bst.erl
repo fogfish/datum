@@ -80,23 +80,21 @@ new()  ->
 
 new(Ord) ->
    ?tree(Ord, ?None).
-   % {t, Ord, ?NULL}.
 
 %%
 %% build tree from another traversable structure 
 -spec build(_) -> datum:tree(_).
 
 build(List) ->
-   build(fun datum:compare/2, List).
-
+   maplike:build(?MODULE, List).
 
 %%
 %% build tree from another traversable structure
 -spec build(datum:compare(_), [_]) -> datum:tree(_).
 
-build(Ord, List)
- when is_list(List) ->
-   lists:foldl(fun append/2, new(Ord), List).
+build(Ord, List) ->
+   maplike:build(?MODULE, Ord, List).
+
 
 %    {t, Ord, list_to_tree(X)}.
 
@@ -209,7 +207,7 @@ has(Key, Tree) ->
 -spec keys(datum:maplike(_, _)) -> [_].
 
 keys(Tree) ->
-   foldr(fun(K, _, Acc) -> [K|Acc] end, [], Tree).
+   maplike:keys(?MODULE, Tree).
 
 %%
 %% apply function on element

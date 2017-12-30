@@ -36,9 +36,10 @@
 -type maplike()      :: _.
 
 -type tree(T)   :: {t, compare(T), _}.
+-type heap(T)   :: {h, compare(T), _}.
+
 -type q()       :: {q, integer(), list(), list()}.
 -type stream()  :: {s, _, function()}.
--type heap()    :: {h, integer(), _}.
 -type ring()    :: tuple().
 
 -type monoid(T)    :: fun((T, T) -> T).
@@ -57,10 +58,10 @@
   ,traversable/1
   ,maplike/0
 
+  ,tree/1
+  ,heap/1
   ,q/0
   ,stream/0
-  ,tree/1
-  ,heap/0
   ,ring/0
 
   ,monoid/1

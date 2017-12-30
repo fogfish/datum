@@ -3,6 +3,12 @@
 -module(maplike).
 
 -export([behaviour_info/1]).
+-export([
+   build/2,
+   build/3,
+
+   keys/2
+]).
 
 behaviour_info(callbacks) ->
    [
@@ -50,3 +56,29 @@ behaviour_info(callbacks) ->
    ];
 behaviour_info(_Other) ->
    undefined.
+
+
+%%
+%% build map-like structure from another one
+-spec build(atom(), [_]) -> datum:maplike(_, _).
+
+build(Type, Any) ->
+   build(Type, fun datum:compare/2, Any).
+
+
+%%
+%% build map-like structure from another one
+-spec build(atom(), datum:compare(_), [_]) -> datum:maplike(_, _).
+
+build(Type, Ord, List)
+ when is_list(List) ->
+   lists:foldl(fun Type:append/2, Type:new(Ord), List).
+
+
+%%
+%% collects all keys of this collection to list
+-spec keys(atom(), datum:maplike(_, _)) -> [_].
+
+keys(Type, MapLike) ->
+   Type:foldr(fun(K, _, Acc) -> [K|Acc] end, [], MapLike).
+

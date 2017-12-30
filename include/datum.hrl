@@ -33,4 +33,5 @@
 %%
 %% data pattern match macro  
 -define(tree(Ord, T),   {t, Ord, T}).
+-define(heap(Ord, H),   {h, Ord, H}).
 

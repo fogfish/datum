@@ -30,7 +30,8 @@
 all() ->
    [
       {group, bst},
-      {group, rbtree}
+      {group, rbtree},
+      {group, heap}
    ].
 
 groups() ->
@@ -39,7 +40,10 @@ groups() ->
          [insert, lookup, remove, has, keys, apply]},
 
       {rbtree, [parallel], 
-         [insert, lookup, remove, has, keys, apply]}
+         [insert, lookup, remove, has, keys, apply]},
+
+      {heap, [parallel], 
+         [insert, keys]}         
    ].
 
 %%%----------------------------------------------------------------------------   

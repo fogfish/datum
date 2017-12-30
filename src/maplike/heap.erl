@@ -16,13 +16,33 @@
 %% @description
 %%   heap ordered tree - each element at node is no large then elements at its children
 -module(heap).
+-behavior(maplike).
+-behavior(traversable).
+-behavior(foldable).
+
 -include("datum.hrl").
 
 -export([
-   new/0      %% O(1)
-  ,head/1     %% O(1)
+   new/0,     %% O(1)
+   new/1,     %% O(1)  
+   build/1,   %% O(n)
+   build/2,   %% O(n)
+
+   %%
+   %% map-like
+   append/2,      %% O(log n)
+   insert/3,      %% O(log n)
+   %% lookup is not defined for structure
+   %% remove is not defined for structure
+   %% has
+   keys/1,
+   %% apply is not defined for structure
+
+
+
+  head/1     %% O(1)
   ,tail/1     %% O(log n)
-  ,insert/3   %% O(log n)
+  % ,insert/3   %% O(log n)
   ,size/1     %% O(1)
    % utility interface
   ,dropwhile/2
@@ -31,17 +51,79 @@
   ,list/1     %% O(n)
 ]).
 
--type(heap()  :: {heap(), rank(), key(), val(), heap()} | ?NULL).
--type(key()   :: any()).
--type(val()   :: any()).
--type(rank()  :: integer()).
+-type heap()  :: datum:option({heap(), rank(), key(), val(), heap()}).
+-type key()   :: _.
+-type val()   :: _.
+-type rank()  :: integer().
 
 %%
 %% create new empty heap
 -spec new() -> datum:heap().
 
 new() ->
-   {h, 0, ?NULL}.
+  new(fun datum:compare/2).
+
+%%
+%% create new heap
+-spec new(datum:compare(_)) -> datum:tree(_).
+
+new(Ord) ->
+   ?heap(Ord, ?None).
+
+%%
+%% build tree from another traversable structure
+-spec build(_) -> datum:tree(_).
+
+build(List) ->
+   maplike:build(?MODULE, List).
+
+%%
+%% build tree from another traversable structure
+-spec build(datum:compare(_), [_]) -> datum:tree(_).
+
+build(Ord, List) ->
+   maplike:build(?MODULE, Ord, List).
+
+
+%%%----------------------------------------------------------------------------   
+%%%
+%%% map-like
+%%%
+%%%----------------------------------------------------------------------------   
+
+%%
+%% append a new key/value pair to collection
+-spec append({key(), val()}, datum:maplike(_, _)) -> datum:maplike(_, _).
+
+append({Key, Val}, ?heap(_, _) = Heap) ->
+   insert(Key, Val, Heap);
+
+append(Key, ?heap(_, _) = Heap) ->
+   insert(Key, ?None, Heap).
+
+%%
+%% insert a new a key/value pair to collection
+-spec insert(key(), val(), datum:maplike(_, _)) -> datum:maplike(_, _).
+
+insert(Key, Val, ?heap(Ord, H)) ->
+   ?heap(Ord, insert_el(Ord, Key, Val, H)).
+
+insert_el(Ord, Key, Val, Heap) ->
+   merge(Ord, {?None, 1, Key, Val, ?None}, Heap).
+
+%%
+%% collects all keys of this collection to list
+%%
+-spec keys(datum:maplike(_, _)) -> [_].
+
+keys(Tree) ->
+   maplike:keys(?MODULE, Tree).
+
+
+
+
+
+
 
 %%
 %% read head value
@@ -61,12 +143,14 @@ tail({h, Size, {A, _, _, _, B}}) ->
 tail(_) ->
    exit(badarg).
 
+merge(_, _) -> ok. %% trash it
+
 %%
 %% insert new value
--spec insert(key(), val(), datum:heap()) -> heap().
+% -spec insert(key(), val(), datum:heap()) -> heap().
 
-insert(Key, Val, {h, Size, Heap}) ->
-   {h, Size + 1, merge({?NULL, 1, Key, Val, ?NULL}, Heap)}.
+% insert(Key, Val, {h, Size, Heap}) ->
+%    {h, Size + 1, merge({?NULL, 1, Key, Val, ?NULL}, Heap)}.
 
 %%
 %% return heap size
@@ -147,36 +231,33 @@ list({h, _, _}=Heap,  Acc) ->
 
 %%
 %% merge two heap keeping leftist property. 
-merge(X, ?NULL) ->
-   X;
+merge(_, L, ?None) ->
+   L;
+merge(_, ?None, R) ->
+   R;
+merge(Ord, {_, _, Kx, _, _} = L, {_, _, Ky, _, _} = R) ->
+   merge(Ord(Kx, Ky), Ord, L, R).
 
-merge(?NULL, X) ->
-   X;
-
-merge({A, _, Kx, Vx, B}, {_, _, Ky, _, _}=H)
- when Kx =< Ky ->
-   make(Kx, Vx, A, merge(B, H));
-
-merge(H, {A, _, K, V, B}) ->
-   make(K, V, A, merge(H, B)).
+merge(eq, Ord, {A, _, Kx, Vx, B}, {_, _, Ky, _, _} = R) ->
+   join(Kx, Vx, A, merge(Ord, B, R));
+merge(lt, Ord, {A, _, Kx, Vx, B}, {_, _, Ky, _, _} = R) ->
+   join(Kx, Vx, A, merge(Ord, B, R));
+merge(gt, Ord, H, {A, _, K, V, B}) ->
+   join(K, V, A, merge(Ord, H, B)).
 
 %%
 %%
-rank(?NULL) ->
+rank(?None) ->
    0;
 rank({_, R, _, _, _}) ->
    R.
 
 %%
 %%
-make(K, V, A, B) ->
+join(K, V, A, B) ->
    case rank(A) >= rank(B) of
       true  ->
          {A, rank(B) + 1, K, V, B};
       false ->
          {B, rank(A) + 1, K, V, A}
    end.
-
-
-
-
