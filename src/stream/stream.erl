@@ -34,7 +34,12 @@
    %% traversable
    head/1,
    tail/1,
-   is_empty/1
+   is_empty/1,
+   drop/2,
+   dropwhile/2,
+   filter/2,
+   foreach/2,
+   map/2
 ]).
 
 %%
@@ -42,13 +47,10 @@
 -export([
    '++'/2
   ,'++'/1
-  ,drop/2
-  ,dropwhile/2
-  ,filter/2
+  
+  % ,filter/2
   ,fold/3
-  ,foreach/2
   ,flat/1
-  ,map/2
   ,scan/2
   ,scan/3
   ,split/2
@@ -142,7 +144,7 @@ is_empty(#stream{}) ->
 %%
 %% returns the suffix of the input stream that starts at the next element after
 %% the first n elements.
--spec drop(integer(), datum:stream()) -> datum:stream().
+-spec drop(integer(), datum:stream(_)) -> datum:stream(_).
 
 drop(0, #stream{} = Stream) ->
    Stream;
@@ -150,6 +152,74 @@ drop(_, #stream{tail = ?None} = Stream) ->
    Stream;
 drop(N, #stream{} = Stream) ->
    drop(N - 1, tail(Stream)).
+
+%%
+%% drops elements from stream while predicate returns true and returns remaining
+%% stream suffix.
+-spec dropwhile(datum:predicate(_), datum:stream(_)) -> datum:stream(_).      
+
+dropwhile(_, #stream{tail = ?None} = Stream) ->
+   Stream;
+dropwhile(Pred, #stream{} = Stream) ->
+   case Pred(head(Stream)) of
+      true  -> 
+         dropwhile(Pred, tail(Stream)); 
+      false -> 
+         Stream
+   end.
+
+%%
+%% returns a newly-allocated stream that contains only those elements x of the 
+%% input stream for which predicate is true.
+-spec filter(datum:predicate(_), datum:stream(_)) -> datum:stream(_).
+
+filter(_, #stream{tail = ?None} = Stream) ->
+   Stream;
+filter(Pred, #stream{head = Head} = Stream) ->
+   case Pred(Head) of
+      true -> 
+         new(Head, fun() -> filter(Pred, tail(Stream)) end);
+      false ->
+         filter(Pred, tail(Stream))
+   end.
+
+%%
+%% applies a function to each stream element for its side-effects; 
+%% it returns nothing. 
+-spec foreach(function(), datum:stream()) -> ok.
+
+foreach(_, #stream{tail = ?None}) ->
+   ok;
+foreach(Fun, #stream{} = Stream) ->
+   _ = Fun(head(Stream)),
+   foreach(Fun, tail(Stream)).
+
+%%
+%% create a new stream by apply a function to each element of input stream. 
+-spec map(fun((_) -> _), datum:stream(_)) -> datum:stream(_).
+
+map(_, #stream{tail = ?None} = Stream) ->
+   Stream;
+map(Fun, #stream{} = Stream) ->
+   new(Fun(head(Stream)), fun() -> map(Fun, tail(Stream)) end).
+
+
+%%
+%% partitions stream into two streams. The split behaves as if it is defined as 
+%% consequent take(N, Stream), drop(N, Stream). 
+-spec split(integer(), datum:traversable(_)) -> {datum:traversable(_), datum:traversable(_)}.
+
+split(N, Stream) ->
+   split(N, [], Stream).
+
+split(0, Acc, Stream) ->
+   {stream:build(lists:reverse(Acc)), Stream};
+
+split(_, Acc, #stream{tail = ?None} = Stream) ->
+   {stream:build(lists:reverse(Acc)), Stream};
+   
+split(N, Acc, #stream{} = Stream) ->
+   split(N - 1, [head(Stream)|Acc], tail(Stream)).
 
 
 %%%------------------------------------------------------------------
@@ -178,36 +248,8 @@ drop(N, #stream{} = Stream) ->
 
 
 
-%%
-%% drops elements from stream while predicate returns true and returns remaining
-%% stream suffix.
--spec dropwhile(function(), datum:stream()) -> datum:stream().
-
-dropwhile(Pred, {s, _, _}=Stream) ->
-   case Pred(head(Stream)) of
-      true  -> 
-         dropwhile(Pred, tail(Stream)); 
-      false -> 
-         Stream
-   end;
-dropwhile(_, ?NULL) ->
-   ?NULL.
 
 
-%%
-%% returns a newly-allocated stream that contains only those elements x of the 
-%% input stream for which predicate is true.
--spec filter(function(), datum:stream()) -> datum:stream().
-
-filter(Pred, {s, _, _} = Stream) ->
-   case Pred(head(Stream)) of
-      true -> 
-         new(head(Stream), fun() -> filter(Pred, tail(Stream)) end);
-      false ->
-         filter(Pred, tail(Stream))
-   end;
-filter(_, ?NULL) ->
-   ?NULL.
 
 
 %%
@@ -223,16 +265,6 @@ fold(_, Acc, ?NULL) ->
    Acc.
 
 
-%%
-%% applies a function to each stream element for its side-effects; 
-%% it returns nothing. 
--spec foreach(function(), datum:stream()) -> ok.
-
-foreach(Fun, {s, _, _} = Stream) ->
-   _ = Fun(head(Stream)),
-   foreach(Fun, tail(Stream));
-foreach(_, ?NULL) ->
-   ok.
 
 %%
 %% flat stream of streams
@@ -247,14 +279,6 @@ flat({s, {}, _} = Stream) ->
 flat(Stream) ->
    Stream.
 
-%%
-%% create a new stream by apply a function to each element of input stream. 
--spec map(function(), datum:stream()) -> datum:stream().
-
-map(Fun, {s, _, _} = Stream) ->
-   new(Fun(head(Stream)), fun() -> map(Fun, tail(Stream)) end);
-map(_, ?NULL) ->
-   ?NULL.
 
 %%
 %% accumulates the partial folds of an input stream into a newly-allocated stream.
@@ -270,20 +294,7 @@ scan(Fun, Acc0, {s, _, _} = Stream) ->
 scan(_, Acc0, ?NULL) ->
    new(Acc0).
 
-%%
-%% partitions stream into two streams. The split behaves as if it is defined as 
-%% consequent take(N, Stream), drop(N, Stream). 
--spec split(integer(), datum:stream()) -> {[_], datum:stream()}.
 
-split(N, Stream) ->
-   split(N, [], Stream).
-
-split(0, Acc, Stream) ->
-   {lists:reverse(Acc), Stream};
-split(N, Acc, {s, _, _} = Stream) ->
-   split(N - 1, [head(Stream)|Acc], tail(Stream));
-split(_, Acc, ?NULL) ->
-   {lists:reverse(Acc), ?NULL}.
 
 %%
 %% partitions stream into two streams according to predicate.

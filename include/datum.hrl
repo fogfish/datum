@@ -31,10 +31,11 @@
 
 
 %%
-%% data pattern match macro  
--define(tree(Ord, T),      {t, Ord, T}).
-
-% -define(heap(Ord, H),      {h, Ord, H}).
+%% data types 
+-record(tree, {
+   ford = undefined :: datum:compare(_),
+   tree = undefined :: _
+}).
 
 %%
 -record(heap, {

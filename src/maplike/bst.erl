@@ -37,11 +37,20 @@
    remove/2,      %% O(log n)
    has/2,         %% O(log n)
    keys/1,        %% O(n)
-   apply/3        %% O(log n)
+   apply/3,       %% O(log n)
+
+   %%
+   %% traversable
+   drop/2,       %% O(n)  
+   dropwhile/2,  %% O(log n)
+   filter/2,     %% O(n)
+   foreach/2,    %% O(n)
+   map/2,        %% O(n)
+   split/2       %% O(n)
 
   ,min/1         %% O(log n)
   ,max/1         %% O(log n)
-  ,map/2         %% O(n)
+  
   ,foldl/3       %% O(n)
   ,mapfoldl/3    %% O(n)
   ,foldr/3       %% O(n)
@@ -49,8 +58,7 @@
   ,splitwith/2   %% O(log n)
   ,takewhile/2   %% O(log n)
   ,take/2        %% O(log n)
-  ,dropwhile/2   %% O(log n)
-  ,drop/2        %% O(log n)  
+  
   ,list/1        %% O(n)
 ]).
 
@@ -79,7 +87,7 @@ new()  ->
 -spec new(datum:compare(_)) -> datum:tree(_).
 
 new(Ord) ->
-   ?tree(Ord, ?None).
+   #tree{ford = Ord, tree = ?None}.
 
 %%
 %% build tree from another traversable structure 
@@ -96,22 +104,6 @@ build(Ord, List) ->
    maplike:build(?MODULE, Ord, List).
 
 
-%    {t, Ord, list_to_tree(X)}.
-
-% list_to_tree([]) ->
-%    ?NULL;
-% list_to_tree([{K, V}]) ->
-%    {?NULL, K, V, ?NULL};
-% list_to_tree([K])  ->
-%    {?NULL, K, undefined, ?NULL};
-% list_to_tree(List) ->
-%    case lists:split(length(List) div 2, List) of
-%       {L, [{K, V} | R]} ->
-%          {list_to_tree(L), K, V, list_to_tree(R)};
-%       {L, [K | R]} ->
-%          {list_to_tree(L), K, undefined, list_to_tree(R)}
-%    end.
-
 %%%----------------------------------------------------------------------------   
 %%%
 %%% map-like
@@ -122,23 +114,22 @@ build(Ord, List) ->
 %% append a new key/value pair to collection
 -spec append({key(), val()}, datum:maplike(_, _)) -> datum:maplike(_, _).
 
-append({Key, Val}, ?tree(_, _) = Tree) ->
+append({Key, Val}, #tree{} = Tree) ->
    insert(Key, Val, Tree);
 
-append(Key, ?tree(_, _) = Tree) ->
+append(Key, #tree{} = Tree) ->
    insert(Key, ?None, Tree).
 
 %%
 %% insert a new a key/value pair to collection
 -spec insert(key(), val(), datum:maplike(_, _)) -> datum:maplike(_, _).
 
-insert(Key, Val, ?tree(Ord, T)) ->
-   ?tree(Ord, insert_el(Ord, Key, Val, T)).
+insert(Key, Val, #tree{ford = Ord, tree = T} = Tree) ->
+   Tree#tree{tree = insert_el(Ord, Key, Val, T)}.
 
 insert_el(_, K, V, ?None) ->
    {?None, K, V, ?None};
 insert_el(Ord, K, V, {_, Kx, _, _} = T) ->
-   % io:format("=> ~p ~p ~p~n", [K, Ord(K, Kx), Kx]),
    insert_el(Ord(K, Kx), Ord, K, V, T).
 
 insert_el(eq,   _, _, V, {A, Kx,  _, B}) ->
@@ -154,7 +145,7 @@ insert_el(lt, Ord, K, V, {A, Kx, Vx, B}) ->
 %%
 -spec lookup(key(), datum:maplike(_, _)) -> datum:option( val() ).
 
-lookup(Key, ?tree(Ord, T)) ->
+lookup(Key, #tree{ford = Ord, tree = T}) ->
    lookup_el(Ord, Key, T).
 
 lookup_el(_, _, ?None) ->
@@ -174,8 +165,8 @@ lookup_el(lt, Ord, K, {A, _,  _, _}) ->
 %% remove key/value pair from collection 
 -spec remove(key(), datum:maplike(_, _)) -> datum:maplike(_, _).
 
-remove(K, ?tree(Ord, T)) ->
-   ?tree(Ord, remove_el(Ord, K, T)).
+remove(K, #tree{ford = Ord, tree = T} = Tree) ->
+   Tree#tree{tree = remove_el(Ord, K, T)}.
 
 remove_el(_, _, ?None) ->
    ?None;
@@ -221,8 +212,8 @@ keys(Tree) ->
 %% apply function on element
 -spec apply(key(), fun((datum:option(_)) -> _), datum:maplike(_, _)) -> datum:maplike(_, _).
 
-apply(K, Fun, ?tree(Ord, T)) ->
-   ?tree(Ord, apply_el(Ord, K, Fun, T)).
+apply(K, Fun, #tree{ford = Ord, tree = T} = Tree) ->
+   Tree#tree{tree = apply_el(Ord, K, Fun, T)}.
 
 apply_el(_, K, Fun, ?None) ->
    {?None, K, Fun(?None), ?None};
@@ -242,6 +233,125 @@ apply_el(lt, Ord, K, Fun, {A, Kx, Vx, B}) ->
 %%% traversable
 %%%
 %%%----------------------------------------------------------------------------   
+
+%%
+%% return the suffix of collection that starts at the next element after nth.
+%% drop first n elements
+%%
+-spec drop(integer(), datum:traversable(_)) -> datum:traversable(_).
+
+drop(N, #tree{tree = T} = Tree) ->
+   Tree#tree{tree = erlang:element(2, drop_el(N, T))}.
+
+drop_el(N, ?None) ->
+   {N, ?None};
+drop_el(N, {A, K, V, B}) ->
+   case drop_el(N, A) of
+      {0, Ax} ->
+         {0, {Ax, K, V, B}};
+      {M,_Ax} ->
+         drop_el(M - 1, B)
+   end.
+
+%%
+%% drops elements from collection while predicate returns true and 
+%% returns remaining stream suffix.
+%%
+-spec dropwhile(datum:predicate(_), datum:traversable(_)) -> datum:traversable(_).      
+
+dropwhile(Pred, #tree{tree = T} = Tree) ->
+   Tree#tree{tree = dropwhile_el(Pred, T)}.
+
+dropwhile_el(_, ?None) ->
+   ?None;
+
+dropwhile_el(Pred, {A, K, V, B}) ->
+   case Pred({K, V}) of
+      false ->
+         {dropwhile_el(Pred, A), K, V, B};
+      true  ->
+         dropwhile_el(Pred, B)
+   end.
+
+%%
+%% returns a newly-allocated collection that contains only those elements of the 
+%% input collection for which predicate is true.
+%%
+-spec filter(datum:predicate(_), datum:traversable(_)) -> datum:traversable(_).
+
+filter(Pred, #tree{tree = T} = Tree) ->
+   Tree#tree{tree = filter_el(Pred, T)}.
+
+filter_el(_, ?None) ->
+   ?None;
+filter_el(Pred, {A0, K, V, B0}) ->
+   A1 = filter_el(Pred, A0),
+   case Pred({K, V}) of
+      false  ->
+         case filter_el(Pred, B0) of
+            ?None ->
+               A1;
+            B1     ->
+               {{Kx, Vx}, B2} = take_left_node(B1),
+               {A1, Kx, Vx, B2}
+         end;
+      true ->
+         {A1, K, V, filter_el(Pred, B0)}
+   end.
+
+%%
+%% applies a function to each collection element for its side-effects; 
+%% it returns nothing.
+%%
+-spec foreach(datum:effect(_), datum:traversable(_)) -> ok.
+
+foreach(Pred, #tree{tree = T} = Tree) ->
+   foreach_el(Pred, T).
+
+foreach_el(_, ?None) ->
+   ok;
+foreach_el(Pred, {A, K, V, B}) ->
+   foreach_el(Pred, A),
+   Pred({K, V}),
+   foreach_el(Pred, B).
+
+
+%%
+%% create a new collection by apply a function to each element of input collection.
+%% 
+-spec map(fun((_) -> _), datum:traversable(_)) -> datum:traversable(_).
+
+map(Fun, #tree{tree = T} = Tree) ->
+   Tree#tree{tree = map_el(Fun, T)}.
+
+map_el(_, ?None) ->
+   ?None;
+map_el(Fun, {A, K, V, B}) ->
+   {map_el(Fun, A), K, Fun({K, V}), map_el(Fun, B)}.
+
+
+%%
+%% partitions collection into two collection. The split behaves as if it is defined as 
+%% consequent take(N, Seq), drop(N, Seq). 
+%%
+-spec split(integer(), datum:traversable(_)) -> {datum:traversable(_), datum:traversable(_)}.
+
+split(N, #tree{ford = Ord, tree = T}) ->
+   {_, A, B} = split_el(N, T),
+   {#tree{ford = Ord, tree = A}, #tree{ford = Ord, tree = B}}.
+
+split_el(N, ?None) ->
+   {N, ?None, ?None};
+
+split_el(N, {A, K, V, B}) ->
+   case split_el(N, A) of
+      {0, A1, A2} ->
+         {0, A1, {A2, K, V, B}};
+      {N1,  _,  _} ->
+         {N2, B1, B2} = split_el(N1 - 1, B),
+         {N2, {A, K, V, B1}, B2}
+   end.
+
 
 
 %%%----------------------------------------------------------------------------   
@@ -286,17 +396,6 @@ max_el({_, _, _, B}) ->
 max_el(?NULL) ->
    undefined.
 
-%%
-%% map tree
--spec map(function(), datum:tree()) -> datum:tree().
-
-map(Fun, {t, Ord, T}) ->
-   {t, Ord, map_el(Fun, T)}.
-
-map_el(_Fun, ?NULL) ->
-   ?NULL;
-map_el(Fun, {A, K, V, B}) ->
-   {map_el(Fun, A), K, Fun(K, V), map_el(Fun, B)}.
 
 
 %%
@@ -415,40 +514,8 @@ take_el(N, {A, K, V, B}) ->
          {R, {Ax, K, V, Bx}}
    end.
 
-%%
-%% drops elements from tree while predicate function return true
--spec dropwhile(function(), tree()) -> tree().
 
-dropwhile(Fun, {t, Ord, T}) ->
-   {t, Ord, dropwhile_el(Fun, T)}.
 
-dropwhile_el(_Fun, ?NULL) ->
-   ?NULL;
-
-dropwhile_el(Fun, {A, K, V, B}) ->
-   case Fun(K) of
-      false ->
-         {dropwhile_el(Fun, A), K, V, B};
-      true  ->
-         dropwhile_el(Fun, B)
-   end.
-
-%%
-%%
--spec drop(integer(), tree()) -> tree().
-
-drop(N, {t, Ord, T}) ->
-   {t, Ord, erlang:element(2, drop_el(N, T))}.
-
-drop_el(N, ?NULL) ->
-   {N, ?NULL};
-drop_el(N, {A, K, V, B}) ->
-   case drop_el(N, A) of
-      {0, Ax} ->
-         {0, {Ax, K, V, B}};
-      {M,_Ax} ->
-         drop_el(M - 1, B)
-   end.
 
 %%
 %% 

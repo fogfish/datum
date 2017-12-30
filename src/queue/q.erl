@@ -22,21 +22,25 @@
 -include("datum.hrl").
 
 -export([
-   new/0,      %% O(1)
-   build/1,    %% O(n)
+   new/0,        %% O(1)
+   build/1,      %% O(n)
 
    %%
    %% queue
-   enq/2,      %% O(1)
-   deq/1,      %% O(1)
+   enq/2,        %% O(1)
+   deq/1,        %% O(1)
 
    %%
    %% traversable
-   head/1,     %% O(1)
-   tail/1,     %% O(1)
-   is_empty/1, %% O(1)
-   drop/2      %% O(n)
-
+   head/1,       %% O(1)
+   tail/1,       %% O(1)
+   is_empty/1,   %% O(1)
+   drop/2,       %% O(n)
+   dropwhile/2,  %% O(n)
+   filter/2,     %% O(n)
+   foreach/2,    %% O(n)
+   map/2,        %% O(n)
+   split/2       %% O(n)
 
   % q - interface
   % ,head/1
@@ -45,12 +49,10 @@
    % utility interface
   % ,is_empty/1
   ,length/1
-  ,dropwhile/2
   ,takewhile/2
-  ,split/2
   ,splitwith/2
   ,list/1
-  ,map/2
+  
 ]).
 
 
@@ -151,6 +153,76 @@ drop(_, #queue{head = [], tail = []} = Queue) ->
 drop(N, #queue{} = Queue) ->
    drop(N - 1, tail(Queue)).
 
+%%
+%% drops elements from collection while predicate returns true and 
+%% returns remaining stream suffix.
+%%
+-spec dropwhile(datum:predicate(_), datum:traversable(_)) -> datum:traversable(_).      
+
+dropwhile(_, #queue{head = [], tail = []} = Queue) ->
+   Queue;
+dropwhile(Pred, #queue{} = Queue) ->
+   case Pred(head(Queue)) of
+      true  -> 
+         dropwhile(Pred, tail(Queue)); 
+      false -> 
+         Queue
+   end.
+
+%%
+%% returns a newly-allocated collection that contains only those elements of the 
+%% input collection for which predicate is true.
+%%
+-spec filter(datum:predicate(_), datum:traversable(_)) -> datum:traversable(_).
+
+filter(Pred, #queue{head = Head0, tail = Tail0} = Queue) ->
+   Head1 = lists:filter(Pred, Head0),
+   Tail1 = lists:filter(Pred, Tail0),
+   #queue{length = erlang:length(Head1) + erlang:length(Tail1), head = Head1, tail = Tail1}.
+
+
+%%
+%% applies a function to each collection element for its side-effects; 
+%% it returns nothing.
+%%
+-spec foreach(datum:effect(_), datum:traversable(_)) -> ok.
+
+foreach(_, #queue{head = [], tail = []}) ->
+   ok;
+foreach(Fun, #queue{} = Queue) ->
+   _ = Fun(head(Queue)),
+   foreach(Fun, tail(Queue)).
+
+
+%%
+%% create a new collection by apply a function to each element of input collection.
+%% 
+-spec map(fun((_) -> _), datum:traversable(_)) -> datum:traversable(_).
+
+map(Fun, #queue{head = Head, tail = Tail} = Queue) ->
+   Queue#queue{head = lists:map(Fun, Head), tail = lists:map(Fun, Tail)}.
+
+%%
+%% partitions collection into two collection. The split behaves as if it is defined as 
+%% consequent take(N, Seq), drop(N, Seq). 
+%%
+-spec split(integer(), datum:traversable(_)) -> {datum:traversable(_), datum:traversable(_)}.
+
+split(X, #queue{length = N} = Queue)
+ when X >= N ->
+   {Queue, new()};
+
+split(_, #queue{head = [], tail = []} = Queue) ->
+   {Queue, Queue};
+
+split(N, Queue) ->
+   split(N, new(), Queue).
+
+split(0, Acc, Queue) ->
+   {Acc, Queue};
+split(N, Acc, Queue) ->
+   {Head, Tail} = deq(Queue),
+   split(N - 1, enq(Head, Acc), Tail).
 
 
 
@@ -171,19 +243,6 @@ length({q, N, _, _}) ->
 length(?NULL) ->
    0.
 
-%%
-%% dropwhile head of queue
--spec dropwhile(function(), datum:q()) -> datum:q().
-
-dropwhile(Pred, {q, _N, _Tail, _Head}=Q) ->
-   {Head, Tail} = deq(Q),
-   case Pred(Head) of
-      true  -> dropwhile(Pred, Tail); 
-      false -> Q
-   end;
-
-dropwhile(_,  {}) ->
-   new().
 
 %%
 %% takewhile head of queue
@@ -202,25 +261,7 @@ takewhile(Pred, Acc, {q, _N, _Tail, _Head}=Q) ->
 takewhile(_,  Acc, {}) ->
    Acc.
 
-%%
-%% partitions queue into two queues.
--spec split(function(), datum:q()) -> {datum:q(), datum:q()}.
 
-split(X, {q, N, _, _} = Queue)
- when X >= N ->
-   {Queue, new()};
-
-split(_, ?NULL) ->
-   {new(), new()};
-
-split(N, Queue) ->
-   split(N, new(), Queue).
-
-split(0, Acc, Queue) ->
-   {Acc, Queue};
-split(N, Acc, Queue) ->
-   {Head, Tail} = deq(Queue),
-   split(N - 1, enq(Head, Acc), Tail).
 
 %%
 %% partitions queue into two queues according to predicate.
@@ -250,14 +291,7 @@ list({q, _, Tail, Head}) ->
 list(?NULL) ->
    [].
 
-%%
-%%
--spec map(fun((_) -> _), datum:q()) -> datum:q().
 
-map(_, ?NULL) ->
-   ?NULL;
-map(Fun, {q, N, Tail, Head}) ->
-   {q, N, lists:map(Fun, Tail), lists:map(Fun, Head)}.
 
 %%%------------------------------------------------------------------
 %%%

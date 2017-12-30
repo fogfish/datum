@@ -23,28 +23,33 @@
 -include("datum.hrl").
 
 -export([
-   new/0,     %% O(1)
-   new/1,     %% O(1)  
-   build/1,   %% O(n)
-   build/2,   %% O(n)
+   new/0,       %% O(1)
+   new/1,       %% O(1)  
+   build/1,     %% O(n)
+   build/2,     %% O(n)
 
    %%
    %% map-like
-   append/2,   %% O(log n)
-   insert/3,   %% O(log n)
+   append/2,    %% O(log n)
+   insert/3,    %% O(log n)
    keys/1,
 
    %%
    %% traversal
-   head/1,     %% O(1)
-   tail/1,     %% O(log n)
-   is_empty/1, %% O(1)
-   drop/2      %% O(n)
+   head/1,      %% O(1)
+   tail/1,      %% O(log n)
+   is_empty/1,  %% O(1)
+   drop/2,      %% O(n)
+   dropwhile/2, %% O(log n)
+   filter/2,    %% O(n)
+   foreach/2,   %% O(n)
+   map/2,       %% O(n)
+   split/2      %% O(n)
 
   % ,insert/3   %% O(log n)
   ,size/1     %% O(1)
    % utility interface
-  ,dropwhile/2
+  % ,dropwhile/2
   ,takewhile/2
   ,splitwith/2
   ,list/1     %% O(n)
@@ -163,13 +168,94 @@ is_empty(#heap{}) ->
 %%
 -spec drop(integer(), datum:traversable(_)) -> datum:traversable(_).
 
-
 drop(0, #heap{} = Heap) ->
    Heap;
 drop(_, #heap{heap = ?None} = Heap) ->
    Heap;
 drop(N, #heap{} = Heap) ->
    drop(N - 1, tail(Heap)).
+
+%%
+%% drops elements from collection while predicate returns true and 
+%% returns remaining stream suffix.
+%%
+-spec dropwhile(datum:predicate(_), datum:traversable(_)) -> datum:traversable(_).      
+
+dropwhile(_, #heap{heap = ?None} = Heap) ->
+   Heap;
+dropwhile(Pred, #heap{} = Heap) ->
+   case Pred(head(Heap)) of
+      true  -> 
+         dropwhile(Pred, tail(Heap)); 
+      false -> 
+         Heap
+   end.
+
+%%
+%% returns a newly-allocated collection that contains only those elements of the 
+%% input collection for which predicate is true.
+%%
+-spec filter(datum:predicate(_), datum:traversable(_)) -> datum:traversable(_).
+
+filter(Pred, #heap{ford = Ord, heap = H} = Heap) ->
+   Heap#heap{heap = filter_el(Pred, Ord, H)}.
+
+filter_el(_, _, ?None) ->
+   ?None;
+filter_el(Pred, Ord, {A0, R, K, V, B0}) ->
+   A1 = filter_el(Pred, Ord, A0),
+   B1 = filter_el(Pred, Ord, B0),
+   case Pred({K, V}) of
+      true  ->
+         {A1, R, K, V, B1};
+      false ->
+         merge(Ord, A1, B1)
+   end.
+
+
+%%
+%% applies a function to each collection element for its side-effects; 
+%% it returns nothing.
+%%
+-spec foreach(datum:effect(_), datum:traversable(_)) -> ok.
+
+foreach(_, #heap{heap = ?None}) ->
+   ok;
+foreach(Fun, #heap{} = Heap) ->
+   _ = Fun(head(Heap)),
+   foreach(Fun, tail(Heap)).
+
+%%
+%% create a new collection by apply a function to each element of input collection.
+%% 
+-spec map(fun((_) -> _), datum:traversable(_)) -> datum:traversable(_).
+
+map(Fun, #heap{heap = H} = Heap) ->
+   Heap#heap{heap = map_el(Fun, H)}.
+
+map_el(_, ?None) ->
+   ?None;
+map_el(Fun, {A, R, K, V, B}) ->
+   {map_el(Fun, A), R, K, Fun({K, V}), map_el(Fun, A)}.
+
+
+%%
+%% partitions collection into two collection. The split behaves as if it is defined as 
+%% consequent take(N, Seq), drop(N, Seq). 
+%%
+-spec split(integer(), datum:traversable(_)) -> {datum:traversable(_), datum:traversable(_)}.
+
+split(N, Heap) ->
+   split(N, new(), Heap).
+
+split(0, Acc, Heap) ->
+   {Acc, Heap};
+
+split(_, Acc, #heap{heap = ?None} = Heap) ->
+   {Acc, Heap};
+   
+split(N, Acc, #heap{} = Heap) ->
+   split(N - 1, append(head(Heap), Acc), tail(Heap)).
 
 
 %%
@@ -188,18 +274,6 @@ size({h, Size, _}) ->
 size(_) ->
    0.
 
-%%
-%% dropwhile head of heap
--spec dropwhile(function(), datum:heap()) -> datum:heap().
-
-dropwhile(_Pred, {h, _, ?NULL} = Heap) ->
-   Heap;
-dropwhile(Pred, {h, _, _} = Heap) ->
-   {Key, _} = head(Heap),
-   case Pred(Key) of
-      true  -> dropwhile(Pred, tail(Heap)); 
-      false -> Heap
-   end.
 
 
 %%

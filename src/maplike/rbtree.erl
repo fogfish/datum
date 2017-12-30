@@ -36,8 +36,16 @@
    remove/2,      %% O(log n)
    has/2,         %% O(log n)
    keys/1,        %% O(n)
-   apply/3        %% O(log n)
+   apply/3,       %% O(log n)
 
+   %%
+   %%
+   drop/2,        %% O(n)
+   dropwhile/2,   %% O(log n)
+   filter/2,      %% O(n)
+   foreach/2,     %% O(n)
+   map/2,         %% O(n)
+   split/2        %% O(n)
 ]).
 
 % -type(key()     :: any()).
@@ -64,7 +72,7 @@ new() ->
 -spec new(datum:compare(_)) -> datum:tree(_).
 
 new(Ord) ->
-   ?tree(Ord, ?None).
+   #tree{ford = Ord, tree = ?None}.
 
 %%
 %% build tree from another traversable structure
@@ -91,10 +99,10 @@ build(Ord, List) ->
 %% append a new key/value pair to collection
 -spec append({key(), val()}, datum:maplike(_, _)) -> datum:maplike(_, _).
 
-append({Key, Val}, ?tree(_, _) = Tree) ->
+append({Key, Val}, #tree{} = Tree) ->
    insert(Key, Val, Tree);
 
-append(Key, ?tree(_, _) = Tree) ->
+append(Key, #tree{} = Tree) ->
    insert(Key, ?None, Tree).
 
 
@@ -102,8 +110,8 @@ append(Key, ?tree(_, _) = Tree) ->
 %% insert a new a key/value pair to collection
 -spec insert(key(), val(), datum:maplike(_, _)) -> datum:maplike(_, _).
 
-insert(Key, Val, ?tree(Ord, T)) ->
-   ?tree(Ord, erlang:setelement(1, insert_el(Ord, Key, Val, T), b)).
+insert(Key, Val, #tree{ford = Ord, tree = T} = Tree) ->
+   Tree#tree{tree = erlang:setelement(1, insert_el(Ord, Key, Val, T), b)}.
 
 insert_el(_, K, V, ?None) ->
    {r, ?None, K, V, ?None};
@@ -123,7 +131,7 @@ insert_el(lt, Ord, K, V, {C, L, Kx, Vx, R}) ->
 %%
 -spec lookup(key(), datum:maplike(_, _)) -> datum:option( val() ).
 
-lookup(Key, ?tree(Ord, T)) ->
+lookup(Key, #tree{ford = Ord, tree = T}) ->
    lookup_el(Ord, Key, T).
 
 lookup_el(_, _, ?None) ->
@@ -143,8 +151,8 @@ lookup_el(lt, Ord, K, {_, L, _,  _, _}) ->
 %% remove key/value pair from collection 
 -spec remove(key(), datum:maplike(_, _)) -> datum:maplike(_, _).
 
-remove(K, ?tree(Ord, T)) ->
-   ?tree(Ord, remove_el(Ord, K, T)).
+remove(K, #tree{ford = Ord, tree = T} = Tree) ->
+   Tree#tree{tree = remove_el(Ord, K, T)}.
 
 remove_el(_, _, ?None) ->
    ?None;
@@ -191,8 +199,8 @@ keys(Tree) ->
 %% apply function on element
 -spec apply(key(), fun((datum:option(_)) -> _), datum:maplike(_, _)) -> datum:maplike(_, _).
 
-apply(Key, Fun, ?tree(Ord, T)) ->
-   ?tree(Ord, erlang:setelement(1, apply_el(Ord, Key, Fun, T), b)).
+apply(Key, Fun, #tree{ford = Ord, tree = T} = Tree) ->
+   Tree#tree{tree = erlang:setelement(1, apply_el(Ord, Key, Fun, T), b)}.
 
 apply_el(_, K, Fun, ?None) ->
    {r, ?None, K, Fun(undefined), ?None};
@@ -206,6 +214,129 @@ apply_el(gt, Ord, K, Fun, {C, A, Kx, Vx, B}) ->
 apply_el(lt, Ord, K, Fun, {C, A, Kx, Vx, B}) ->
    balance({C, apply_el(Ord, K, Fun, A), Kx, Vx, B}).
 
+
+%%%----------------------------------------------------------------------------   
+%%%
+%%% traversable
+%%%
+%%%----------------------------------------------------------------------------   
+
+%%
+%% return the suffix of collection that starts at the next element after nth.
+%% drop first n elements
+%%
+-spec drop(integer(), datum:traversable(_)) -> datum:traversable(_).
+
+drop(N, #tree{tree = T} = Tree) ->
+   Tree#tree{tree = erlang:element(2, drop_el(N, T))}.
+
+drop_el(N, ?None) ->
+   {N, ?None};
+drop_el(N, {C, A, K, V, B}) ->
+   case drop_el(N, A) of
+      {0, Ax} ->
+         {0, {C, Ax, K, V, B}};
+      {M,_Ax} ->
+         drop_el(M - 1, B)
+   end.
+
+%%
+%% drops elements from collection while predicate returns true and 
+%% returns remaining stream suffix.
+%%
+-spec dropwhile(datum:predicate(_), datum:traversable(_)) -> datum:traversable(_).      
+
+dropwhile(Pred, #tree{tree = T} = Tree) ->
+   Tree#tree{tree = dropwhile_el(Pred, T)}.
+
+dropwhile_el(_, ?None) ->
+   ?None;
+
+dropwhile_el(Pred, {C, A, K, V, B}) ->
+   case Pred({K, V}) of
+      false ->
+         {C, dropwhile_el(Pred, A), K, V, B};
+      true  ->
+         dropwhile_el(Pred, B)
+   end.
+
+%%
+%% returns a newly-allocated collection that contains only those elements of the 
+%% input collection for which predicate is true.
+%%
+-spec filter(datum:predicate(_), datum:traversable(_)) -> datum:traversable(_).
+
+filter(Pred, #tree{tree = T} = Tree) ->
+   Tree#tree{tree = filter_el(Pred, T)}.
+
+filter_el(_, ?None) ->
+   ?None;
+filter_el(Pred, {C, A0, K, V, B0}) ->
+   A1 = filter_el(Pred, A0),
+   case Pred({K, V}) of
+      false  ->
+         case filter_el(Pred, B0) of
+            ?None ->
+               A1;
+            B1     ->
+               {{Kx, Vx}, B2} = take_left_node(B1),
+               {C, A1, Kx, Vx, B2}
+         end;
+      true ->
+         {C, A1, K, V, filter_el(Pred, B0)}
+   end.
+
+%%
+%% applies a function to each collection element for its side-effects; 
+%% it returns nothing.
+%%
+-spec foreach(datum:effect(_), datum:traversable(_)) -> ok.
+
+foreach(Pred, #tree{tree = T} = Tree) ->
+   foreach_el(Pred, T).
+
+foreach_el(_, ?None) ->
+   ok;
+foreach_el(Pred, {_, A, K, V, B}) ->
+   foreach_el(Pred, A),
+   Pred({K, V}),
+   foreach_el(Pred, B).
+
+%%
+%% create a new collection by apply a function to each element of input collection.
+%% 
+-spec map(fun((_) -> _), datum:traversable(_)) -> datum:traversable(_).
+
+map(Fun, #tree{tree = T} = Tree) ->
+   Tree#tree{tree = map_el(Fun, T)}.
+
+map_el(_, ?None) ->
+   ?None;
+map_el(Fun, {C, A, K, V, B}) ->
+   {C, map_el(Fun, A), K, Fun({K, V}), map_el(Fun, B)}.
+
+
+%%
+%% partitions collection into two collection. The split behaves as if it is defined as 
+%% consequent take(N, Seq), drop(N, Seq). 
+%%
+-spec split(integer(), datum:traversable(_)) -> {datum:traversable(_), datum:traversable(_)}.
+
+split(N, #tree{ford = Ord, tree = T}) ->
+   {_, A, B} = split_el(N, T),
+   {#tree{ford = Ord, tree = A}, #tree{ford = Ord, tree = B}}.
+
+split_el(N, ?None) ->
+   {N, ?None, ?None};
+
+split_el(N, {C, A, K, V, B}) ->
+   case split_el(N, A) of
+      {0, A1, A2} ->
+         {0, A1, {C, A2, K, V, B}};
+      {N1,  _,  _} ->
+         {N2, B1, B2} = split_el(N1 - 1, B),
+         {N2, {C, A, K, V, B1}, B2}
+   end.
 
 %%%------------------------------------------------------------------
 %%%

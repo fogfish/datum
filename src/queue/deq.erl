@@ -22,21 +22,25 @@
 -include("datum.hrl").
 
 -export([
-   new/0,      %% O(1)
-   build/1,    %% O(n)
+   new/0,        %% O(1)
+   build/1,      %% O(n)
 
    %%
    %% queue
-   enq/2,      %% O(1)
-   deq/1,      %% O(1)
+   enq/2,        %% O(1)
+   deq/1,        %% O(1)
 
    %%
    %% traversable
-   head/1,     %% O(1)
-   tail/1,     %% O(1)
-   is_empty/1, %% O(1)
-   drop/2,     %% O(n)
-   
+   head/1,       %% O(1)
+   tail/1,       %% O(1)
+   is_empty/1,   %% O(1)
+   drop/2,       %% O(n)
+   dropwhile/2,  %% O(n)
+   filter/2,     %% O(n)  
+   foreach/2,    %% O(n)
+   map/2,        %% O(n)
+   split/2,      %% O(n)
 
    %   q - interface
    % head/1, 
@@ -53,12 +57,10 @@
    % utility interface
    length/1, 
    is_empty/1, 
-   dropwhile/2,
+   
    takewhile/2,
-   split/2,
    splitwith/2,
-   list/1,
-   map/2
+   list/1
 ]).
 
 %%
@@ -131,6 +133,49 @@ is_empty(#queue{} = Queue) ->
 drop(N, #queue{} = Queue) ->
    q:drop(N, Queue).
 
+%%
+%% drops elements from collection while predicate returns true and 
+%% returns remaining stream suffix.
+%%
+-spec dropwhile(datum:predicate(_), datum:traversable(_)) -> datum:traversable(_).      
+
+dropwhile(Pred, #queue{} = Queue) ->
+   q:dropwhile(Pred, Queue).
+
+%%
+%% returns a newly-allocated collection that contains only those elements of the 
+%% input collection for which predicate is true.
+%%
+-spec filter(datum:predicate(_), datum:traversable(_)) -> datum:traversable(_).
+
+filter(Pred, #queue{} = Queue) ->
+   q:filter(Pred, Queue).
+
+%%
+%% applies a function to each collection element for its side-effects; 
+%% it returns nothing.
+%%
+-spec foreach(datum:effect(_), datum:traversable(_)) -> ok.
+
+foreach(Pred, #queue{} = Queue) ->
+   q:foreach(Pred, Queue).
+
+%%
+%% create a new collection by apply a function to each element of input collection.
+%% 
+-spec map(fun((_) -> _), datum:traversable(_)) -> datum:traversable(_).
+
+map(Fun, #queue{} = Queue) ->
+   q:map(Fun, Queue).
+
+%%
+%% partitions collection into two collection. The split behaves as if it is defined as 
+%% consequent take(N, Seq), drop(N, Seq). 
+%%
+-spec split(integer(), datum:traversable(_)) -> {datum:traversable(_), datum:traversable(_)}.
+
+split(N, #queue{} = Queue) ->
+   q:split(N, Queue).
 
 %%%------------------------------------------------------------------
 %%%
@@ -282,18 +327,18 @@ length(?NULL) ->
 %    false.
 
 %%
-%% dropwhile head of queue
--spec dropwhile(function(), datum:q()) -> datum:q().
+% %% dropwhile head of queue
+% -spec dropwhile(function(), datum:q()) -> datum:q().
 
-dropwhile(Pred, {q, _, _, _}=Q) ->
-   {Head, Tail} = deq(Q),
-   case Pred(Head) of
-      true  -> dropwhile(Pred, Tail); 
-      false -> Q
-   end;
+% dropwhile(Pred, {q, _, _, _}=Q) ->
+%    {Head, Tail} = deq(Q),
+%    case Pred(Head) of
+%       true  -> dropwhile(Pred, Tail); 
+%       false -> Q
+%    end;
 
-dropwhile(_,  ?NULL) ->
-   deq:new().
+% dropwhile(_,  ?NULL) ->
+%    deq:new().
 
 %%
 %% takewhile head of queue
@@ -314,23 +359,23 @@ takewhile(_,  Acc, ?NULL) ->
 
 %%
 %% partitions queue into two queues.
--spec split(function(), datum:q()) -> {datum:q(), datum:q()}.
+% -spec split(function(), datum:q()) -> {datum:q(), datum:q()}.
 
-split(X, {q, N, _, _} = Queue)
- when X >= N ->
-   {Queue, new()};
+% split(X, {q, N, _, _} = Queue)
+%  when X >= N ->
+%    {Queue, new()};
 
-split(_, ?NULL) ->
-   {new(), new()};
+% split(_, ?NULL) ->
+%    {new(), new()};
 
-split(N, Queue) ->
-   split(N, new(), Queue).
+% split(N, Queue) ->
+%    split(N, new(), Queue).
 
-split(0, Acc, Queue) ->
-   {Acc, Queue};
-split(N, Acc, Queue) ->
-   {Head, Tail} = deq(Queue),
-   split(N - 1, enq(Head, Acc), Tail).
+% split(0, Acc, Queue) ->
+%    {Acc, Queue};
+% split(N, Acc, Queue) ->
+%    {Head, Tail} = deq(Queue),
+%    split(N - 1, enq(Head, Acc), Tail).
 
 
 %%
@@ -363,12 +408,12 @@ list(?NULL) ->
 
 %%
 %%
--spec map(fun((_) -> _), datum:q()) -> datum:q().
+% -spec map(fun((_) -> _), datum:q()) -> datum:q().
 
-map(_, ?NULL) ->
-   ?NULL;
-map(Fun, {q, N, Tail, Head}) ->
-   {q, N, lists:map(Fun, Tail), lists:map(Fun, Head)}.
+% map(_, ?NULL) ->
+%    ?NULL;
+% map(Fun, {q, N, Tail, Head}) ->
+%    {q, N, lists:map(Fun, Tail), lists:map(Fun, Head)}.
 
 
 %%%------------------------------------------------------------------

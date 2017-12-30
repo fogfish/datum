@@ -19,9 +19,7 @@
    dropwhile/1,
    filter/1,
    foreach/1,
-   flatmap/1,
    map/1,
-   partition/1,
    split/1,
    splitwhile/1,
    take/1,
@@ -39,23 +37,31 @@ all() ->
       {group, stream},
       {group, heap},
       {group, q},
-      {group, deq}
+      {group, deq},
+      {group, bst},
+      {group, rbtree}
    ].
 
 groups() ->
    [
       {stream, [parallel], 
-         [iterate, drop]},
-         % [drop, dropwhile, filter, foreach, flatmap, map, partition, split, splitwhile, take, takewhile]}
+         [iterate, drop, dropwhile, filter, foreach, map, split]},
+         % [split, splitwhile, take, takewhile]}
 
       {heap, [parallel],
-         [iterate, drop]},
+         [iterate, drop, dropwhile, filter, foreach, map, split]},
 
       {q, [parallel],
-         [iterate, drop]},
+         [iterate, drop, dropwhile, filter, foreach, map, split]},
 
       {deq, [parallel],
-         [iterate, drop]}         
+         [iterate, drop, dropwhile, filter, foreach, map, split]},
+
+      {bst, [parallel],
+         [drop, dropwhile, filter, foreach, map, split]},
+
+      {rbtree, [parallel],
+         [drop, dropwhile, filter, foreach, map, split]}
    ].
 
 %%%----------------------------------------------------------------------------   
@@ -97,7 +103,7 @@ iterate(undefined, Tail, Type, _List) ->
    true = Type:is_empty(Tail);
 
 iterate(Head, Tail, Type, List) ->
-   true  = lists:member(element(Head), List),
+   true  = lists:member(el1(Head), List),
    iterate(Type:head(Tail), Type:tail(Tail), Type, List).
 
 
@@ -111,57 +117,54 @@ drop(Config) ->
 %%
 dropwhile(Config) ->
    Type   = ?config(type, Config),
-   List   = seq(?LENGTH),
-   N      = rand:uniform(?LENGTH - 1),
-   Type:dropwhile(fun(X) -> X < N end, Type:build(List)).
+   List   = randseq(?LENGTH),
+   Empty  = Type:new(),
+   Empty  = lists:foldl(
+      fun(Key, Acc) ->
+         Type:dropwhile(fun(X) -> el1(X) =/= Key end, Acc)
+      end,
+      Type:build(List),
+      shuffle(List)
+   ).
 
 %%
 filter(Config) ->
    Type   = ?config(type, Config),
-   List   = seq(?LENGTH),
-   Pred   = fun(X) -> X rem 2 =:= 0 end,
-   Expect = lists:filter(Pred, List),
-   Result = Type:filter(Pred, Type:build(List)),
-   is_equal(Type, Result, Expect).
+   List   = randseq(?LENGTH),
+   Empty  = Type:new(),
+   Empty  = lists:foldl(
+      fun(Key, Acc) ->
+         Type:filter(fun(X) -> el1(X) =/= Key end, Acc)
+      end,
+      Type:build(List),
+      shuffle(List)
+   ).
 
 %%
 foreach(Config) ->
    Type   = ?config(type, Config),
-   List   = shuffle(?LENGTH),
+   List   = randseq(?LENGTH),
    ok = Type:foreach(fun(X) -> X end, Type:build(List)).
 
-%%
-flatmap(Config) ->
-   Type   = ?config(type, Config),
-   List   = seq(?LENGTH),
-   Result = Type:flatmap(fun(X) -> Type:build([X]) end, Type:build(List)),
-   is_equal(Type, Result, List).
 
 %%
 map(Config) ->
    Type   = ?config(type, Config),
-   List   = shuffle(?LENGTH),
-   Expect = [X * 2 || X <- List],
-   Result = Type:map(fun(X) -> X * 2 end, Type:build(List)),
-   is_equal(Type, Result, Expect).
-
-
-%%
-partition(Config) ->
-   Type   = ?config(type, Config),
-   List   = shuffle(?LENGTH),
-   Pred   = fun(X) -> X rem 2 =:= 0 end,
-   {ExpectHead, ExpectTail} = lists:partition(Pred, List),
-   {ResultHead, ResultTail} = Type:partition(Pred, Type:build(List)),
-   is_equal(Type, ResultHead, ExpectHead),
-   is_equal(Type, ResultTail, ExpectTail). 
+   List   = randseq(?LENGTH),
+   Empty  = Type:new(),
+   Empty  = Type:filter(
+      fun(X) -> not el2(X) end,
+      Type:map(fun(X) -> lists:member(el1(X), List) end, Type:build(List))
+   ).
 
 %%
 split(Config) ->
    Type   = ?config(type, Config),
-   List   = seq(?LENGTH),
-   N      = rand:uniform(?LENGTH),
-   {_, _} = Type:split(N, Type:build(List)).
+   List   = randseq(?LENGTH),
+   Empty  = Type:new(),
+   {_, Empty} = Type:split(?LENGTH, Type:build(List)),
+   {Empty, _} = Type:split(0, Type:build(List)).
+
 
 
 %%
@@ -203,13 +206,17 @@ randseq(N) -> [rand:uniform(1 bsl 32) | randseq(N - 1)].
 shuffle(List) ->
    [Y || {_, Y} <- lists:keysort(1, [{rand:uniform(), X} || X <- List])].
 
-
 %%
-element({Key, _}) ->
+el1({Key, _}) ->
    Key;
-element(X) ->
+el1(X) ->
    X.
 
+%%
+el2({_, Val}) ->
+   Val;
+el2(X) ->
+   X.
 
 
 

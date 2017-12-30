@@ -64,7 +64,7 @@ behaviour_info(callbacks) ->
       %% and flattering resulting collection
       %%
       %% -spec flatmap(fun((_) -> datum:traversable(_)), datum:traversable(_)) -> datum:traversable(_).
-      {flatmap, 2},
+      % {flatmap, 2},
 
       %%
       %% create a new collection by apply a function to each element of input collection.
@@ -76,7 +76,7 @@ behaviour_info(callbacks) ->
       %% partition the collection in two collections according to a predicate
       %%
       %% -spec partition(datum:predicate(_), datum:traversable(_)) -> {datum:traversable(_), datum:traversable(_)}.
-      {partition, 2},
+      % {partition, 2},
 
       %%
       %% partitions collection into two collection. The split behaves as if it is defined as 
