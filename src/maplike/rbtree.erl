@@ -155,12 +155,20 @@ remove_el(eq,   _, _, {_, A, _, _, ?None}) ->
    A;
 remove_el(eq,   _, _, {_, ?None, _, _, B}) ->
    B;
-remove_el(eq, Ord, _, {C, {_, _, Ka, Va, _}=A, _, _, B}) ->
-   balance({C, remove_el(Ord, Ka, A), Ka, Va, B});
+remove_el(eq, Ord, _, {C, A, _, _, B0}) ->
+   {{K, V}, B1} = take_left_node(B0),
+   balance({C, A, K, V, B1});
 remove_el(gt, Ord, K, {C, A, Kx, Vx, B}) ->
    balance({C, A, Kx, Vx, remove_el(Ord, K, B)});
 remove_el(lt, Ord, K, {C, A, Kx, Vx, B}) ->
    balance({C, remove_el(Ord, K, A), Kx, Vx, B}).
+
+
+take_left_node({_, ?None, K, V, B}) ->
+   {{K, V}, B};
+take_left_node({C, A0, K, V, B}) ->
+   {N, A1} = take_left_node(A0),
+   {N, {C, A1, K, V, B}}.
 
 
 %%

@@ -138,6 +138,7 @@ insert(Key, Val, ?tree(Ord, T)) ->
 insert_el(_, K, V, ?None) ->
    {?None, K, V, ?None};
 insert_el(Ord, K, V, {_, Kx, _, _} = T) ->
+   % io:format("=> ~p ~p ~p~n", [K, Ord(K, Kx), Kx]),
    insert_el(Ord(K, Kx), Ord, K, V, T).
 
 insert_el(eq,   _, _, V, {A, Kx,  _, B}) ->
@@ -185,12 +186,19 @@ remove_el(eq,   _, _, {A, _, _, ?None}) ->
    A;
 remove_el(eq,   _, _, {?None, _, _, B}) ->
    B;
-remove_el(eq, Ord, _, {{_, Ka, Va, _}=A, _, _, B}) ->
-   {remove_el(Ord, Ka, A), Ka, Va, B};
+remove_el(eq, Ord, _, {A, _, _, B0}) ->
+   {{K, V}, B1} = take_left_node(B0),
+   {A, K, V, B1};
 remove_el(gt, Ord, K, {A, Kx, Vx, B}) ->
    {A, Kx, Vx, remove_el(Ord, K, B)};
 remove_el(lt, Ord, K, {A, Kx, Vx, B}) ->
    {remove_el(Ord, K, A), Kx, Vx, B}.
+
+take_left_node({?None, K, V, B}) ->
+   {{K, V}, B};
+take_left_node({A0, K, V, B}) ->
+   {N, A1} = take_left_node(A0),
+   {N, {A1, K, V, B}}.
 
 
 %%
