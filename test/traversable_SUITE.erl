@@ -14,8 +14,7 @@
   ,end_per_group/2
 ]).
 -export([
-   head/1,
-   tail/1,
+   iterate/1,
    length/1,
    drop/1,
    dropwhile/1,
@@ -38,13 +37,26 @@
 %%%----------------------------------------------------------------------------   
 all() ->
    [
-      {group, stream}
+      {group, stream},
+      {group, heap},
+      {group, q},
+      {group, deq}
    ].
 
 groups() ->
    [
       {stream, [parallel], 
-         [head, tail, length, drop, dropwhile, filter, foreach, flatmap, map, partition, split, splitwhile, take, takewhile]}
+         [iterate]},
+         % [head, tail, length, drop, dropwhile, filter, foreach, flatmap, map, partition, split, splitwhile, take, takewhile]}
+
+      {heap, [parallel],
+         [iterate]},
+
+      {q, [parallel],
+         [iterate]},
+
+      {deq, [parallel],
+         [iterate]}         
    ].
 
 %%%----------------------------------------------------------------------------   
@@ -75,11 +87,20 @@ end_per_group(_, _Config) ->
 -define(LENGTH, 100).
 
 %%
-head(Config) ->
-   Type   = ?config(type, Config),
-   List   = seq(?LENGTH),
-   Expect = hd(List),
-   Expect = Type:head(Type:build(List)).
+iterate(Config) ->
+   Type = ?config(type, Config),
+   List = randseq(?LENGTH),
+   Tail = Type:build(List),
+   false = Type:is_empty(Tail),
+   iterate(Type:head(Tail), Type:tail(Tail), Type, List).
+
+iterate(undefined, Tail, Type, _List) ->
+   true = Type:is_empty(Tail);
+
+iterate(Head, Tail, Type, List) ->
+   true  = lists:member(element(Head), List),
+   iterate(Type:head(Tail), Type:tail(Tail), Type, List).
+
 
 %%
 tail(Config) ->
@@ -184,14 +205,27 @@ takewhile(Config) ->
 %%%----------------------------------------------------------------------------   
 
 %%
-%%
-shuffle(0) -> [];
-shuffle(N) -> [rand:uniform(1 bsl 32) | shuffle(N - 1)].
-
-%%
-%%
 seq(N) ->
    lists:seq(1, N).
+
+%%
+randseq(0) -> [];
+randseq(N) -> [rand:uniform(1 bsl 32) | randseq(N - 1)].
+
+%%
+shuffle(List) ->
+   [Y || {_, Y} <- lists:keysort(1, [{rand:uniform(), X} || X <- List])].
+
+
+%%
+element({Key, _}) ->
+   Key;
+element(X) ->
+   X.
+
+
+
+
 
 %%
 %% check traversable matches the list

@@ -38,10 +38,12 @@
    keys/1,
    %% apply is not defined for structure
 
+   %%
+   %% traversal
+   head/1,     %% O(1)
+   tail/1,     %% O(log n)
+   is_empty/1  %% O(1)
 
-
-  head/1     %% O(1)
-  ,tail/1     %% O(log n)
   % ,insert/3   %% O(log n)
   ,size/1     %% O(1)
    % utility interface
@@ -120,30 +122,46 @@ keys(Tree) ->
    maplike:keys(?MODULE, Tree).
 
 
+%%%----------------------------------------------------------------------------   
+%%%
+%%% traversal
+%%%
+%%%----------------------------------------------------------------------------   
 
+%%
+%% take collection and return head element of collection
+%%
+-spec head(datum:traversable(_)) -> datum:option(_).
 
+head(?heap(_, {_, _, Key, Val, _})) ->
+  {Key, Val};
 
+head(?heap(_, _)) ->
+  undefined.
 
 
 %%
-%% read head value
--spec head(datum:heap()) -> {key(), val()}.
+%% force stream promise and return new stream (evaluates tail of stream).
+-spec tail(datum:traversable(_)) -> datum:traversable(_).
 
-head({h, _, {_, _, Key, Val, _}}) ->
-   {Key, Val};
-head(_) ->
-   exit(badarg).
+tail(?heap(Ord, {A, _, _, _, B})) ->
+  ?heap(Ord, merge(Ord, A, B));
+
+tail(?heap(Ord, ?None) = Heap) ->
+  Heap.
 
 %%
-%% return tail value
--spec tail(datum:heap()) -> datum:heap().
+%% return true if collection is empty 
+%%
+-spec is_empty(datum:traversable(_)) -> true | false.
 
-tail({h, Size, {A, _, _, _, B}}) ->
-   {h, Size - 1, merge(A, B)};
-tail(_) ->
-   exit(badarg).
+is_empty(?heap(_, ?None)) ->
+  true;
+is_empty(?heap(_, _)) ->
+  false. 
 
-merge(_, _) -> ok. %% trash it
+
+
 
 %%
 %% insert new value

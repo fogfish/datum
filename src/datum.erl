@@ -17,6 +17,8 @@
 %%   pure functional data structures
 -module(datum).
 
+-include("datum.hrl").
+
 -export([
    typeof/1,
    compare/2
@@ -37,10 +39,13 @@
 
 -type tree(T)   :: {t, compare(T), _}.
 -type heap(T)   :: {h, compare(T), _}.
+-type stream(T) :: #stream{head :: T, tail :: datum:option(fun(() -> T))}.
+-type q(T)      :: {q, integer(), [T], [T]}.
 
--type q()       :: {q, integer(), list(), list()}.
--type stream()  :: {s, _, function()}.
+
+-type stream()  :: #stream{}. %% {s, _, function()}.
 -type ring()    :: tuple().
+-type q()      :: {q, integer(), [], []}.
 
 -type monoid(T)    :: fun((T, T) -> T).
 -type predicate(T) :: fun((T) -> true | false).
@@ -48,18 +53,21 @@
 -type compare(T)   :: fun((T, T) -> eq | gt | lt).
 
 -export_type([
-   option/1
-  ,either/0
-  ,either/1
-  ,either/2
-  ,either/3
+   option/1,
+   either/0,
+   either/1,
+   either/2,
+   either/3,
 
-  ,foldable/1
-  ,traversable/1
-  ,maplike/0
+   foldable/1,
+   traversable/1,
+   maplike/0,
 
-  ,tree/1
-  ,heap/1
+   tree/1,
+   heap/1,
+   stream/1,
+   q/1
+
   ,q/0
   ,stream/0
   ,ring/0

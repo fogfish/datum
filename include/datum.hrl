@@ -32,6 +32,24 @@
 
 %%
 %% data pattern match macro  
--define(tree(Ord, T),   {t, Ord, T}).
--define(heap(Ord, H),   {h, Ord, H}).
+-define(tree(Ord, T),      {t, Ord, T}).
 
+-define(heap(Ord, H),      {h, Ord, H}).
+
+%%
+-record(stream, {
+   head = undefined :: _,
+   tail = undefined :: datum:option(fun(() -> _))
+}).
+
+%%
+-record(queue, {
+   length = 0  :: integer(),
+   head   = [] :: [_],
+   tail   = [] :: [_]
+}).
+
+% -define(stream(Head, Fun), {s, Head, Fun}).
+% -define(stream(),          {s}).
+
+% -define(queue(Length, Head, Tail), {q, Length, Head, Tail}).

@@ -16,20 +16,35 @@
 %% @description
 %%   pure functional queue
 -module(q).
+-behaviour(traversable).
+-behaviour(foldable).
+
+
 -include("datum.hrl").
 
 -export([
-   new/0
-  ,new/1
+   new/0,      %% O(1)
+   build/1,    %% O(n)
+
+   %%
+   %% queue
+   enq/2,      %% O(1)
+   deq/1,      %% O(1)
+
+   %%
+   %% traversable
+   head/1,     %% O(1)
+   tail/1,     %% O(1)
+   is_empty/1  %% O(1)
+
+
 
   % q - interface
-  ,head/1
-  ,tail/1
-  ,enq/2
-  ,deq/1
+  % ,head/1
+  % ,tail/1
 
    % utility interface
-  ,is_empty/1
+  % ,is_empty/1
   ,length/1
   ,dropwhile/2
   ,takewhile/2
@@ -39,76 +54,105 @@
   ,map/2
 ]).
 
+
 %%
-%% create new queue
--spec new() -> datum:q().
--spec new(list()) -> datum:q().
+%% create new empty queue
+-spec new() -> datum:q(_).
 
 new() ->
-   ?NULL.
-new(List) ->
+   #queue{}.
+
+%%
+%% build tree from another traversable structure 
+-spec build(_) -> datum:q(_).
+
+build(List) ->
    make_deq_head(erlang:length(List), List).
 
 %%
-%% queue head element
--spec head(datum:q()) -> any().
-
-head({q, _N, _Tail, [Head|_]}) ->
-   Head;
-head({q, _N, [Head], []}) ->
-   Head;
-head({q, _N, [_|Tail], []}) ->
-   lists:last(Tail);
-head(_) ->
-   exit(badarg).
-
-%%
-%% queue tail
--spec tail(datum:q()) -> datum:q().
-
-tail(Q) ->
-   {_, Tail} = deq(Q),
-   Tail.
-
-%%
 %% enqueue element
--spec enq(any(), datum:q()) -> datum:q().
+-spec enq(_, datum:q(_)) -> datum:q(_).
 
-enq(E, {q, N, [_]=Tail, []}) ->
-   {q, N + 1, [E], Tail};
+enq(E, #queue{length = N, tail = [_] = Tail, head = []}) ->
+   #queue{length = N + 1, tail = [E], head = Tail};
 
-enq(E, {q, N, Tail, Head}) ->
-   {q, N + 1, [E|Tail], Head};
-
-enq(E, ?NULL) ->
-   {q, 1, [E], []}.
+enq(E, #queue{length = N, tail = Tail} = Queue) ->
+   Queue#queue{length = N + 1, tail = [E|Tail]}.
 
 %%
 %% dequeue element
--spec deq(datum:q()) -> {any(), datum:q()}.
+-spec deq(datum:q(_)) -> {datum:option(_), datum:q(_)}.
 
-deq({q, _N, [E], []}) ->
-   {E, deq:new()};
+deq(#queue{tail = [E], head = []}) ->
+   {E, new()};
 
-deq({q, N, [Last|Tail], []}) ->
+deq(#queue{length = N, tail = [Last|Tail], head = []}) ->
    [E|Head] = lists:reverse(Tail, []),
-   {E, {q, N - 1, [Last], Head}};
+   {E, #queue{length = N - 1, head = Head, tail = [Last]}};
 
-deq({q, N, Tail, [E]}) ->
+deq(#queue{length = N, tail = Tail, head = [E]}) ->
    {E, make_deq_tail(N - 1, Tail)};
 
-deq({q, N, Tail, [E|Head]}) ->
-   {E, {q, N - 1, Tail, Head}}.
+deq(#queue{length = N, head = [E|Head]} = Queue) ->
+   {E, Queue#queue{length = N - 1, head = Head}};
+
+deq(#queue{tail = [], head = []} = Queue) ->
+   {?None, Queue}.
+
+%%%------------------------------------------------------------------
+%%%
+%%% traversable
+%%%
+%%%------------------------------------------------------------------
+
+%%
+%% take collection and return head element of collection
+%%
+-spec head(datum:traversable(_)) -> datum:option(_).
+
+head(#queue{head = [Head| _]}) -> 
+   Head;
+head(#queue{tail = [Head]}) ->
+   Head;
+head(#queue{tail = [_|Tail]}) ->
+   lists:last(Tail);
+head(#queue{}) ->
+   undefined.
+
+%%
+%% take collection and return its suffix (all elements except the first)
+%%
+-spec tail(datum:traversable(_)) -> datum:traversable(_).
+
+tail(#queue{} = Queue) ->
+   erlang:element(2, deq(Queue)).
+
+
+%%
+%% return true if collection is empty 
+%%
+-spec is_empty(datum:traversable(_)) -> true | false.
+
+is_empty(#queue{head = [], tail = []}) ->
+   true;
+is_empty(#queue{}) ->
+   false.
+
+
+
+
+
+
 
 
 %%
 %% check if the queue is empty
--spec is_empty(datum:q()) -> boolean().
+% -spec is_empty(datum:q()) -> boolean().
 
-is_empty(?NULL) ->
-   true;
-is_empty(_) ->
-   false.
+% is_empty(?NULL) ->
+%    true;
+% is_empty(_) ->
+%    false.
 
 %%
 %%
@@ -214,36 +258,28 @@ map(Fun, {q, N, Tail, Head}) ->
 %%
 %% make dequeue from list (supplied list is tail)
 make_deq_tail(N, [_]=List) ->
-   {q, N, [], List};
+   #queue{length = N, head = List};
 
 make_deq_tail(N, [X,Y]) ->
-   {q, N, [X],[Y]};
+   #queue{length = N, head = [Y], tail = [X]};
 
 make_deq_tail(N, [X,Y|List]) ->
-   {q, N, [X,Y], lists:reverse(List, [])};
+   #queue{length = N, head = lists:reverse(List), tail = [X, Y]};
 
 make_deq_tail(_, []) ->
-   ?NULL.
+   #queue{}.
 
 %%
 %% make dequeue from list (supplied list is head)
 make_deq_head(N, [_]=List) ->
-   {q, N, List, []};
+   #queue{length = N, head = List};
 
 make_deq_head(N, [X,Y]) ->
-   {q, N, [X],[Y]};
+   #queue{length = N, head = [X],  tail = [Y]};
 
 make_deq_head(N, [X,Y|List]) ->
-   {q, N, lists:reverse(List, []), [X,Y]};
+   #queue{length = N, head = [X,Y], tail = lists:reverse(List)};
 
 make_deq_head(_, []) ->
-   ?NULL.
-
-
-
-%%%------------------------------------------------------------------
-%%%
-%%% private
-%%%
-%%%------------------------------------------------------------------
+   #queue{}.
 

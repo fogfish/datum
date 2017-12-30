@@ -19,10 +19,16 @@ behaviour_info(callbacks) ->
       {tail, 1},
 
       %%
+      %% return true if collection is empty 
+      %%
+      %% -spec is_empty(datum:traversable(_)) -> true | false.
+      {is_empty, 1},
+
+      %%
       %% length of the collection
       %%
       %% -spec length(datum:traversable(_)) -> integer().
-      % {length, 1},
+      {length, 1},
 
       %%
       %% return the suffix of collection that starts at the next element after nth.

@@ -19,14 +19,26 @@
 -include("datum.hrl").
 
 -export([
-   new/0,  
-   new/1,
+   new/0,      %% O(1)
+   build/1,    %% O(n)
+
+   %%
+   %% queue
+   enq/2,      %% O(1)
+   deq/1,      %% O(1)
+
+   %%
+   %% traversable
+   head/1,     %% O(1)
+   tail/1,     %% O(1)
+   is_empty/1, %% O(1)
    
+
    %   q - interface
-   head/1, 
-   tail/1, 
-   enq/2,  
-   deq/1,  
+   % head/1, 
+   % tail/1, 
+   % enq/2,  
+   % deq/1,  
 
    % deq - interface
    last/1, 
@@ -46,15 +58,66 @@
 ]).
 
 %%
-%% create new dequeue
--spec new() -> datum:q().
--spec new(list()) -> datum:q().
+%% create new empty queue
+-spec new() -> datum:q(_).
 
 new() ->
-   ?NULL.   
+   q:new().
 
-new(List) ->
-   make_deq_head(erlang:length(List), List).
+%%
+%% build tree from another traversable structure 
+-spec build(_) -> datum:q(_).
+
+build(List) ->
+   q:build(List).
+
+
+%%
+%% enqueue element
+-spec enq(_, datum:q(_)) -> datum:q(_).
+
+enq(E, #queue{} = Queue) ->
+   q:enq(E, Queue).
+
+%%
+%% dequeue element
+-spec deq(datum:q(_)) -> {datum:option(_), datum:q(_)}.
+
+deq(#queue{} = Queue) ->
+   q:deq(Queue).
+
+
+
+%%%------------------------------------------------------------------
+%%%
+%%% traversable
+%%%
+%%%------------------------------------------------------------------
+
+%%
+%% take collection and return head element of collection
+%%
+-spec head(datum:traversable(_)) -> datum:option(_).
+
+head(#queue{} = Queue) ->
+   q:head(Queue).
+
+%%
+%% take collection and return its suffix (all elements except the first)
+%%
+-spec tail(datum:traversable(_)) -> datum:traversable(_).
+
+tail(#queue{} = Queue) ->
+   q:tail(Queue).
+
+%%
+%% return true if collection is empty 
+%%
+-spec is_empty(datum:traversable(_)) -> true | false.
+
+is_empty(#queue{} = Queue) ->
+   q:is_empty(Queue).
+
 
 %%%------------------------------------------------------------------
 %%%
@@ -64,58 +127,58 @@ new(List) ->
 
 %%
 %% queue head element
--spec head(datum:q()) -> any().
+% -spec head(datum:q()) -> any().
 
-head({q, _N, _Tail, [Head|_]}) ->
-   Head;
+% head({q, _N, _Tail, [Head|_]}) ->
+%    Head;
 
-head({q, _N, [Head], []}) ->
-   Head;
+% head({q, _N, [Head], []}) ->
+%    Head;
 
-head({q, _N, [_|Tail], []}) ->
-   lists:last(Tail);
+% head({q, _N, [_|Tail], []}) ->
+%    lists:last(Tail);
 
-head(_) ->
-   exit(badarg).
+% head(_) ->
+%    exit(badarg).
 
 %%
 %% queue tail (removes head element)
--spec tail(datum:q()) -> datum:q().
+% -spec tail(datum:q()) -> datum:q().
 
-tail(Q) ->
-   {_, Tail} = deq(Q),
-   Tail.
+% tail(Q) ->
+%    {_, Tail} = deq(Q),
+%    Tail.
 
 %%
 %% enqueue element (push to tail)
--spec enq(any(), datum:q()) -> datum:q().
+% -spec enq(any(), datum:q()) -> datum:q().
 
-enq(E, {q, N, [_]=Tail, []}) ->
-   {q, N + 1, [E], Tail};
+% enq(E, {q, N, [_]=Tail, []}) ->
+%    {q, N + 1, [E], Tail};
 
-enq(E, {q, N, Tail, Head}) ->
-   {q, N + 1, [E|Tail], Head};
+% enq(E, {q, N, Tail, Head}) ->
+%    {q, N + 1, [E|Tail], Head};
 
-enq(E, ?NULL) ->
-   {q, 1, [E], []}.
+% enq(E, ?NULL) ->
+%    {q, 1, [E], []}.
 
 
 %%
 %% dequeue element (remove first element)
--spec deq(datum:q()) -> {any(), datum:q()}.
+% -spec deq(datum:q()) -> {any(), datum:q()}.
 
-deq({q, _N, [E], []}) ->
-   {E, deq:new()};
+% deq({q, _N, [E], []}) ->
+%    {E, deq:new()};
 
-deq({q, N, [Last|Tail], []}) ->
-   [E|Head] = lists:reverse(Tail, []),
-   {E, {q, N - 1, [Last], Head}};
+% deq({q, N, [Last|Tail], []}) ->
+%    [E|Head] = lists:reverse(Tail, []),
+%    {E, {q, N - 1, [Last], Head}};
 
-deq({q, N, Tail, [E]}) ->
-   {E, make_deq_tail(N - 1, Tail)};
+% deq({q, N, Tail, [E]}) ->
+%    {E, make_deq_tail(N - 1, Tail)};
 
-deq({q, N, Tail, [E|Head]}) ->
-   {E, {q, N - 1, Tail, Head}}.
+% deq({q, N, Tail, [E|Head]}) ->
+%    {E, {q, N - 1, Tail, Head}}.
 
 
 %%%------------------------------------------------------------------
@@ -198,12 +261,12 @@ length(?NULL) ->
 
 %%
 %% check if the queue is empty
--spec is_empty(datum:q()) -> boolean().
+% -spec is_empty(datum:q()) -> boolean().
 
-is_empty(?NULL) ->
-   true;
-is_empty(_) ->
-   false.
+% is_empty(?NULL) ->
+%    true;
+% is_empty(_) ->
+%    false.
 
 %%
 %% dropwhile head of queue

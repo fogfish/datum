@@ -26,11 +26,15 @@
 %%
 %% stream primitives - abstract data type 
 -export([
-   new/0
-  ,new/1
-  ,new/2
-  ,head/1
-  ,tail/1
+   new/0,
+   new/1,
+   new/2,
+
+   %%
+   %% traversable
+   head/1,
+   tail/1,
+   is_empty/1
 ]).
 
 %%
@@ -81,39 +85,59 @@
 %%
 %% creates a newly allocated stream containing stream head and promise.
 %% the promise is recursive, it returns new stream pair when evaluated.
--spec new() -> datum:stream().
--spec new(_) -> datum:stream().
--spec new(_, function()) -> datum:stream().
+-spec new() -> datum:stream(_).
+-spec new(_) -> datum:stream(_).
+-spec new(_, function()) -> datum:stream(_).
 
 new() ->
-   ?NULL.
+   #stream{}.
+
 new(Head) ->
    new(Head, fun stream:new/0).
+
 new(Head, Fun)
- when is_function(Fun) ->
-   {s, Head, Fun};
-new(Head, {s, _, _} = Stream) ->
-   {s, Head, fun() -> Stream end};
-new(Head, ?NULL) ->
+ when is_function(Fun, 0) ->
+   #stream{head = Head, tail = Fun};
+new(Head, ?None) ->
    new(Head).
 
-%%
-%% takes stream and return head element of stream
--spec head(datum:stream()) -> _.
 
-head({s, Head, _}) ->
-   Head;
-head(_) ->
-   exit(badarg).
+%%%------------------------------------------------------------------
+%%%
+%%% traversable
+%%%
+%%%------------------------------------------------------------------
+
+%%
+%% take collection and return head element of collection
+%%
+-spec head(datum:traversable(_)) -> datum:option(_).
+
+head(#stream{tail = ?None}) ->
+   ?None;
+head(#stream{head = Head}) ->
+   Head.
 
 %%
 %% force stream promise and return new stream (evaluates tail of stream).
--spec tail(datum:stream()) -> datum:stream().
+-spec tail(datum:traversable(_)) -> datum:traversable(_).
 
-tail({s, _, Fun}) ->
-   Fun();
-tail(_) ->
-   {}.
+tail(#stream{tail = ?None} = Stream) ->
+   Stream;
+tail(#stream{tail = Fun}) ->
+   Fun().
+
+
+%%
+%% return true if collection is empty 
+%%
+-spec is_empty(datum:traversable(_)) -> true | false.
+
+is_empty(#stream{tail = ?None}) ->
+   true;
+is_empty(#stream{}) ->
+   false.
+
 
 %%%------------------------------------------------------------------
 %%%
