@@ -15,7 +15,6 @@
 ]).
 -export([
    iterate/1,
-   length/1,
    drop/1,
    dropwhile/1,
    filter/1,
@@ -46,17 +45,17 @@ all() ->
 groups() ->
    [
       {stream, [parallel], 
-         [iterate]},
-         % [head, tail, length, drop, dropwhile, filter, foreach, flatmap, map, partition, split, splitwhile, take, takewhile]}
+         [iterate, drop]},
+         % [drop, dropwhile, filter, foreach, flatmap, map, partition, split, splitwhile, take, takewhile]}
 
       {heap, [parallel],
-         [iterate]},
+         [iterate, drop]},
 
       {q, [parallel],
-         [iterate]},
+         [iterate, drop]},
 
       {deq, [parallel],
-         [iterate]}         
+         [iterate, drop]}         
    ].
 
 %%%----------------------------------------------------------------------------   
@@ -103,23 +102,11 @@ iterate(Head, Tail, Type, List) ->
 
 
 %%
-tail(Config) ->
-   Type   = ?config(type, Config),
-   List   = seq(?LENGTH),
-   Expect = tl(List),
-   Result = Type:tail(Type:build(List)),
-   is_equal(Type, Result, Expect).
-
-%%
-length(_Config) ->
-   undefined.
-
-%%
 drop(Config) ->
    Type   = ?config(type, Config),
-   List   = seq(?LENGTH),
-   N      = rand:uniform(?LENGTH),
-   Type:drop(N, Type:build(List)).
+   List   = randseq(?LENGTH),
+   Empty  = Type:new(),
+   Empty  = Type:drop(?LENGTH, Type:build(List)).
 
 %%
 dropwhile(Config) ->

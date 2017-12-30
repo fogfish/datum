@@ -4,6 +4,7 @@
 
 -export([behaviour_info/1]).
 
+
 behaviour_info(callbacks) ->
    [
       %%
@@ -28,13 +29,13 @@ behaviour_info(callbacks) ->
       %% length of the collection
       %%
       %% -spec length(datum:traversable(_)) -> integer().
-      {length, 1},
+      % {length, 1},
 
       %%
       %% return the suffix of collection that starts at the next element after nth.
       %% drop first n elements
       %%
-      %% -spec drop(n, datum:traversable(_)) -> datum:traversable(_).
+      %% -spec drop(integer(), datum:traversable(_)) -> datum:traversable(_).
       {drop, 2},
 
       %%
@@ -120,3 +121,4 @@ behaviour_info(callbacks) ->
    ];
 behaviour_info(_Other) ->
    undefined.
+

@@ -16,6 +16,9 @@
 %% @description
 %%   double ended queue
 -module(deq).
+-behaviour(traversable).
+-behaviour(foldable).
+
 -include("datum.hrl").
 
 -export([
@@ -32,6 +35,7 @@
    head/1,     %% O(1)
    tail/1,     %% O(1)
    is_empty/1, %% O(1)
+   drop/2,     %% O(n)
    
 
    %   q - interface
@@ -117,6 +121,15 @@ tail(#queue{} = Queue) ->
 
 is_empty(#queue{} = Queue) ->
    q:is_empty(Queue).
+
+%%
+%% return the suffix of collection that starts at the next element after nth.
+%% drop first n elements
+%%
+-spec drop(integer(), datum:traversable(_)) -> datum:traversable(_).
+
+drop(N, #queue{} = Queue) ->
+   q:drop(N, Queue).
 
 
 %%%------------------------------------------------------------------

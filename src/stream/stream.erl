@@ -139,6 +139,19 @@ is_empty(#stream{}) ->
    false.
 
 
+%%
+%% returns the suffix of the input stream that starts at the next element after
+%% the first n elements.
+-spec drop(integer(), datum:stream()) -> datum:stream().
+
+drop(0, #stream{} = Stream) ->
+   Stream;
+drop(_, #stream{tail = ?None} = Stream) ->
+   Stream;
+drop(N, #stream{} = Stream) ->
+   drop(N - 1, tail(Stream)).
+
+
 %%%------------------------------------------------------------------
 %%%
 %%% stream interface
@@ -164,17 +177,6 @@ is_empty(#stream{}) ->
    T.
 
 
-%%
-%% returns the suffix of the input stream that starts at the next element after
-%% the first n elements.
--spec drop(integer(), datum:stream()) -> datum:stream().
-
-drop(0, Stream) ->
-   Stream;
-drop(N, {s, _, _} = Stream) ->
-  drop(N - 1, tail(Stream));
-drop(_, ?NULL) ->
-   ?NULL.
 
 %%
 %% drops elements from stream while predicate returns true and returns remaining

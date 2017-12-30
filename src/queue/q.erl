@@ -19,7 +19,6 @@
 -behaviour(traversable).
 -behaviour(foldable).
 
-
 -include("datum.hrl").
 
 -export([
@@ -35,8 +34,8 @@
    %% traversable
    head/1,     %% O(1)
    tail/1,     %% O(1)
-   is_empty/1  %% O(1)
-
+   is_empty/1, %% O(1)
+   drop/2      %% O(n)
 
 
   % q - interface
@@ -139,7 +138,18 @@ is_empty(#queue{}) ->
    false.
 
 
+%%
+%% return the suffix of collection that starts at the next element after nth.
+%% drop first n elements
+%%
+-spec drop(integer(), datum:traversable(_)) -> datum:traversable(_).
 
+drop(0, #queue{} = Queue) ->
+   Queue;
+drop(_, #queue{head = [], tail = []} = Queue) ->
+   Queue;
+drop(N, #queue{} = Queue) ->
+   drop(N - 1, tail(Queue)).
 
 
 

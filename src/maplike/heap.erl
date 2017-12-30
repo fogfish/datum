@@ -30,19 +30,16 @@
 
    %%
    %% map-like
-   append/2,      %% O(log n)
-   insert/3,      %% O(log n)
-   %% lookup is not defined for structure
-   %% remove is not defined for structure
-   %% has
+   append/2,   %% O(log n)
+   insert/3,   %% O(log n)
    keys/1,
-   %% apply is not defined for structure
 
    %%
    %% traversal
    head/1,     %% O(1)
    tail/1,     %% O(log n)
-   is_empty/1  %% O(1)
+   is_empty/1, %% O(1)
+   drop/2      %% O(n)
 
   % ,insert/3   %% O(log n)
   ,size/1     %% O(1)
@@ -70,7 +67,7 @@ new() ->
 -spec new(datum:compare(_)) -> datum:tree(_).
 
 new(Ord) ->
-   ?heap(Ord, ?None).
+   #heap{ford = Ord, heap = ?None}.
 
 %%
 %% build tree from another traversable structure
@@ -97,18 +94,18 @@ build(Ord, List) ->
 %% append a new key/value pair to collection
 -spec append({key(), val()}, datum:maplike(_, _)) -> datum:maplike(_, _).
 
-append({Key, Val}, ?heap(_, _) = Heap) ->
+append({Key, Val}, #heap{} = Heap) ->
    insert(Key, Val, Heap);
 
-append(Key, ?heap(_, _) = Heap) ->
+append(Key, #heap{} = Heap) ->
    insert(Key, ?None, Heap).
 
 %%
 %% insert a new a key/value pair to collection
 -spec insert(key(), val(), datum:maplike(_, _)) -> datum:maplike(_, _).
 
-insert(Key, Val, ?heap(Ord, H)) ->
-   ?heap(Ord, insert_el(Ord, Key, Val, H)).
+insert(Key, Val, #heap{ford = Ord, heap = H} = Heap) ->
+   Heap#heap{heap = insert_el(Ord, Key, Val, H)}.
 
 insert_el(Ord, Key, Val, Heap) ->
    merge(Ord, {?None, 1, Key, Val, ?None}, Heap).
@@ -133,10 +130,10 @@ keys(Tree) ->
 %%
 -spec head(datum:traversable(_)) -> datum:option(_).
 
-head(?heap(_, {_, _, Key, Val, _})) ->
+head(#heap{heap = {_, _, Key, Val, _}}) ->
   {Key, Val};
 
-head(?heap(_, _)) ->
+head(#heap{}) ->
   undefined.
 
 
@@ -144,10 +141,10 @@ head(?heap(_, _)) ->
 %% force stream promise and return new stream (evaluates tail of stream).
 -spec tail(datum:traversable(_)) -> datum:traversable(_).
 
-tail(?heap(Ord, {A, _, _, _, B})) ->
-  ?heap(Ord, merge(Ord, A, B));
+tail(#heap{ford = Ord, heap = {A, _, _, _, B}} = Heap) ->
+  Heap#heap{heap = merge(Ord, A, B)};
 
-tail(?heap(Ord, ?None) = Heap) ->
+tail(#heap{heap = ?None} = Heap) ->
   Heap.
 
 %%
@@ -155,12 +152,24 @@ tail(?heap(Ord, ?None) = Heap) ->
 %%
 -spec is_empty(datum:traversable(_)) -> true | false.
 
-is_empty(?heap(_, ?None)) ->
+is_empty(#heap{heap = ?None}) ->
   true;
-is_empty(?heap(_, _)) ->
+is_empty(#heap{}) ->
   false. 
 
+%%
+%% return the suffix of collection that starts at the next element after nth.
+%% drop first n elements
+%%
+-spec drop(integer(), datum:traversable(_)) -> datum:traversable(_).
 
+
+drop(0, #heap{} = Heap) ->
+   Heap;
+drop(_, #heap{heap = ?None} = Heap) ->
+   Heap;
+drop(N, #heap{} = Heap) ->
+   drop(N - 1, tail(Heap)).
 
 
 %%
