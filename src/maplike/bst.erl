@@ -60,9 +60,9 @@
 
 %%
 %% data types
--type tree() :: datum:option( {tree(), key(), val(), tree()} ). %% | ?NULL.
--type key()  :: _.
--type val()  :: _.
+-type tree()   :: datum:option( {tree(), key(), val(), tree()} ).
+-type key()    :: _.
+-type val()    :: _.
 
 
 -type ord()  :: fun( (key(), key()) -> eq | lt | gt ).
@@ -79,10 +79,11 @@ new()  ->
 -spec new(datum:compare(_)) -> datum:tree(_).
 
 new(Ord) ->
-   {t, Ord, ?NULL}.
+   ?tree(Ord, ?None).
+   % {t, Ord, ?NULL}.
 
 %%
-%% build tree from sorted data type
+%% build tree from another traversable structure 
 -spec build(_) -> datum:tree(_).
 
 build(List) ->
@@ -90,7 +91,7 @@ build(List) ->
 
 
 %%
-%%
+%% build tree from another traversable structure
 -spec build(datum:compare(_), [_]) -> datum:tree(_).
 
 build(Ord, List)

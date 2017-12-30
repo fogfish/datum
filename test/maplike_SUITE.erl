@@ -29,12 +29,16 @@
 %%%----------------------------------------------------------------------------   
 all() ->
    [
-      {group, bst}
+      {group, bst},
+      {group, rbtree}
    ].
 
 groups() ->
    [
       {bst, [parallel], 
+         [insert, lookup, remove, has, keys, apply]},
+
+      {rbtree, [parallel], 
          [insert, lookup, remove, has, keys, apply]}
    ].
 

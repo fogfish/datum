@@ -23,83 +23,182 @@
 -include("datum.hrl").
 
 -export([
-   new/0     % O(1)
-  ,insert/3  % O(log n)
-  ,lookup/2  % O(log n)
-  ,apply/3   % O(log n)
+   new/0,         %% O(1)
+   new/1,         %% O(1)
+   build/1,       %% O(n)
+   build/2,       %% O(n)
+
+   %%
+   %% map-like
+   append/2,      %% O(log n)
+   insert/3,      %% O(log n)
+   lookup/2,      %% O(log n)
+   remove/2,      %% O(log n)
+   has/2,         %% O(log n)
+   keys/1,        %% O(n)
+   apply/3        %% O(log n)
+
 ]).
 
--type(key()     :: any()).
+% -type(key()     :: any()).
 -type(element() :: any()).
--type(tree()    :: datum:rbtree() | ?NULL).
+% -type(tree()    :: datum:rbtree() | ?NULL).
+
+%%
+%% data types
+-type tree() :: datum:option( {color(), tree(), key(), val(), tree()} ).
+-type color():: r | b. 
+-type key()  :: _.
+-type val()  :: _.
+
 
 %%
 %% create new empty red-black tree
--spec new() -> tree().
+-spec new() -> datum:tree(_).
 
 new() ->
-	?NULL.
+   new(fun datum:compare/2).
 
 %%
-%% apply function to element
--spec apply(function(), key(), tree()) -> tree().
+%% create new binary search tree
+-spec new(datum:compare(_)) -> datum:tree(_).
 
-apply(Fun, Key, T) ->
-   erlang:setelement(1, apply_el(Fun, Key, T), b).
+new(Ord) ->
+   ?tree(Ord, ?None).
 
-apply_el(Fun, Key, ?NULL) ->
-   {r, ?NULL, {Key, Fun(undefined)}, ?NULL};
+%%
+%% build tree from another traversable structure
+-spec build(_) -> datum:tree(_).
 
-apply_el(Fun, Key, {C, L, {Key, Val}, R}) ->
-   {C, L, {Key, Fun(Val)}, R};
+build(List) ->
+   build(fun datum:compare/2, List).
 
-apply_el(Fun, Key, {C, L, {K, _}=X, R})
- when Key < K ->
-   balance({C, apply_el(Fun, Key, L), X, R});
+%%
+%% build tree from another traversable structure
+-spec build(datum:compare(_), [_]) -> datum:tree(_).
 
-apply_el(Fun, Key, {C, L, {K, _}=X, R})
- when Key > K ->
-   balance({C, L, X, apply_el(Fun, Key, R)}).
+build(Ord, List)
+ when is_list(List) ->
+   lists:foldl(fun append/2, new(Ord), List).
+
+
+%%%----------------------------------------------------------------------------   
+%%%
+%%% map-like
+%%%
+%%%----------------------------------------------------------------------------   
+
+%%
+%% append a new key/value pair to collection
+-spec append({key(), val()}, datum:maplike(_, _)) -> datum:maplike(_, _).
+
+append({Key, Val}, ?tree(_, _) = Tree) ->
+   insert(Key, Val, Tree);
+
+append(Key, ?tree(_, _) = Tree) ->
+   insert(Key, ?None, Tree).
 
 
 %%
-%% insert element
--spec insert(key(), element(), tree()) -> tree().
+%% insert a new a key/value pair to collection
+-spec insert(key(), val(), datum:maplike(_, _)) -> datum:maplike(_, _).
 
-insert(Key, Val, T) ->
-   erlang:setelement(1, ins(Key, Val, T), b).
+insert(Key, Val, ?tree(Ord, T)) ->
+   ?tree(Ord, erlang:setelement(1, insert_el(Ord, Key, Val, T), b)).
 
-ins(Key, Val, ?NULL) ->
-   {r, ?NULL, {Key, Val}, ?NULL};
+insert_el(_, K, V, ?None) ->
+   {r, ?None, K, V, ?None};
+insert_el(Ord, K, V, {_, _, Kx, _, _} = T) ->
+   insert_el(Ord(K, Kx), Ord, K, V, T).
 
-ins(Key, Val, {C, L, {Key, _}, R}) ->
-   {C, L, {Key, Val}, R};
+insert_el(eq, _, _, V, {C, L, K, _, R}) ->
+   {C, L, K, V, R};
+insert_el(gt, Ord, K, V, {C, L, Kx, Vx, R}) ->
+   balance({C, L, Kx, Vx, insert_el(Ord, K, V, R)});
+insert_el(lt, Ord, K, V, {C, L, Kx, Vx, R}) ->
+   balance({C, insert_el(Ord, K, V, L), Kx, Vx, R}).
 
-ins(Key, Val, {C, L, {K, _}=X, R})
- when Key < K ->
-   balance({C, ins(Key, Val, L), X, R});
-
-ins(Key, Val, {C, L, {K, _}=X, R})
- when Key > K ->
-   balance({C, L, X, ins(Key, Val, R)}).
 
 %%
-%% lookup element
--spec lookup(key(), tree()) -> element().
+%% optionally returns the value associated with key
+%%
+-spec lookup(key(), datum:maplike(_, _)) -> datum:option( val() ).
 
-lookup(_Key, ?NULL) ->
-   undefined;
+lookup(Key, ?tree(Ord, T)) ->
+   lookup_el(Ord, Key, T).
 
-lookup(Key, {_C, _L, {Key, Val}, _R}) ->
-   Val;
+lookup_el(_, _, ?None) ->
+   ?None;
+lookup_el(Ord, K, {_, _, Kx, _, _} = T) ->
+   lookup_el(Ord(K, Kx), Ord, K, T).
 
-lookup(Key, {_C, L, {K, _}, _R})
- when Key < K ->
-   lookup(Key, L);
+lookup_el(eq,   _, _, {_, _, _, Vx, _}) ->
+   Vx;
+lookup_el(gt, Ord, K, {_, _, _,  _, R}) -> 
+   lookup_el(Ord, K, R);
+lookup_el(lt, Ord, K, {_, L, _,  _, _}) ->
+   lookup_el(Ord, K, L).
 
-lookup(Key, {_C, _L, {K, _}, R})
-  when Key > K ->
-   lookup(Key, R).
+
+%%
+%% remove key/value pair from collection 
+-spec remove(key(), datum:maplike(_, _)) -> datum:maplike(_, _).
+
+remove(K, ?tree(Ord, T)) ->
+   ?tree(Ord, remove_el(Ord, K, T)).
+
+remove_el(_, _, ?None) ->
+   ?None;
+remove_el(Ord, K, {_, _, Kx, _, _} = T) ->
+   remove_el(Ord(K, Kx), Ord, K, T).
+
+remove_el(eq,   _, _, {_, A, _, _, ?None}) ->
+   A;
+remove_el(eq,   _, _, {_, ?None, _, _, B}) ->
+   B;
+remove_el(eq, Ord, _, {C, {_, _, Ka, Va, _}=A, _, _, B}) ->
+   balance({C, remove_el(Ord, Ka, A), Ka, Va, B});
+remove_el(gt, Ord, K, {C, A, Kx, Vx, B}) ->
+   balance({C, A, Kx, Vx, remove_el(Ord, K, B)});
+remove_el(lt, Ord, K, {C, A, Kx, Vx, B}) ->
+   balance({C, remove_el(Ord, K, A), Kx, Vx, B}).
+
+
+%%
+%% check if the collection has an association
+%%
+-spec has(key(), datum:maplike(_, _)) -> true | false.
+
+has(Key, Tree) ->
+   lookup(Key, Tree) =/= undefined.
+
+%%
+%% collects all keys of this collection to list
+%%
+-spec keys(datum:maplike(_, _)) -> [_].
+
+keys(Tree) ->
+   [].
+   % foldr(fun(K, _, Acc) -> [K|Acc] end, [], Tree).
+
+%%
+%% apply function on element
+-spec apply(key(), fun((datum:option(_)) -> _), datum:maplike(_, _)) -> datum:maplike(_, _).
+
+apply(Key, Fun, ?tree(Ord, T)) ->
+   ?tree(Ord, erlang:setelement(1, apply_el(Ord, Key, Fun, T), b)).
+
+apply_el(_, K, Fun, ?None) ->
+   {r, ?None, K, Fun(undefined), ?None};
+apply_el(Ord, K, Fun, {_, _, Kx, _, _} = T) ->
+   apply_el(Ord(K, Kx), Ord, K, Fun, T).
+
+apply_el(eq,   _, _, Fun, {C, A, Kx, Vx, B}) ->
+   {C, A, Kx, Fun(Vx), B};
+apply_el(gt, Ord, K, Fun, {C, A, Kx, Vx, B}) ->
+   balance({C, A, Kx, Vx, apply_el(Ord, K, Fun, B)});
+apply_el(lt, Ord, K, Fun, {C, A, Kx, Vx, B}) ->
+   balance({C, apply_el(Ord, K, Fun, A), Kx, Vx, B}).
 
 
 %%%------------------------------------------------------------------
@@ -111,17 +210,17 @@ lookup(Key, {_C, _L, {K, _}, R})
 
 %%
 %% see Okasaki "Purely Functional Data Structures", p 27
-balance({b, {r, {r, A, X, B}, Y, C}, Z, D}) -> 
-   {r, {b, A, X, B}, Y, {b, C, Z, D}};
+balance({b, {r, {r, A, Kx, Vx, B}, Ky, Vy, C}, Kz, Vz, D}) -> 
+   {r, {b, A, Kx, Vx, B}, Ky, Vy, {b, C, Kz, Vz, D}};
 
-balance({b, {r, A, X, {r, B, Y, C}}, Z, D}) ->
-   {r, {b, A, X, B}, Y, {b, C, Z, D}};
+balance({b, {r, A, Kx, Vx, {r, B, Ky, Vy, C}}, Kz, Vz, D}) ->
+   {r, {b, A, Kx, Vx, B}, Ky, Vy, {b, C, Kz, Vz, D}};
 
-balance({b, A, X, {r, {r, B, Y, C}, Z, D}}) ->
-   {r, {b, A, X, B}, Y, {b, C, Z, D}};
+balance({b, A, Kx, Vx, {r, {r, B, Ky, Vy, C}, Kz, Vz, D}}) ->
+   {r, {b, A, Kx, Vx, B}, Ky, Vy, {b, C, Kz, Vz, D}};
 
-balance({b, A, X, {r, B, Y, {r, C, Z, D}}}) ->
-   {r, {b, A, X, B}, Y, {b, C, Z, D}};
+balance({b, A, Kx, Vx, {r, B, Ky, Vy, {r, C, Kz, Vz, D}}}) ->
+   {r, {b, A, Kx, Vx, B}, Ky, Vy, {b, C, Kz, Vz, D}};
 
 balance(T) ->
    T.
