@@ -80,7 +80,7 @@
   ,cycle/1
   % ,list/1
   % ,list/2
-  ,build/1
+  % ,build/1
 ]).
 
 %%

@@ -45,6 +45,13 @@
    take/2,
    takewhile/2,
 
+   %%
+   %% foldable
+   fold/3,
+   foldl/3,
+   foldr/3,
+   unfold/2,
+
    %   q - interface
    % head/1, 
    % tail/1, 
@@ -59,7 +66,7 @@
 
    % utility interface
    length/1, 
-   is_empty/1, 
+   % is_empty/1, 
    
    % takewhile/2,
    % splitwith/2,
@@ -208,6 +215,47 @@ take(N, #queue{} = Queue) ->
 takewhile(Pred, #queue{} = Queue) ->
    q:takewhile(Pred, Queue).
 
+
+%%%------------------------------------------------------------------
+%%%
+%%% foldable
+%%%
+%%%------------------------------------------------------------------
+
+%%
+%% Combine elements of a structure using a monoid
+%% (with an associative binary operation)
+%% 
+-spec fold(datum:monoid(_), _, datum:foldable(_)) -> _.
+
+fold(Fun, Acc, Queue) ->
+   q:fold(Fun, Acc, Queue).
+
+%%
+%% Left-associative fold of a structure
+%%
+-spec foldl(datum:monoid(_), _, datum:foldable(_)) -> _.
+
+foldl(Fun, Acc, Queue) ->
+   q:foldl(Fun, Acc, Queue).
+
+%%
+%% Right-associative fold of a structure
+%%
+-spec foldr(datum:monoid(_), _, datum:foldable(_)) -> _.
+
+foldr(Fun, Acc, Queue) ->
+   q:foldr(Fun, Acc, Queue).
+
+%% 
+%% The fundamental recursive structure constructor, 
+%% it applies a function to each previous seed element in turn
+%% to determine the next element.
+%%
+-spec unfold(fun((_) -> _), _) -> datum:foldable(_).
+
+unfold(Fun, Seed) ->
+   q:unfold(Fun, Seed).
 
 
 %%%------------------------------------------------------------------

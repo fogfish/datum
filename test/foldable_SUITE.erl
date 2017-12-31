@@ -28,7 +28,11 @@
 all() ->
    [
       {group, stream},
-      {group, heap}
+      {group, heap},
+      {group, q},
+      {group, deq},
+      {group, bst},
+      {group, rbtree}
    ].
 
 groups() ->
@@ -37,6 +41,18 @@ groups() ->
          [fold, foldl, foldr, unfold]},
 
       {heap, [parallel],
+         [fold, foldl, foldr, unfold]},
+
+      {q, [parallel],
+         [fold, foldl, foldr, unfold]},
+
+      {deq, [parallel],
+         [fold, foldl, foldr, unfold]},
+
+      {bst, [parallel],
+         [fold, foldl, foldr, unfold]},
+
+      {rbtree, [parallel],
          [fold, foldl, foldr, unfold]}
    ].
 

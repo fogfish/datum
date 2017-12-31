@@ -20,7 +20,6 @@
 -include("datum.hrl").
 
 -export([
-   typeof/1,
    compare/2
 ]).
 
@@ -77,23 +76,6 @@
   ,effect/1
   ,compare/1
 ]).
-
-%%
-%%
--spec typeof(_) -> q | stream | tree | heap | lens | undefined.
-
-typeof(X)
- when is_tuple(X) ->
-  type(erlang:element(1, X));
-
-typeof(_) ->
-   undefined.
-
-type(q) -> q;
-type(s) -> stream;
-type(h) -> heap;
-type(t) -> tree;
-type(_) -> undefined.
 
 
 %%

@@ -80,5 +80,5 @@ build(Type, Ord, List)
 -spec keys(atom(), datum:maplike(_, _)) -> [_].
 
 keys(Type, MapLike) ->
-   Type:foldr(fun(K, _, Acc) -> [K|Acc] end, [], MapLike).
+   Type:foldr(fun({K, _}, Acc) -> [K|Acc] end, [], MapLike).
 

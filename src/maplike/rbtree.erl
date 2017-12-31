@@ -39,7 +39,7 @@
    apply/3,       %% O(log n)
 
    %%
-   %%
+   %% traversable
    drop/2,        %% O(n)
    dropwhile/2,   %% O(log n)
    filter/2,      %% O(n)
@@ -48,7 +48,14 @@
    split/2,       %% O(n)
    splitwhile/2,  %% O(log n)
    take/2,        %% O(n)
-   takewhile/2    %% O(log n)
+   takewhile/2,   %% O(log n)
+
+   %%
+   %% foldable
+   fold/3,
+   foldl/3,
+   foldr/3,
+   unfold/2
 ]).
 
 % -type(key()     :: any()).
@@ -405,6 +412,67 @@ takewhile_el(Pred, {C, A, K, V, B}) ->
       true  ->
          {C, A, K, V, takewhile_el(Pred, B)}
    end.
+
+
+%%%----------------------------------------------------------------------------   
+%%%
+%%% foldable
+%%%
+%%%----------------------------------------------------------------------------   
+
+%%
+%% Combine elements of a structure using a monoid
+%% (with an associative binary operation)
+%% 
+-spec fold(datum:monoid(_), _, datum:foldable(_)) -> _.
+
+fold(Fun, Acc, Tree) ->
+   foldl(Fun, Acc, Tree).
+
+%%
+%% Left-associative fold of a structure
+%%
+-spec foldl(datum:monoid(_), _, datum:foldable(_)) -> _.
+
+foldl(Fun, Acc, #tree{tree = T}) ->
+   foldl_el(Fun, Acc, T).
+
+foldl_el(_Fun, Acc0, ?None) ->
+   Acc0;
+foldl_el(Fun, Acc0, {_, A, K, V, B}) ->
+   foldl_el(Fun, Fun({K, V}, foldl_el(Fun, Acc0, A)), B).
+
+%%
+%% Right-associative fold of a structure
+%%
+-spec foldr(datum:monoid(_), _, datum:foldable(_)) -> _.
+
+foldr(Fun, Acc, #tree{tree = T}) ->
+   foldr_el(Fun, Acc, T).
+   
+foldr_el(_Fun, Acc0, ?None) ->
+   Acc0;
+foldr_el(Fun, Acc0, {_, A, K, V, B}) ->
+   foldr_el(Fun, Fun({K, V}, foldr_el(Fun, Acc0, B)), A).
+
+%% 
+%% The fundamental recursive structure constructor, 
+%% it applies a function to each previous seed element in turn
+%% to determine the next element.
+%%
+-spec unfold(fun((_) -> _), _) -> datum:foldable(_).
+
+unfold(Fun, Seed) ->
+   unfold(Fun, Seed, new()).
+
+unfold(Fun, Seed, Acc) ->
+   case Fun(Seed) of
+      {Head, Next} ->
+         unfold(Fun, Next, append(Head, Acc));
+      _ ->
+         Acc
+   end.
+
 
 
 

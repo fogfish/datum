@@ -43,7 +43,14 @@
    split/2,      %% O(n)
    splitwhile/2, %%
    take/2,       %%
-   takewhile/2   %%
+   takewhile/2,  %%
+
+   %%
+   %% foldable
+   fold/3,
+   foldl/3,
+   foldr/3,
+   unfold/2
 
   % q - interface
   % ,head/1
@@ -89,7 +96,7 @@ deq(#queue{tail = [E], head = []}) ->
    {E, new()};
 
 deq(#queue{length = N, tail = [Last|Tail], head = []}) ->
-   [E|Head] = lists:reverse(Tail, []),
+   [E|Head] = lists:reverse(Tail),
    {E, #queue{length = N - 1, head = Head, tail = [Last]}};
 
 deq(#queue{length = N, tail = Tail, head = [E]}) ->
@@ -284,6 +291,56 @@ takewhile(Pred, Acc, #queue{} = Queue) ->
       true  -> 
          takewhile(Pred, enq(Head, Acc), Tail); 
       false -> 
+         Acc
+   end.
+
+%%%------------------------------------------------------------------
+%%%
+%%% foldable
+%%%
+%%%------------------------------------------------------------------
+
+%%
+%% Combine elements of a structure using a monoid
+%% (with an associative binary operation)
+%% 
+-spec fold(datum:monoid(_), _, datum:foldable(_)) -> _.
+
+fold(Fun, Acc, Queue) ->
+   foldl(Fun, Acc, Queue).
+
+%%
+%% Left-associative fold of a structure
+%%
+-spec foldl(datum:monoid(_), _, datum:foldable(_)) -> _.
+
+foldl(Fun, Acc, #queue{head = Head, tail = Tail}) ->
+   lists:foldr(Fun, lists:foldl(Fun, Acc, Head), Tail).
+
+%%
+%% Right-associative fold of a structure
+%%
+-spec foldr(datum:monoid(_), _, datum:foldable(_)) -> _.
+
+foldr(Fun, Acc, #queue{head = Head, tail = Tail}) ->
+   lists:foldr(Fun, lists:foldl(Fun, Acc, Tail), Head).
+
+
+%% 
+%% The fundamental recursive structure constructor, 
+%% it applies a function to each previous seed element in turn
+%% to determine the next element.
+%%
+-spec unfold(fun((_) -> _), _) -> datum:foldable(_).
+
+unfold(Fun, Seed) ->
+   unfold(Fun, Seed, new()).
+
+unfold(Fun, Seed, Acc) ->
+   case Fun(Seed) of
+      {Head, Next} ->
+         unfold(Fun, Next, enq(Head, Acc));
+      _ ->
          Acc
    end.
 
