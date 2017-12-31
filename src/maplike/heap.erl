@@ -47,7 +47,15 @@
    split/2 ,    %% O(n)
    splitwhile/2,%% 
    take/2,      %%
-   takewhile/2  %%
+   takewhile/2, %%
+
+   %%
+   %% foldable
+   fold/3,      %%
+   foldl/3,     %%
+   foldr/3,     %%
+   unfold/2     %%
+
 
   % ,insert/3   %% O(log n)
   ,size/1     %% O(1)
@@ -151,6 +159,18 @@ tail(#heap{ford = Ord, heap = {A, _, _, _, B}} = Heap) ->
 
 tail(#heap{heap = ?None} = Heap) ->
   Heap.
+
+
+%%
+%% converts the collection to Erlang list
+%%
+-spec list(datum:traversable(_)) -> [_].
+
+list(#heap{heap = ?None}) ->
+   [];
+list(#heap{} = Heap) ->
+   [head(Heap) | list(tail(Heap))].
+
 
 %%
 %% return true if collection is empty 
@@ -314,6 +334,56 @@ takewhile(Pred, Acc, #heap{} = Heap) ->
    end.
 
 
+%%%----------------------------------------------------------------------------   
+%%%
+%%% foldable
+%%%
+%%%----------------------------------------------------------------------------   
+
+%%
+%% Combine elements of a structure using a monoid
+%% (with an associative binary operation)
+%% 
+-spec fold(datum:monoid(_), _, datum:foldable(_)) -> _.
+
+fold(Fun, Acc, #heap{} = Heap) ->
+   foldl(Fun, Acc, Heap).
+
+%%
+%% Left-associative fold of a structure
+%%
+-spec foldl(datum:monoid(_), _, datum:foldable(_)) -> _.
+
+foldl(_, Acc, #heap{heap = ?None}) ->
+   Acc;
+foldl(Fun, Acc, #heap{} = Heap) ->
+   foldl(Fun, Fun(head(Heap), Acc), tail(Heap)).
+
+%%
+%% Right-associative fold of a structure
+%%
+%% -spec foldr(datum:monoid(_), _, datum:foldable(_)) -> _.
+foldr(Fun, Acc, #heap{} = Heap) ->
+   lists:foldr(Fun, Acc, list(Heap)).
+
+%% 
+%% The fundamental recursive structure constructor, 
+%% it applies a function to each previous seed element in turn
+%% to determine the next element.
+%%
+-spec unfold(fun((_) -> _), _) -> datum:foldable(_).
+
+unfold(Fun, Seed) ->
+   unfold(Fun, Seed, new()).
+
+unfold(Fun, Seed, Acc) ->
+   case Fun(Seed) of
+      {Head, Next} ->
+         unfold(Fun, Next, append(Head, Acc));
+      _ ->
+         Acc
+   end.
+
 
 
 
@@ -335,17 +405,7 @@ size(_) ->
 
 
 
-%%
-%% return list of elements
--spec list(datum:heap()) -> [{key(), val()}].
 
-list({h, _, _} = Heap) -> 
-   list(Heap, []).
-
-list({h, _, ?NULL}, Acc) -> 
-   lists:reverse(Acc);
-list({h, _, _}=Heap,  Acc) -> 
-   list(tail(Heap), [head(Heap)|Acc]).
 
 
 %%%------------------------------------------------------------------

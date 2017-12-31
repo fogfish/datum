@@ -34,6 +34,9 @@
    %% traversable
    head/1,
    tail/1,
+   build/1,
+   list/1, 
+   list/2,
    is_empty/1,
    drop/2,
    dropwhile/2,
@@ -43,8 +46,14 @@
    split/2,
    splitwhile/2,
    take/2,
-   takewhile/2
+   takewhile/2,
 
+   %%
+   %% foldable
+   fold/3,
+   foldl/3,
+   foldr/3,
+   unfold/2
 ]).
 
 %%
@@ -54,11 +63,10 @@
   ,'++'/1
   
   % ,filter/2
-  ,fold/3
+  
   ,flat/1
   ,scan/2
   ,scan/3
-  ,unfold/2
   ,zip/1
   ,zip/2
   ,zipwith/2
@@ -70,8 +78,8 @@
 -export([
    reverse/1
   ,cycle/1
-  ,list/1
-  ,list/2
+  % ,list/1
+  % ,list/2
   ,build/1
 ]).
 
@@ -129,6 +137,36 @@ tail(#stream{tail = ?None} = Stream) ->
    Stream;
 tail(#stream{tail = Fun}) ->
    Fun().
+
+%%
+%% build a new collection from Erlang list
+%%
+-spec build([_] | integer()) -> datum:traversable(_).
+
+build([]) ->
+   new();
+build([Head|Tail]) ->
+   new(Head, fun() -> build(Tail) end);
+build(X)
+ when is_integer(X) ->
+   new(X, fun() -> build(X + 1) end).
+
+
+%%
+%% returns a newly-allocated list containing stream elements
+-spec list(datum:stream()) -> list().
+
+list(#stream{tail = ?None}) ->
+   [];
+list(#stream{} = Stream) ->
+   [stream:head(Stream) | list(stream:tail(Stream))].
+
+%%
+%% returns a newly-allocated list containing stream elements
+-spec list(integer(), datum:stream()) -> list().
+
+list(N, Stream) ->
+   list(stream:take(N, Stream)).
 
 
 %%
@@ -270,6 +308,57 @@ takewhile(Pred, #stream{} = Stream) ->
          new()
      end.
 
+%%%------------------------------------------------------------------
+%%%
+%%% foldable
+%%%
+%%%------------------------------------------------------------------
+
+%%
+%% applies a function to stream head and accumulator to compute a new accumulator,
+%% then applies the function to the new accumulator and the next element of stream to 
+%% compute a succeeding accumulator, and so on, the final accumulated value is returned
+%% when the end of the stream is reached. Stream must be finite.
+-spec fold(datum:monoid(_), _, datum:foldable(_)) -> _.
+
+fold(Fun, Acc, Stream) ->
+   foldl(Fun, Acc, Stream).
+
+%%
+%% Left-associative fold of a structure
+%%
+-spec foldl(datum:monoid(_), _, datum:foldable(_)) -> _.
+
+foldl(_, Acc, #stream{tail = ?None}) ->
+   Acc;
+foldl(Fun, Acc, #stream{} = Stream) ->
+   foldl(Fun, Fun(head(Stream), Acc), tail(Stream)).
+
+
+%%
+%% Right-associative fold of a structure
+%%
+-spec foldr(datum:monoid(_), _, datum:foldable(_)) -> _.
+
+foldr(Fun, Acc, #stream{} = Stream) ->
+   lists:foldr(Fun, Acc, stream:list(Stream)).
+
+%% 
+%% The fundamental recursive structure constructor, 
+%% it applies a function to each previous seed element in turn
+%% to determine the next element.
+%%
+-spec unfold(fun((_) -> _), _) -> datum:foldable(_).
+
+unfold(Fun, Seed)
+ when is_function(Fun, 1) ->
+   case Fun(Seed) of
+      {Head, Next} ->
+         new(Head, fun() -> unfold(Fun, Next) end);
+      _ ->
+         new()
+   end.
+
 
 %%%------------------------------------------------------------------
 %%%
@@ -300,18 +389,6 @@ takewhile(Pred, #stream{} = Stream) ->
 
 
 
-
-%%
-%% applies a function to stream head and accumulator to compute a new accumulator,
-%% then applies the function to the new accumulator and the next element of stream to 
-%% compute a succeeding accumulator, and so on, the final accumulated value is returned
-%% when the end of the stream is reached. Stream must be finite.
--spec fold(function(), _, datum:stream()) -> _.
-
-fold(Fun, Acc, {s, _, _} = Stream) ->
-   fold(Fun, Fun(head(Stream), Acc), tail(Stream));
-fold(_, Acc, ?NULL) ->
-   Acc.
 
 
 
@@ -351,16 +428,9 @@ scan(_, Acc0, ?NULL) ->
 %% the fundamental recursive infinite stream constructor. 
 %% it applies a function to each previous seed element in turn
 %% to determine the next element.
--spec unfold(function(), _) -> datum:stream().
+% -spec unfold(function(), _) -> datum:stream().
 
-unfold(Fun, Seed)
- when is_function(Fun) ->
-   case Fun(Seed) of
-      {Head, Next} ->
-         new(Head, fun() -> unfold(Fun, Next) end);
-      _ ->
-         new()
-   end.
+
 
 %%
 %% takes one or more input streams and returns a newly-allocated stream 
@@ -439,31 +509,7 @@ cycle([], [Head|Tail]=List) ->
    new(Head, fun() -> cycle(Tail, List) end).
 
 
-%%
-%% returns a newly-allocated list containing stream elements
--spec list(datum:stream()) -> list().
--spec list(integer(), datum:stream()) -> list().
 
-list({s, _, _}=Stream) ->
-   [stream:head(Stream) | list(stream:tail(Stream))];
-list(_) ->
-   [].
-
-list(N, Stream) ->
-   list(stream:take(N, Stream)).
-
-%%
-%% takes an object of Erlang data type are returns a newly-allocated stream
-%%   list() -> stream contains the objects in the list. 
--spec build(any()) -> datum:stream().
-
-build([]) ->
-   new();
-build([Head|Tail]) ->
-   new(Head, fun() -> build(Tail) end);
-build(X)
- when is_integer(X) ->
-   new(X, fun() -> build(X + 1) end).
 
 
 %%%------------------------------------------------------------------

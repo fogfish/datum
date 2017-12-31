@@ -27,12 +27,16 @@
 %%%----------------------------------------------------------------------------   
 all() ->
    [
-      {group, stream}
+      {group, stream},
+      {group, heap}
    ].
 
 groups() ->
    [
       {stream, [parallel], 
+         [fold, foldl, foldr, unfold]},
+
+      {heap, [parallel],
          [fold, foldl, foldr, unfold]}
    ].
 
@@ -67,33 +71,30 @@ end_per_group(_, _Config) ->
 %%
 fold(Config) ->
    Type   = ?config(type, Config),
-   List   = shuffle(?LENGTH),
+   List   = randseq(?LENGTH),
    Expect = lists:sum(List),
-
-   Expect = Type:fold(fun erlang:'+'/2, 0, Type:build(List)). 
+   Expect = Type:fold(fun '+'/2, 0, Type:build(List)). 
 
 %%
 foldl(Config) ->
    Type   = ?config(type, Config),
-   List   = shuffle(?LENGTH),
+   List   = randseq(?LENGTH),
    Expect = lists:sum(List),
-
-   Expect = Type:foldl(fun erlang:'+'/2, 0, Type:build(List)). 
+   Expect = Type:foldl(fun '+'/2, 0, Type:build(List)). 
 
 %%
 foldr(Config) ->
    Type   = ?config(type, Config),
-   List   = shuffle(?LENGTH),
+   List   = randseq(?LENGTH),
    Expect = lists:sum(List),
-
-   Expect = Type:foldr(fun erlang:'+'/2, 0, Type:build(List)). 
+   Expect = Type:foldr(fun '+'/2, 0, Type:build(List)). 
 
 %%
 unfold(Config) ->
    Type   = ?config(type, Config),
    Expect = lists:sum(lists:seq(1, ?LENGTH)),
-
-   Expect = lists:sum(Type:list(Type:unfold(fun int/1, 1))).
+   Struct = Type:unfold(fun int/1, 1),
+   Expect = Type:fold(fun '+'/2, 0, Struct). 
 
 
 %%%----------------------------------------------------------------------------   
@@ -102,11 +103,25 @@ unfold(Config) ->
 %%%
 %%%----------------------------------------------------------------------------   
 
-shuffle(0) -> [];
-shuffle(N) -> [rand:uniform(1 bsl 32) | shuffle(N - 1)].
+%%
+randseq(0) -> [];
+randseq(N) -> [rand:uniform(1 bsl 32) | randseq(N - 1)].
+
+%%
+shuffle(List) ->
+   [Y || {_, Y} <- lists:keysort(1, [{rand:uniform(), X} || X <- List])].
+
+%%
+el1({Key, _}) ->
+   Key;
+el1(X) ->
+   X.
 
 int(X)
  when X =< ?LENGTH ->
    {X, X + 1};
 int(_) ->
    undefined.
+
+'+'(X, Acc) ->
+   el1(X) + Acc.

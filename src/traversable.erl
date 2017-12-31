@@ -20,6 +20,18 @@ behaviour_info(callbacks) ->
       {tail, 1},
 
       %%
+      %% build a new collection from Erlang list
+      %%
+      %% -spec build([_]) -> datum:traversable(_).
+      {build, 1},
+
+      %%
+      %% converts the collection to Erlang list
+      %%
+      %% -spec list(datum:traversable(_)) -> [_].
+      {list, 1},
+
+      %%
       %% return true if collection is empty 
       %%
       %% -spec is_empty(datum:traversable(_)) -> true | false.
@@ -105,19 +117,7 @@ behaviour_info(callbacks) ->
       %% input collection while predicate returns true.
       %%
       %% -spec takewhile(datum:predicate(_), datum:traversable(_)) -> datum:traversable(_).
-      {takewhile, 2},
-
-      %%
-      %% build a new collection from Erlang list
-      %%
-      %% -spec build([_]) -> datum:traversable(_).
-      {build, 1},
-
-      %%
-      %% converts the collection to Erlang list
-      %%
-      %% -spec build(datum:traversable(_)) -> [_].
-      {list, 1}
+      {takewhile, 2}
    ];
 behaviour_info(_Other) ->
    undefined.
