@@ -60,23 +60,18 @@
    at_om/1,
 
    pair/1,
-   pair_om/1
+   pair_om/1,
 
-
-   % t1/1, t2/1, t3/1, tuple/1, tuple_pred/1, 
-   % map/1, map_pred/1, map_default/1,
-   % pair/1, pair_default/1
+   compose1/1, 
+   compose2/1, 
+   compose3/1, 
+   compose4/1, 
+   compose5/1, 
+   compose6/1, 
+   compose7/1,
+   compose8/1,
+   compose9/1
 ]).
-
-%%
-%% compose lenses
-% -export([c/1, apply2/1, apply3/1, apply4/1, apply5/1, apply6/1, apply7/1]).
-
-%%
-%% omega lenses
-% -export([
-%    om_hd/1, om_tl/1, om_takewith/1
-% ]).
 
 %%%----------------------------------------------------------------------------   
 %%%
@@ -88,11 +83,8 @@ all() ->
       {group, list},
       {group, tuple},
       {group, map},
-      {group, pair}
-
-     %  {group, pure}
-     % ,{group, compose}
-     % ,{group, omega}
+      {group, pair},
+      {group, compose}
    ].
 
 groups() ->
@@ -107,23 +99,10 @@ groups() ->
          [at, at_om]},
 
       {pair,   [parallel],
-         [pair, pair_om]}
+         [pair, pair_om]},
 
-
-      % {naive, [parallel], 
-      %    [naive_type_map, naive_type_tuple]}
-
-     %  {pure,  [parallel], 
-     %     [
-     %      map, map_default,
-     %      % map, map_pred, map_default,
-     %      pair, pair_default]}
-
-     % ,{compose, [parallel], 
-     %     [c, apply2, apply3, apply4, apply5, apply6, apply7]}
-
-     % ,{omega, [parallel],
-     %     [om_hd, om_tl, om_takewith]}
+      {compose, [parallel], 
+         [compose1, compose2, compose3, compose4, compose5, compose6, compose7, compose8, compose9]}
    ].
 
 %%%----------------------------------------------------------------------------   
@@ -313,168 +292,115 @@ pair_om(_Config) ->
    [{b, 1}] = lens:put(Lens, 1, []).
 
 
-% pair(_Config) ->
-%    Ln = lens:pair(b),
-%    X  = [{a, 1}, {b, 2}, {c, 3}],
-%    Y  = [{a, 1}, {b, e}, {c, 3}],
-%    ?LAWS(Ln, X, Y).
+%%%----------------------------------------------------------------------------   
+%%%
+%%% compose lenses 
+%%%
+%%%----------------------------------------------------------------------------   
 
-% pair_default(_Config) ->
-%    Ln = lens:pair(b, 2),
-%    X  = [{a, 1}, {c, 3}],
-%    X1 = [{a, 1}, {c, 3}, {b, 2}],
-%    Y  = [{a, 1}, {c, 3}, {b, e}],
-%    ?LAWS(Ln, X, X1, Y).
+compose1(_Config) ->
+   Lens = lens:c([lens:keylist(b), lens:t2()]),
+   Data = [{a, 1}, {b, 2}, {c, 3}],
+   law_get_put(Lens, Data),
+   law_put_get(Lens, a, Data),
+   law_put_put(Lens, a, b, [{a, 1}, {b, b}, {c, 3}], Data).
 
-% %% Ln - lens, X - original data, Y - expected PutPut data set
-% -define(LAWS(Ln, A, B, C),
-%    begin
-%       B  = lens:put(Ln,    lens:get(Ln, A), A),
-%       d  = lens:get(Ln,    lens:put(Ln, d, A)),
-%       C  = 
-%    end
-% ).
-% -define(LAWS(Ln, A, Expect), ?LAWS(Ln, A, A, Expect)).
+compose2(_Config) ->
+   Ln1  = lens:hd(),
+   Ln2  = lens:t1(),
+   Lens = lens:c(Ln1, Ln2),
+   Data = [{1,2}],
+   law_get_put(Lens, Data),
+   law_put_get(Lens, a, Data),
+   law_put_put(Lens, a, b, [{b,2}], Data).
 
+compose3(_Config) ->
+   Ln1  = lens:tl(),
+   Ln2  = lens:hd(),
+   Ln3  = lens:t1(),
+   Lens = lens:c(Ln1, Ln2, Ln3),
+   Data = [head, {1,2}],
+   law_get_put(Lens, Data),
+   law_put_get(Lens, a, Data),
+   law_put_put(Lens, a, b, [head, {b,2}], Data).
 
-%%   Well behaved lens satisfies following laws
-%%
-%%
-%%
+compose4(_Config) ->
+   Ln1  = lens:tl(),
+   Ln2  = lens:hd(),
+   Ln3  = lens:t1(),
+   Ln4  = lens:hd(),
+   Lens = lens:c(Ln1, Ln2, Ln3, Ln4),
+   Data = [a, {[1],2}],
+   law_get_put(Lens, Data),
+   law_put_get(Lens, a, Data),
+   law_put_put(Lens, a, b, [a, {[b],2}], Data).
 
+compose5(_Config) ->
+   Ln1  = lens:tl(),
+   Ln2  = lens:hd(),
+   Ln3  = lens:t1(),
+   Ln4  = lens:hd(),
+   Ln5  = lens:t1(),
+   Lens = lens:c(Ln1, Ln2, Ln3, Ln4, Ln5),
+   Data = [a, {[{1, 2}],2}],
+   law_get_put(Lens, Data),
+   law_put_get(Lens, a, Data),
+   law_put_put(Lens, a, b, [a, {[{b, 2}],2}], Data).
 
+compose6(_Config) ->
+   Ln1  = lens:tl(),
+   Ln2  = lens:hd(),
+   Ln3  = lens:t1(),
+   Ln4  = lens:hd(),
+   Ln5  = lens:t1(),
+   Ln6  = lens:hd(),
+   Lens = lens:c(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6),
+   Data = [a, {[{[1], 2}],2}],
+   law_get_put(Lens, Data),
+   law_put_get(Lens, a, Data),
+   law_put_put(Lens, a, b, [a, {[{[b], 2}],2}], Data).
 
+compose7(_Config) ->
+   Ln1  = lens:tl(),
+   Ln2  = lens:hd(),
+   Ln3  = lens:t1(),
+   Ln4  = lens:hd(),
+   Ln5  = lens:t1(),
+   Ln6  = lens:hd(),
+   Ln7  = lens:t1(),
+   Lens = lens:c(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6, Ln7),
+   Data   = [a, {[{[{1}], 2}],2}],
+   law_get_put(Lens, Data),
+   law_put_get(Lens, a, Data),
+   law_put_put(Lens, a, b, [a, {[{[{b}], 2}],2}], Data).
 
-% tuple_pred(_Config) ->
-%    Ln = lens:tuple(fun erlang:is_atom/1),
-%    X  = {1, 2, a, 3, 4},
-%    Y  = {1, 2, e, 3, 4},
-%    ?LAWS(Ln, X, Y).
-      
-
-% map_pred(_Config) ->
-%    Ln = lens:map(fun({_, X}) -> erlang:is_atom(X) end),
-%    X  = #{a => 1, b => a, c => 3},
-%    Y  = #{a => 1, b => e, c => 3},
-%    ?LAWS(Ln, X, Y).
-
-% map_default(_Config) ->
-%    Ln = lens:map(b, 2),
-%    X  = #{a => 1, c => 3},
-%    X1 = #{a => 1, b => 2, c => 3},
-%    Y  = #{a => 1, b => e, c => 3},
-%    ?LAWS(Ln, X, X1, Y).   
-
-% % keylist(_Config) ->
-% %    Ln = lens:keylist(b),
-% %    X  = [{a, 1}, {b, 2}, {c, 3}],
-% %    Y  = [{a, 1}, {b, e}, {c, 3}],
-% %    ?LAWS(Ln, X, Y).
-
-% % keylist_default(_Config) ->
-% %    Ln = lens:keylist(b, 2),
-% %    X  = [{a, 1}, {c, 3}],
-% %    X1 = [{a, 1}, {c, 3}, {b, 2}],
-% %    Y  = [{a, 1}, {c, 3}, {b, e}],
-% %    ?LAWS(Ln, X, X1, Y).
-   
-
-
-
-% %%%----------------------------------------------------------------------------   
-% %%%
-% %%% compose lenses
-% %%%
-% %%%----------------------------------------------------------------------------   
-
-% c(_Config) ->
-%    Ln = lens:c([lens:keylist(b), lens:tuple(2)]),
-%    X  = [{a, 1}, {b, 2}, {c, 3}],
-%    Y  = [{a, 1}, {b, e}, {c, 3}],
-%    ?LAWS(Ln, X, Y).
-
-% apply2(_Config) ->
-%    Ln1 = lens:hd(),
-%    Ln2 = lens:t1(),
-%    LnC = lens:c(Ln1, Ln2),
-%    X   = [{1,2}],
-%    Y   = [{e,2}],  
-%    X = lens:put(LnC,    lens:get(LnC, X), X),
-%    d = lens:get(LnC,    lens:put(LnC, d, X)),
-%    Y = lens:put(LnC, e, lens:put(LnC, d, X)).
-
-% apply3(_Config) ->
-%    Ln1 = lens:tl(),
-%    Ln2 = lens:hd(),
-%    Ln3 = lens:t1(),
-%    LnC = lens:c(Ln1, Ln2, Ln3),
-%    X   = [head, {1,2}],
-%    Y   = [head, {e,2}],  
-%    X = lens:put(LnC,    lens:get(LnC, X), X),
-%    d = lens:get(LnC,    lens:put(LnC, d, X)),
-%    Y = lens:put(LnC, e, lens:put(LnC, d, X)).
-
-% apply4(_Config) ->
-%    Ln1 = lens:tl(),
-%    Ln2 = lens:hd(),
-%    Ln3 = lens:t1(),
-%    Ln4 = lens:hd(),
-%    LnC = lens:c(Ln1, Ln2, Ln3, Ln4),
-%    X   = [a, {[1],2}],
-%    Y   = [a, {[e],2}],  
-%    X = lens:put(LnC,    lens:get(LnC, X), X),
-%    d = lens:get(LnC,    lens:put(LnC, d, X)),
-%    Y = lens:put(LnC, e, lens:put(LnC, d, X)).
-
-% apply5(_Config) ->
-%    Ln1 = lens:tl(),
-%    Ln2 = lens:hd(),
-%    Ln3 = lens:t1(),
-%    Ln4 = lens:hd(),
-%    Ln5 = lens:t1(),
-%    LnC = lens:c(Ln1, Ln2, Ln3, Ln4, Ln5),
-%    X   = [a, {[{1, 2}],2}],
-%    Y   = [a, {[{e, 2}],2}],  
-%    X = lens:put(LnC,    lens:get(LnC, X), X),
-%    d = lens:get(LnC,    lens:put(LnC, d, X)),
-%    Y = lens:put(LnC, e, lens:put(LnC, d, X)).
-
-% apply6(_Config) ->
-%    Ln1 = lens:tl(),
-%    Ln2 = lens:hd(),
-%    Ln3 = lens:t1(),
-%    Ln4 = lens:hd(),
-%    Ln5 = lens:t1(),
-%    Ln6 = lens:hd(),
-%    LnC = lens:c(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6),
-%    X   = [a, {[{[1], 2}],2}],
-%    Y   = [a, {[{[e], 2}],2}],  
-%    X = lens:put(LnC,    lens:get(LnC, X), X),
-%    d = lens:get(LnC,    lens:put(LnC, d, X)),
-%    Y = lens:put(LnC, e, lens:put(LnC, d, X)).
-
-% apply7(_Config) ->
-%    Ln1 = lens:tl(),
-%    Ln2 = lens:hd(),
-%    Ln3 = lens:t1(),
-%    Ln4 = lens:hd(),
-%    Ln5 = lens:t1(),
-%    Ln6 = lens:hd(),
-%    Ln7 = lens:t1(),
-%    LnC = lens:c(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6, Ln7),
-%    X   = [a, {[{[{1}], 2}],2}],
-%    Y   = [a, {[{[{e}], 2}],2}],  
-%    X = lens:put(LnC,    lens:get(LnC, X), X),
-%    d = lens:get(LnC,    lens:put(LnC, d, X)),
-%    Y = lens:put(LnC, e, lens:put(LnC, d, X)).
-
-
-% %%%----------------------------------------------------------------------------   
-% %%%
-% %%% omega lens interface
-% %%%
-% %%%----------------------------------------------------------------------------   
-
-
-
-
+compose8(_Config) ->
+   Ln1  = lens:tl(),
+   Ln2  = lens:hd(),
+   Ln3  = lens:t1(),
+   Ln4  = lens:hd(),
+   Ln5  = lens:t1(),
+   Ln6  = lens:hd(),
+   Ln7  = lens:t1(),
+   Ln8  = lens:hd(),
+   Lens = lens:c(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6, Ln7, Ln8),
+   Data = [a, {[{[{[1]}], 2}],2}],
+   law_get_put(Lens, Data),
+   law_put_get(Lens, a, Data),
+   law_put_put(Lens, a, b, [a, {[{[{[b]}], 2}],2}], Data).
+                           
+compose9(_Config) ->
+   Ln1  = lens:tl(),
+   Ln2  = lens:hd(),
+   Ln3  = lens:t1(),
+   Ln4  = lens:hd(),
+   Ln5  = lens:t1(),
+   Ln6  = lens:hd(),
+   Ln7  = lens:t1(),
+   Ln8  = lens:hd(),
+   Ln9  = lens:t1(), 
+   Lens = lens:c(Ln1, Ln2, Ln3, Ln4, Ln5, Ln6, Ln7, Ln8, Ln9),
+   Data   = [a, {[{[{[{1}]}], 2}],2}],
+   law_get_put(Lens, Data),
+   law_put_get(Lens, a, Data),
+   law_put_put(Lens, a, b, [a, {[{[{[{b}]}], 2}],2}], Data).
