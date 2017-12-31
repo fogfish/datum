@@ -44,14 +44,14 @@
    filter/2,    %% O(n)
    foreach/2,   %% O(n)
    map/2,       %% O(n)
-   split/2      %% O(n)
+   split/2 ,    %% O(n)
+   splitwhile/2,%% 
+   take/2,      %%
+   takewhile/2  %%
 
   % ,insert/3   %% O(log n)
   ,size/1     %% O(1)
    % utility interface
-  % ,dropwhile/2
-  ,takewhile/2
-  ,splitwith/2
   ,list/1     %% O(n)
 ]).
 
@@ -259,11 +259,63 @@ split(N, Acc, #heap{} = Heap) ->
 
 
 %%
-%% insert new value
-% -spec insert(key(), val(), datum:heap()) -> heap().
+%% partitions stream into two streams according to predicate.
+%% The splitwith/2 behaves as if it is defined as consequent 
+%% takewhile(Pred, Seq), dropwhile(Pred, Seq)
+%%
+-spec splitwhile(datum:predicate(_), datum:traversable(_)) -> {datum:traversable(_), datum:traversable(_)}.
 
-% insert(Key, Val, {h, Size, Heap}) ->
-%    {h, Size + 1, merge({?NULL, 1, Key, Val, ?NULL}, Heap)}.
+splitwhile(Pred, Heap) ->
+   splitwhile(Pred, new(), Heap).
+
+splitwhile(_Pred, Acc, #heap{heap = ?None} = Heap) ->
+   {Acc, Heap};
+splitwhile(Pred, Acc, #heap{} = Heap) ->
+   case Pred(head(Heap)) of
+      true ->
+         splitwhile(Pred, append(head(Heap), Acc), tail(Heap));
+      false ->
+         {Acc, Heap}
+   end.
+
+%%
+%% returns a newly-allocated collection containing the first n elements of 
+%% the input collection.
+%%
+-spec take(integer(), datum:traversable(_)) -> datum:traversable(_).
+
+take(N, Heap) ->
+   take(N, new(), Heap).
+
+take(0, Acc, #heap{}) ->
+   Acc;
+take(_, Acc, #heap{heap = ?None}) ->
+   Acc;
+take(N, Acc, #heap{} = Heap) ->
+   take(N - 1, append(head(Heap), Acc), tail(Heap)).
+
+%%
+%% returns a newly-allocated collection that contains those elements from 
+%% input collection while predicate returns true.
+%%
+-spec takewhile(datum:predicate(_), datum:traversable(_)) -> datum:traversable(_).
+
+takewhile(Pred, Heap) ->
+   takewhile(Pred, new(), Heap).
+
+takewhile(_, Acc, #heap{heap = ?None}) ->
+   Acc;
+takewhile(Pred, Acc, #heap{} = Heap) ->
+   case Pred(head(Heap)) of
+      true  -> 
+         takewhile(Pred, append(head(Heap), Acc), tail(Heap)); 
+      false -> 
+         Acc
+   end.
+
+
+
+
 
 %%
 %% return heap size
@@ -278,38 +330,10 @@ size(_) ->
 
 %%
 %% takewhile head of heap
--spec takewhile(function(), datum:heap()) -> datum:heap().
-
-takewhile(Pred, Heap) ->
-   takewhile(Pred, new(), Heap).
-
-takewhile(_Pred,  Acc,  {h, _, ?NULL}) ->
-   Acc;
-takewhile(Pred, Acc, {h, _, _} = Heap) ->
-   {Key, Val} = head(Heap),
-   case Pred(Key) of
-      true  -> takewhile(Pred, insert(Key, Val, Acc), tail(Heap)); 
-      false -> Acc
-   end.
+% -spec takewhile(function(), datum:heap()) -> datum:heap().
 
 
-%%
-%% partitions heap into two heaps according to predicate.
-%% The splitwith/2 behaves as if it is defined as consequent 
-%% takewhile(Pred, Queue), dropwhile(Pred, Queue)
--spec splitwith(function(), datum:q()) -> {datum:q(), datum:q()}.
 
-splitwith(Pred, Queue) ->
-   splitwith(Pred, new(), Queue).
-
-splitwith(_Pred, Acc, {h, _, ?NULL} = Heap) ->
-   {Acc, Heap};
-splitwith(Pred, Acc, {h, _, _} = Heap) ->
-   {Key, Val} = head(Heap),
-   case Pred(Key) of
-      true  -> splitwith(Pred, insert(Key, Val, Acc), tail(Heap)); 
-      false -> {Acc, Heap}
-   end.
 
 %%
 %% return list of elements

@@ -46,7 +46,10 @@
    filter/2,     %% O(n)
    foreach/2,    %% O(n)
    map/2,        %% O(n)
-   split/2       %% O(n)
+   split/2,      %% O(n)
+   splitwhile/2, %% O(log n)
+   take/2,       %% O(log n)
+   takewhile/2   %% O(log n)
 
   ,min/1         %% O(log n)
   ,max/1         %% O(log n)
@@ -55,10 +58,6 @@
   ,mapfoldl/3    %% O(n)
   ,foldr/3       %% O(n)
   ,mapfoldr/3    %% O(n)
-  ,splitwith/2   %% O(log n)
-  ,takewhile/2   %% O(log n)
-  ,take/2        %% O(log n)
-  
   ,list/1        %% O(n)
 ]).
 
@@ -353,6 +352,73 @@ split_el(N, {A, K, V, B}) ->
    end.
 
 
+%%
+%% partitions stream into two streams according to predicate.
+%% The splitwith/2 behaves as if it is defined as consequent 
+%% takewhile(Pred, Seq), dropwhile(Pred, Seq)
+%%
+-spec splitwhile(datum:predicate(_), datum:traversable(_)) -> {datum:traversable(_), datum:traversable(_)}.
+
+splitwhile(Pred, #tree{ford = Ord, tree = T}) ->
+   {A, B} = splitwhile_el(Pred, T),
+   {#tree{ford = Ord, tree = A}, #tree{ford = Ord, tree = B}}.
+
+splitwhile_el(_, ?None) ->
+   {?None, ?None};
+
+splitwhile_el(Fun, {A, K, V, B}) ->
+   case Fun({K, V}) of
+      false ->
+         {Ax, Bx} = splitwhile_el(Fun, A),
+         {Ax, {Bx, K, V, B}};
+      true  ->
+         {Ax, Bx} = splitwhile_el(Fun, B),
+         {{A, K, V, Ax}, Bx}
+   end.
+
+%%
+%% returns a newly-allocated collection containing the first n elements of 
+%% the input collection.
+%%
+-spec take(integer(), datum:traversable(_)) -> datum:traversable(_).
+
+
+take(N, #tree{tree = T} = Tree) ->
+   Tree#tree{tree = erlang:element(2, take_el(N, T))}.
+
+take_el(N, ?None) ->
+   {N, ?None};
+take_el(N, {A, K, V, B}) ->
+   case take_el(N, A) of
+      {0, Ax} ->
+         {0, Ax};
+      {M, Ax} ->
+         {R, Bx} = take_el(M - 1, B),
+         {R, {Ax, K, V, Bx}}
+   end.
+
+%%
+%% returns a newly-allocated collection that contains those elements from 
+%% input collection while predicate returns true.
+%%
+-spec takewhile(datum:predicate(_), datum:traversable(_)) -> datum:traversable(_).
+
+takewhile(Pred, #tree{tree = T} = Tree) ->
+   Tree#tree{tree = erlang:element(2, takewhile_el(Pred, T))}.
+
+takewhile_el(_, ?None) ->
+   ?None;
+
+takewhile_el(Pred, {A, K, V, B}) ->
+   case Pred({K, V}) of
+      false ->
+         takewhile_el(Pred, A);
+      true  ->
+         {A, K, V, takewhile_el(Pred, B)}
+   end.
+
+
+
 
 %%%----------------------------------------------------------------------------   
 %%%
@@ -459,60 +525,13 @@ mapfoldr_el(Fun, Acc0, {A, K, V, B}) ->
 %% split tree on left and right according to predicate function.
 %% the predicate function returns true for leftist keys and false otherwise. 
 %% the function behaves as follows: {takewhile(...), dropwhile(...)}
--spec splitwith(function(), datum:tree()) -> {datum:tree(), datum:tree()}.
-
-splitwith(Fun, {t, Ord, T}) ->
-   {A, B} = splitwith_el(Fun, T),
-   {{t, Ord, A}, {t, Ord, B}}.
-
-splitwith_el(_Fun, ?NULL) ->
-   {?NULL, ?NULL};
-
-splitwith_el(Fun, {A, K, V, B}) ->
-   case Fun(K) of
-      false ->
-         {Ax, Bx} = splitwith_el(Fun, A),
-         {Ax, {Bx, K, V, B}};
-      true  ->
-         {Ax, Bx} = splitwith_el(Fun, B),
-         {{A, K, V, Ax}, Bx}
-   end.
+% -spec splitwith(function(), datum:tree()) -> {datum:tree(), datum:tree()}.
 
 %%
 %% takes elements from tree while predicate function return true
--spec takewhile(function(), datum:tree()) -> datum:tree().
+% -spec takewhile(function(), datum:tree()) -> datum:tree().
 
-takewhile(Fun, {t, Ord, T}) ->
-   {t, Ord, takewhile_el(Fun, T)}.
 
-takewhile_el(_Fun, ?NULL) ->
-   ?NULL;
-
-takewhile_el(Fun, {A, K, V, B}) ->
-   case Fun(K) of
-      false ->
-         takewhile_el(Fun, A);
-      true  ->
-         {A, K, V, takewhile_el(Fun, B)}
-   end.
-
-%%
-%%
--spec take(integer(), tree()) -> tree().
-
-take(N, {t, Ord, T}) ->
-   {t, Ord, erlang:element(2, take_el(N, T))}.
-
-take_el(N, ?NULL) ->
-   {N, ?NULL};
-take_el(N, {A, K, V, B}) ->
-   case take_el(N, A) of
-      {0, Ax} ->
-         {0, Ax};
-      {M, Ax} ->
-         {R, Bx} = take_el(M - 1, B),
-         {R, {Ax, K, V, Bx}}
-   end.
 
 
 

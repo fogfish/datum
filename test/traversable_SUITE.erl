@@ -45,23 +45,22 @@ all() ->
 groups() ->
    [
       {stream, [parallel], 
-         [iterate, drop, dropwhile, filter, foreach, map, split]},
-         % [split, splitwhile, take, takewhile]}
+         [iterate, drop, dropwhile, filter, foreach, map, split, splitwhile, take, takewhile]},
 
       {heap, [parallel],
-         [iterate, drop, dropwhile, filter, foreach, map, split]},
+         [iterate, drop, dropwhile, filter, foreach, map, split, splitwhile, take, takewhile]},
 
       {q, [parallel],
-         [iterate, drop, dropwhile, filter, foreach, map, split]},
+         [iterate, drop, dropwhile, filter, foreach, map, split, splitwhile, take, takewhile]},
 
       {deq, [parallel],
-         [iterate, drop, dropwhile, filter, foreach, map, split]},
+         [iterate, drop, dropwhile, filter, foreach, map, split, splitwhile, take, takewhile]},
 
       {bst, [parallel],
-         [drop, dropwhile, filter, foreach, map, split]},
+         [drop, dropwhile, filter, foreach, map, split, splitwhile, take, takewhile]},
 
       {rbtree, [parallel],
-         [drop, dropwhile, filter, foreach, map, split]}
+         [drop, dropwhile, filter, foreach, map, split, splitwhile, take, takewhile]}
    ].
 
 %%%----------------------------------------------------------------------------   
@@ -162,41 +161,40 @@ split(Config) ->
    Type   = ?config(type, Config),
    List   = randseq(?LENGTH),
    Empty  = Type:new(),
-   {_, Empty} = Type:split(?LENGTH, Type:build(List)),
-   {Empty, _} = Type:split(0, Type:build(List)).
-
-
+   Struct = Type:build(List),
+   {_, Empty} = Type:split(?LENGTH, Struct),
+   {Empty, _} = Type:split(0, Struct).
 
 %%
 splitwhile(Config) ->
    Type   = ?config(type, Config),
-   List   = seq(?LENGTH),
-   N      = rand:uniform(?LENGTH - 1),
-   {_, _} = Type:splitwhile(fun(X) -> X < N end, Type:build(List)).
+   List   = randseq(?LENGTH),
+   Empty  = Type:new(),
+   Struct = Type:build(List),
+   {_, Empty} = Type:splitwhile(fun(_) -> true end, Struct),
+   {Empty, _} = Type:splitwhile(fun(_) -> false end, Struct).
 
 %%
 take(Config) ->
    Type   = ?config(type, Config),
-   List   = seq(?LENGTH),
-   N      = rand:uniform(?LENGTH),
-   Type:take(N, Type:build(List)).
+   List   = randseq(?LENGTH),
+   Struct = Type:build(List),
+   Type:take(?LENGTH, Struct).
+
 
 %%
 takewhile(Config) ->
    Type   = ?config(type, Config),
-   List   = seq(?LENGTH),
-   N      = rand:uniform(?LENGTH - 1),
-   Type:takewhile(fun(X) -> X < N end, Type:build(List)).
+   List   = randseq(?LENGTH),
+   Struct = Type:build(List),
+   Type:takewhile(fun(_) -> true end, Struct).
+
 
 %%%----------------------------------------------------------------------------   
 %%%
 %%% private
 %%%
 %%%----------------------------------------------------------------------------   
-
-%%
-seq(N) ->
-   lists:seq(1, N).
 
 %%
 randseq(0) -> [];
@@ -217,13 +215,4 @@ el2({_, Val}) ->
    Val;
 el2(X) ->
    X.
-
-
-
-
-%%
-%% check traversable matches the list
-is_equal(Type, Result, Expect) ->
-   Sum = lists:sum(Expect),
-   Sum = lists:sum(Type:list(Result)).
 

@@ -40,7 +40,10 @@
    filter/2,     %% O(n)
    foreach/2,    %% O(n)
    map/2,        %% O(n)
-   split/2       %% O(n)
+   split/2,      %% O(n)
+   splitwhile/2, %%
+   take/2,       %%
+   takewhile/2   %%
 
   % q - interface
   % ,head/1
@@ -49,8 +52,6 @@
    % utility interface
   % ,is_empty/1
   ,length/1
-  ,takewhile/2
-  ,splitwith/2
   ,list/1
   
 ]).
@@ -224,7 +225,67 @@ split(N, Acc, Queue) ->
    {Head, Tail} = deq(Queue),
    split(N - 1, enq(Head, Acc), Tail).
 
+%%
+%% partitions stream into two streams according to predicate.
+%% The splitwith/2 behaves as if it is defined as consequent 
+%% takewhile(Pred, Seq), dropwhile(Pred, Seq)
+%%
+-spec splitwhile(datum:predicate(_), datum:traversable(_)) -> {datum:traversable(_), datum:traversable(_)}.
 
+splitwhile(Pred, Queue) ->
+   splitwhile(Pred, new(), Queue).
+
+splitwhile(Pred, Acc, #queue{head = [], tail = []} = Queue) ->
+   {Acc, Queue};
+splitwhile(Pred, Acc, #queue{} = Queue) ->
+   Head = head(Queue),
+   case Pred(Head) of
+      true  -> 
+         splitwhile(Pred, enq(Head, Acc), tail(Queue)); 
+      false -> 
+         {Acc, Queue}
+   end.
+
+%%
+%% returns a newly-allocated collection containing the first n elements of 
+%% the input collection.
+%%
+-spec take(integer(), datum:traversable(_)) -> datum:traversable(_).
+
+take(X, #queue{length = N} = Queue)
+ when X >= N ->
+   Queue;
+take(N, Queue) ->
+   take(N, new(), Queue).
+
+take(0, Acc, _Queue) ->
+   Acc;
+take(_, Acc, #queue{head = [], tail = []}) ->
+   Acc;
+take(N, Acc, Queue) ->
+   {Head, Tail} = deq(Queue),
+   take(N - 1, enq(Head, Acc), Tail).
+
+
+%%
+%% returns a newly-allocated collection that contains those elements from 
+%% input collection while predicate returns true.
+%%
+-spec takewhile(datum:predicate(_), datum:traversable(_)) -> datum:traversable(_).
+
+takewhile(Pred, Queue) ->
+   takewhile(Pred, new(), Queue).
+
+takewhile(_, Acc, #queue{head = [], tail = []}) ->
+   Acc;
+takewhile(Pred, Acc, #queue{} = Queue) ->
+   {Head, Tail} = deq(Queue),
+   case Pred(Head) of
+      true  -> 
+         takewhile(Pred, enq(Head, Acc), Tail); 
+      false -> 
+         Acc
+   end.
 
 
 %%
@@ -246,20 +307,8 @@ length(?NULL) ->
 
 %%
 %% takewhile head of queue
--spec takewhile(function(), datum:q()) -> datum:q().
+% -spec takewhile(function(), datum:q()) -> datum:q().
 
-takewhile(Pred, Queue) ->
-   takewhile(Pred, new(), Queue).
-
-takewhile(Pred, Acc, {q, _N, _Tail, _Head}=Q) ->
-   {Head, Tail} = deq(Q),
-   case Pred(Head) of
-      true  -> takewhile(Pred, enq(Head, Acc), Tail); 
-      false -> Acc
-   end;
-
-takewhile(_,  Acc, {}) ->
-   Acc.
 
 
 
@@ -267,20 +316,9 @@ takewhile(_,  Acc, {}) ->
 %% partitions queue into two queues according to predicate.
 %% The splitwith/2 behaves as if it is defined as consequent 
 %% takewhile(Pred, Queue), dropwhile(Pred, Queue)
--spec splitwith(function(), datum:q()) -> {datum:q(), datum:q()}.
+% -spec splitwith(function(), datum:q()) -> {datum:q(), datum:q()}.
 
-splitwith(Pred, Queue) ->
-   splitwith(Pred, new(), Queue).
 
-splitwith(Pred, Acc, {q, _N, _Tail, _Head}=Q) ->
-   {Head, Tail} = deq(Q),
-   case Pred(Head) of
-      true  -> splitwith(Pred, enq(Head, Acc), Tail); 
-      false -> {Acc, Q}
-   end;
-
-splitwith(_,  Acc, {}) ->
-   {Acc, new()}.
 
 %%
 %%

@@ -39,7 +39,12 @@
    dropwhile/2,
    filter/2,
    foreach/2,
-   map/2
+   map/2,
+   split/2,
+   splitwhile/2,
+   take/2,
+   takewhile/2
+
 ]).
 
 %%
@@ -53,10 +58,6 @@
   ,flat/1
   ,scan/2
   ,scan/3
-  ,split/2
-  ,splitwhile/2
-  ,take/2
-  ,takewhile/2
   ,unfold/2
   ,zip/1
   ,zip/2
@@ -222,6 +223,54 @@ split(N, Acc, #stream{} = Stream) ->
    split(N - 1, [head(Stream)|Acc], tail(Stream)).
 
 
+%%
+%% partitions stream into two streams according to predicate.
+%% The splitwith/2 behaves as if it is defined as consequent 
+%% takewhile(Pred, Stream), dropwhile(Pred, Stream)
+-spec splitwhile(datum:predicate(_), datum:traversable(_)) -> {datum:traversable(_), datum:traversable(_)}.
+
+splitwhile(Pred, Stream) ->
+   splitwhile(Pred, [], Stream).
+
+splitwhile(_, Acc, #stream{tail = ?None} = Stream) ->
+   {stream:build(lists:reverse(Acc)), Stream};
+
+splitwhile(Pred, Acc, #stream{} = Stream) ->
+   case Pred(head(Stream)) of
+      true  ->
+         splitwhile(Pred, [head(Stream)|Acc], tail(Stream));
+      false ->
+         {stream:build(lists:reverse(Acc)), Stream}
+     end.
+
+%%
+%% returns a newly-allocated stream containing the first n elements of 
+%% the input stream. 
+-spec take(integer(), datum:traversable(_)) -> datum:traversable(_).
+
+take(0, _) ->
+   new();
+take(_, #stream{tail = ?None} = Stream) ->
+   Stream;
+take(N, #stream{} = Stream) ->
+   new(head(Stream), fun() -> take(N - 1, tail(Stream)) end).
+
+%%
+%% returns a newly-allocated stream that contains those elements from stream 
+%% while predicate returns true.
+-spec takewhile(datum:predicate(_), datum:traversable(_)) -> datum:traversable(_).
+
+takewhile(_, #stream{tail = ?None} = Stream) ->
+   Stream;
+takewhile(Pred, #stream{} = Stream) ->
+   case Pred(head(Stream)) of
+      true  -> 
+         new(head(Stream), fun() -> takewhile(Pred, tail(Stream)) end);
+      false ->
+         new()
+     end.
+
+
 %%%------------------------------------------------------------------
 %%%
 %%% stream interface
@@ -296,52 +345,6 @@ scan(_, Acc0, ?NULL) ->
 
 
 
-%%
-%% partitions stream into two streams according to predicate.
-%% The splitwith/2 behaves as if it is defined as consequent 
-%% takewhile(Pred, Stream), dropwhile(Pred, Stream)
--spec splitwhile(function(), datum:stream()) -> {[_], datum:stream()}.
-
-splitwhile(Pred, Stream) ->
-   splitwhile(Pred, [], Stream).
-
-splitwhile(Pred, Acc, {s, _, _} = Stream) ->
-   case Pred(head(Stream)) of
-      true  ->
-         splitwhile(Pred, [head(Stream)|Acc], tail(Stream));
-      false ->
-         {lists:reverse(Acc), Stream}
-     end;
-splitwhile(_, Acc, ?NULL) ->
-   {lists:reverse(Acc), ?NULL}.
-
-
-%%
-%% returns a newly-allocated stream containing the first n elements of 
-%% the input stream. 
--spec take(integer(), datum:stream()) -> datum:stream().
-
-take(0, _) ->
-   ?NULL;
-take(N, {s, _, _} = Stream) ->
-   new(head(Stream), fun() -> take(N - 1, tail(Stream)) end);
-take(_, ?NULL) ->
-   ?NULL.
-
-%%
-%% returns a newly-allocated stream that contains those elements from stream 
-%% while predicate returns true.
--spec takewhile(function(), datum:stream()) -> datum:stream().
-
-takewhile(Pred, {s, _, _} = Stream) ->
-   case Pred(head(Stream)) of
-      true  -> 
-         new(head(Stream), fun() -> takewhile(Pred, tail(Stream)) end);
-      false ->
-         ?NULL
-     end;
-takewhile(_, ?NULL) ->
-   ?NULL.
 
 
 %%

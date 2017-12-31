@@ -45,7 +45,10 @@
    filter/2,      %% O(n)
    foreach/2,     %% O(n)
    map/2,         %% O(n)
-   split/2        %% O(n)
+   split/2,       %% O(n)
+   splitwhile/2,  %% O(log n)
+   take/2,        %% O(n)
+   takewhile/2    %% O(log n)
 ]).
 
 % -type(key()     :: any()).
@@ -337,6 +340,73 @@ split_el(N, {C, A, K, V, B}) ->
          {N2, B1, B2} = split_el(N1 - 1, B),
          {N2, {C, A, K, V, B1}, B2}
    end.
+
+%%
+%% partitions stream into two streams according to predicate.
+%% The splitwith/2 behaves as if it is defined as consequent 
+%% takewhile(Pred, Seq), dropwhile(Pred, Seq)
+%%
+-spec splitwhile(datum:predicate(_), datum:traversable(_)) -> {datum:traversable(_), datum:traversable(_)}.
+
+splitwhile(Pred, #tree{ford = Ord, tree = T}) ->
+   {A, B} = splitwhile_el(Pred, T),
+   {#tree{ford = Ord, tree = A}, #tree{ford = Ord, tree = B}}.
+
+splitwhile_el(_, ?None) ->
+   {?None, ?None};
+
+splitwhile_el(Fun, {C, A, K, V, B}) ->
+   case Fun({K, V}) of
+      false ->
+         {Ax, Bx} = splitwhile_el(Fun, A),
+         {Ax, {C, Bx, K, V, B}};
+      true  ->
+         {Ax, Bx} = splitwhile_el(Fun, B),
+         {{C, A, K, V, Ax}, Bx}
+   end.
+
+%%
+%% returns a newly-allocated collection containing the first n elements of 
+%% the input collection.
+%%
+-spec take(integer(), datum:traversable(_)) -> datum:traversable(_).
+
+
+take(N, #tree{tree = T} = Tree) ->
+   Tree#tree{tree = erlang:element(2, take_el(N, T))}.
+
+take_el(N, ?None) ->
+   {N, ?None};
+take_el(N, {C, A, K, V, B}) ->
+   case take_el(N, A) of
+      {0, Ax} ->
+         {0, Ax};
+      {M, Ax} ->
+         {R, Bx} = take_el(M - 1, B),
+         {R, {C, Ax, K, V, Bx}}
+   end.
+
+%%
+%% returns a newly-allocated collection that contains those elements from 
+%% input collection while predicate returns true.
+%%
+-spec takewhile(datum:predicate(_), datum:traversable(_)) -> datum:traversable(_).
+
+takewhile(Pred, #tree{tree = T} = Tree) ->
+   Tree#tree{tree = erlang:element(2, takewhile_el(Pred, T))}.
+
+takewhile_el(_, ?None) ->
+   ?None;
+
+takewhile_el(Pred, {C, A, K, V, B}) ->
+   case Pred({K, V}) of
+      false ->
+         takewhile_el(Pred, A);
+      true  ->
+         {C, A, K, V, takewhile_el(Pred, B)}
+   end.
+
+
 
 %%%------------------------------------------------------------------
 %%%
