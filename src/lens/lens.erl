@@ -53,8 +53,8 @@
 %%
 %% lenses  
 -export([hd/0, hd/1, tl/0, tl/1]).
--export([t1/0, t2/0, t3/0, tuple/1]).
--export([at/1, at/2, map/1, map/2]).
+-export([t1/0, t2/0, t3/0, ti/1]).
+-export([at/1, at/2]).
 -export([keylist/1, keylist/2, keylist/3, pair/1, pair/2]).
 
 %%
@@ -311,8 +311,6 @@ put(Ln, A, S) ->
 %% but they are not well behaving.  
 %%
 
--type pred() :: fun((_) -> true | false).
-
 
 
 %%%------------------------------------------------------------------
@@ -392,10 +390,10 @@ t3() ->
    end.
    
 %%
-%% focuses tuple element using either index or predicate function
--spec tuple(integer() | pred()) -> lens(_, tuple()).
+%% focuses tuple element using index
+-spec ti(integer()) -> lens(_, tuple()).
 
-tuple(I)
+ti(I)
  when is_integer(I) -> 
    fun(Fun, Term) ->
       fmap(erlang:setelement(I, Term, _), Fun(erlang:element(I, Term)))
@@ -408,7 +406,7 @@ tuple(I)
 %%%------------------------------------------------------------------
 
 %%
-%% focuses map element using key or predicate function.
+%% focuses map element using key.
 -spec at(_) -> lens(_, map()).
 -spec at(_, _) -> lens(_, map()).
 
@@ -421,11 +419,6 @@ at(Key, Om) ->
    fun(Fun, Map) ->
       fmap(maps:put(Key, _, Map), Fun(maps:get(Key, Map, Om)))
    end.
-
-%%
-%% @deprecated
-map(Key) -> at(Key).
-map(Key, Om) -> at(Key, Om).
 
 %%%------------------------------------------------------------------
 %%%
@@ -469,21 +462,6 @@ pair(Key, Om) ->
    c(keylist(1, Key, {Key, Om}), t2()).
 
 
-%    fun(Fun, List) ->
-%       {value, {_, Val}, _} = lists:keytake(Key, 1, List),
-%       fmap(fun(X) -> lists:keystore(Key, 1, List, {Key, X}) end, Fun(Val))
-%    end.
-
-% pair(Key, Om) ->
-%    fun(Fun, List) ->
-%       Val = case lists:keytake(Key, 1, List) of
-%          false -> Om;
-%          {value, {_, V}, _} -> V
-%       end,
-%       fmap(fun(X) -> lists:keystore(Key, 1, List, {Key, X}) end, Fun(Val))
-%    end.
-
-
 %%%------------------------------------------------------------------
 %%%
 %%% traverse
@@ -491,7 +469,9 @@ pair(Key, Om) ->
 %%%------------------------------------------------------------------
 
 %%
-%%
+%% The lens focuses on each element of the list
+%% e.g
+%%   lens:get(lens:c(lens:traverse(), lens:t1()), [{1},{2}]).
 -spec traverse() -> lens(_, list()). 
 
 traverse() ->
@@ -510,10 +490,10 @@ traverse() ->
 
 
 %%
-%% The list lens takes a predicate and focuses the leftmost element 
+%% The lens takes a predicate and focuses the leftmost element 
 %% of the structure matching the predicate
--spec takewith(pred()) -> lens(_, list()).
--spec takewith(pred(), _) -> lens(_, list()).
+-spec takewith(fun((_) -> true | false)) -> lens(_, list()).
+-spec takewith(fun((_) -> true | false), _) -> lens(_, list()).
 
 takewith(Pred) ->
    fun(Fun, List) ->
@@ -532,26 +512,6 @@ takewith(Pred, Om) ->
       fmap(fun(X) -> Head ++ [X|Tail] end, Fun(El))
    end.
 
-
-% tuple(Pred)
-%  when is_function(Pred) ->
-%    fun(Fun, Term) ->
-%       I = tuple_find(Pred, 1, Term),
-%       fmap(fun(X) -> erlang:setelement(I, Term, X) end, Fun(erlang:element(I, Term)))
-%    end.
-
-% tuple_find(Pred, I, Term) ->
-%    case Pred( erlang:element(I, Term) ) of
-%       true  -> I;
-%       false -> tuple_find(Pred, I + 1, Term)
-%    end.
-
-% map(Pred)
-%  when is_function(Pred) ->
-%    fun(Fun, Map) ->
-%       {_, [{Key, _} | _]} = lists:splitwith(fun(X) -> not Pred(X) end, maps:to_list(Map)),
-%       fmap(fun(X) -> maps:put(Key, X, Map) end, Fun(maps:get(Key, Map)))      
-%    end.
 
 %%%------------------------------------------------------------------
 %%%
