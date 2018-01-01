@@ -53,34 +53,21 @@
    fold/3,
    foldl/3,
    foldr/3,
-   unfold/2
-]).
+   unfold/2,
 
-%%
-%% stream interface
--export([
-   '++'/2
-  ,'++'/1
-  
-  % ,filter/2
-  
-  ,flat/1
-  ,scan/2
-  ,scan/3
-  ,zip/1
-  ,zip/2
-  ,zipwith/2
-  ,zipwith/3
-]).
-
-%%
-%% stream utility
--export([
-   reverse/1
-  ,cycle/1
-  % ,list/1
-  % ,list/2
-  % ,build/1
+   %%
+   %% stream
+   '++'/2,
+   '++'/1,
+   flat/1,
+   scan/2,
+   scan/3,
+   zip/1,
+   zip/2,
+   zipwith/2,
+   zipwith/3,
+   reverse/1,
+   cycle/1
 ]).
 
 %%
@@ -109,6 +96,8 @@ new(Head) ->
 new(Head, Fun)
  when is_function(Fun, 0) ->
    #stream{head = Head, tail = Fun};
+new(Head, #stream{} = Stream) ->
+   #stream{head = Head, tail = fun() -> Stream end};
 new(Head, ?None) ->
    new(Head).
 
@@ -362,45 +351,41 @@ unfold(Fun, Seed)
 
 %%%------------------------------------------------------------------
 %%%
-%%% stream interface
+%%% stream 
 %%%
 %%%------------------------------------------------------------------
 
 %%
 %% concatenate streams, returns newly-allocated stream composed of elements
 %% copied from input streams (in order of input). 
--spec '++'(datum:stream(), datum:stream()) -> datum:stream().
--spec '++'([datum:stream()]) -> datum:stream().
+-spec '++'(datum:stream(_), datum:stream(_)) -> datum:stream(_).
 
-'++'(?NULL, StreamB) ->
+'++'(#stream{tail = ?None}, StreamB) ->
    StreamB;
-'++'(StreamA, ?NULL) ->
+'++'(StreamA, #stream{tail = ?None}) ->
    StreamA;
 '++'(StreamA, StreamB) ->
    new(head(StreamA), fun() -> '++'(tail(StreamA), StreamB) end).
+
+%%
+%% concatenate streams, returns newly-allocated stream composed of elements
+%% copied from input streams (in order of input). 
+-spec '++'([datum:stream(_)]) -> datum:stream(_).
 
 '++'([A,B|T]) ->
    '++'(['++'(A,B)|T]);
 '++'([T]) ->
    T.
 
-
-
-
-
-
-
-
-
 %%
 %% flat stream of streams
--spec flat(datum:stream()) -> datum:stream().
+-spec flat(datum:stream(_)) -> datum:stream(_).
 
-flat({s, {s, _, _} = Head, Tail}) ->
-   new(stream:head(Head), fun() -> flat({s, stream:tail(Head), Tail}) end);
+flat(#stream{head = #stream{tail = ?None}} = Stream) ->
+   flat(tail(Stream));
 
-flat({s, {}, _} = Stream) ->
-   flat(stream:tail(Stream));
+flat(#stream{head = #stream{} = Head} = Stream) ->
+   new(head(Head), fun() -> flat(Stream#stream{head = tail(Head)}) end);
 
 flat(Stream) ->
    Stream.
@@ -409,42 +394,31 @@ flat(Stream) ->
 %%
 %% accumulates the partial folds of an input stream into a newly-allocated stream.
 %% the output stream is accumulator followed by partial fold.
--spec scan(function(), datum:stream()) -> datum:stream().
--spec scan(function(), _, datum:stream()) -> datum:stream().
+-spec scan(function(), datum:stream(_)) -> datum:stream(_).
+-spec scan(function(), _, datum:stream(_)) -> datum:stream(_).
 
-scan(Fun, {s, _, _} = Stream) ->
+scan(Fun, #stream{} = Stream) ->
    scan(Fun, head(Stream), tail(Stream)).
 
-scan(Fun, Acc0, {s, _, _} = Stream) ->
-   new(Acc0, fun() -> scan(Fun, Fun(head(Stream), Acc0), tail(Stream)) end);
-scan(_, Acc0, ?NULL) ->
-   new(Acc0).
-
-
-
-
-
-%%
-%% the fundamental recursive infinite stream constructor. 
-%% it applies a function to each previous seed element in turn
-%% to determine the next element.
-% -spec unfold(function(), _) -> datum:stream().
-
+scan(Fun, Acc0, #stream{tail = ?None}) ->
+   new(Acc0);
+scan(Fun, Acc0, #stream{} = Stream) ->
+   new(Acc0, fun() -> scan(Fun, Fun(head(Stream), Acc0), tail(Stream)) end).
 
 
 %%
 %% takes one or more input streams and returns a newly-allocated stream 
 %% in which each element is a list of the corresponding elements of the input 
 %% streams. The output stream is as long as the shortest input stream.
--spec zip([datum:stream()]) -> datum:stream().
--spec zip(datum:stream(), datum:stream()) -> datum:stream().
+-spec zip([datum:stream(_)]) -> datum:stream(_).
+-spec zip(datum:stream(_), datum:stream(_)) -> datum:stream(_).
 
 zip(Streams) ->
-   case [head(X) || X <- Streams, X =/= ?NULL] of
+   case [head(X) || X <- Streams, X#stream.tail =/= ?None] of
       Head when length(Head) =:= length(Streams) ->
          new(Head, fun() -> zip([tail(X) || X <- Streams]) end);
       _ ->
-      ?NULL
+         new()
    end.
 
 zip(A, B) ->
@@ -454,22 +428,22 @@ zip(A, B) ->
 %% takes one or more input streams and returns a newly-allocated stream,  
 %% each element produced by composition function that map list of input heads to
 %% new head. The output stream is as long as the longest input stream.
--spec zipwith(function(), [datum:stream()]) -> datum:stream().
--spec zipwith(function(), datum:stream(), datum:stream()) -> datum:stream().
+-spec zipwith(function(), [datum:stream(_)]) -> datum:stream(_).
+-spec zipwith(function(), datum:stream(_), datum:stream(_)) -> datum:stream(_).
 
 zipwith(_, []) ->
-   ?NULL;
+   new();
 zipwith(Fun, Streams) ->
-   zipwith1(Fun, [head(X) || X <- Streams, X =/= ?NULL], Streams).
+   zipwith1(Fun, [head(X) || X <- Streams, X#stream.tail =/= ?None], Streams).
 
 zipwith1(_Fun, [], _Streams) ->
    ?NULL;
 zipwith1(Fun, Head, Streams) ->
    case Fun(Head) of
       [] ->
-         ?NULL;
+         new();
       Hx ->
-         new(Hx, fun() -> zipwith(Fun, [tail(X) || X <- Streams, X =/= ?NULL]) end)
+         new(Hx, fun() -> zipwith(Fun, [tail(X) || X <- Streams, X#stream.tail =/= ?None]) end)
    end.
    
 zipwith(Fun, A, B) ->
@@ -484,16 +458,15 @@ zipwith(Fun, A, B) ->
 
 %%
 %% reverse order of elements in stream.
--spec reverse(datum:stream()) -> datum:stream().
+-spec reverse(datum:stream(_)) -> datum:stream(_).
 
 reverse(Stream) ->
    reverse(Stream, new()).
 
-reverse({s, _, _} = Stream, Acc) ->
-   reverse(tail(Stream), new(head(Stream), Acc));
-
-reverse(?NULL, Acc) ->
-   Acc. 
+reverse(#stream{tail = ?None}, Acc) ->
+   Acc;
+reverse(#stream{} = Stream, Acc) ->
+   reverse(tail(Stream), new(head(Stream), Acc)).
 
 %%
 %% takes list of elements and returns a newly-allocated stream composed of 
