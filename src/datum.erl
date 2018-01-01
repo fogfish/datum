@@ -41,10 +41,7 @@
 -type stream(T) :: #stream{head :: T, tail :: datum:option(fun(() -> T))}.
 -type q(T)      :: {q, integer(), [T], [T]}.
 
-
--type stream()  :: #stream{}. %% {s, _, function()}.
 -type ring()    :: tuple().
--type q()      :: {q, integer(), [], []}.
 
 -type monoid(T)    :: fun((T, T) -> T).
 -type predicate(T) :: fun((T) -> true | false).
@@ -67,8 +64,6 @@
    stream/1,
    q/1
 
-  ,q/0
-  ,stream/0
   ,ring/0
 
   ,monoid/1
