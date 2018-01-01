@@ -439,7 +439,7 @@ zipwith(Fun, Streams) ->
    zipwith1(Fun, [head(X) || X <- Streams, X =/= ?None], Streams).
 
 zipwith1(_Fun, [], _Streams) ->
-   ?NULL;
+   new();
 zipwith1(Fun, Head, Streams) ->
    case Fun(Head) of
       [] ->

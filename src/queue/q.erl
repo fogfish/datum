@@ -347,20 +347,16 @@ unfold(Fun, Seed, Acc) ->
 
 %%
 %%
-length({q, N, _, _}) ->
-   N;
-length(?NULL) ->
-   0.
+length(#queue{length = N}) ->
+   N.
 
 
 %%
 %%
 -spec list(datum:q()) -> list().
 
-list({q, _, Tail, Head}) ->
-   Head ++ lists:reverse(Tail, []);
-list(?NULL) ->
-   [].
+list(#queue{head = Head, tail = Tail}) ->
+   Head ++ lists:reverse(Tail).
 
 
 %%%------------------------------------------------------------------

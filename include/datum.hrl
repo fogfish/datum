@@ -14,7 +14,6 @@
 %%   limitations under the License.
 %%
 
--define(NULL, undefined).
 
 %%
 %% 
