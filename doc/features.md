@@ -5,7 +5,7 @@
 * [Foldable](#foldable)
 * [Traversable](#traversable)
 * [Map-like](#map-like)
-* [Pure functional data structures](#pure-functional-data-structures)
+* [Pure functional data types](#pure-functional-data-types)
 * [Stream](#stream)
 * [Lens](#lens)
 * [Category pattern](#category-pattern)
@@ -127,7 +127,7 @@ The library implements a **map-like** behaviour to *trees* and *heaps*. For exam
 lists:foldl(fun bst:append/2, bst:new(), [{b, 2}, {a, 1}, {d, 4}, {c, 3}]).
 ```
 
-## Pure functional data structures
+## Pure functional data types
 
 Library implements a few pure functional data structures using common behvaiours:
 
@@ -141,7 +141,7 @@ Library implements a few pure functional data structures using common behvaiours
 [Stream](../src/stream/stream.erl) (lazy list) is a sequential data structure that contains on demand computed elements. The library implements a data structure and stream transformers. 
 
 
-## Lenses
+## Lens
 
 [Lenses](../src/lens/lens.erl) resembles concept of getters and setters, which you can compose using functional concepts. In other words, this is combinator data transformation for pure functional data structure. The library uses van Laarhoven lens generalisation to solve lens scalability when you need to expends with new primitives or support new data types.
 
@@ -171,7 +171,7 @@ The *composition* is a style of development to build a new things from small reu
 See details about [category pattern](category.md). 
 
 
-## Monads
+## Monad
 
 The library implements rough Haskell's equivalent of **do-notation**, so called monadic binding form. This construction decorates computation pipeline(s) with additional rules implemented by monad, they defines programmable commas. The used syntax expresses various programming concepts in terms of a monad structures: side-effects, variable assignment, error handling, parsing, concurrency, domain specific languages, etc. 
 
