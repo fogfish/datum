@@ -40,6 +40,7 @@
 
    %%
    %% traversable
+   list/1,        %% O(n)
    drop/2,        %% O(n)
    dropwhile/2,   %% O(log n)
    filter/2,      %% O(n)
@@ -55,7 +56,10 @@
    fold/3,
    foldl/3,
    foldr/3,
-   unfold/2
+   unfold/2,
+
+   min/1,
+   max/1
 ]).
 
 % -type(key()     :: any()).
@@ -232,6 +236,15 @@ apply_el(lt, Ord, K, Fun, {C, A, Kx, Vx, B}) ->
 %%%----------------------------------------------------------------------------   
 
 %%
+%% converts the collection to Erlang list
+%%
+-spec list(datum:traversable(_)) -> [_].
+
+list(Tree) ->
+   foldr(fun(Pair, Acc) -> [Pair | Acc] end, [], Tree).
+
+
+%%
 %% return the suffix of collection that starts at the next element after nth.
 %% drop first n elements
 %%
@@ -400,7 +413,7 @@ take_el(N, {C, A, K, V, B}) ->
 -spec takewhile(datum:predicate(_), datum:traversable(_)) -> datum:traversable(_).
 
 takewhile(Pred, #tree{tree = T} = Tree) ->
-   Tree#tree{tree = erlang:element(2, takewhile_el(Pred, T))}.
+   Tree#tree{tree = takewhile_el(Pred, T)}.
 
 takewhile_el(_, ?None) ->
    ?None;
@@ -473,6 +486,33 @@ unfold(Fun, Seed, Acc) ->
          Acc
    end.
 
+%%
+%% return smallest element
+-spec min(tree()) -> {key(), val()} | undefined.
+
+min(#tree{tree = T}) ->
+   min_el(T).
+
+min_el({_, ?None, K, V, _}) ->
+   {K, V};
+min_el({_, A, _, _, _}) ->
+   min_el(A);
+min_el(?None) ->
+   undefined.
+
+%%
+%% return largest element
+-spec max(tree()) -> {key(), val()}.
+
+max(#tree{tree = T}) ->
+   max_el(T).
+
+max_el({_, _, K, V, ?None}) ->
+   {K, V};
+max_el({_, _, _, _, B}) ->
+   max_el(B);
+max_el(?None) ->
+   undefined.
 
 
 

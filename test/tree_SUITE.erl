@@ -31,8 +31,34 @@
 ]).
 
 -export([
-   new/1, build/1, apply/1, lookup/1, minmax/1, map/1, fold/1, 
-   splitwith/1, dropwhile/1, takewhile/1, take/1, drop/1
+   new/1,
+
+   append/1,
+   insert/1,
+   lookup/1,
+   remove/1,
+   has/1,
+   keys/1,
+   apply/1,
+
+   build/1,
+   drop/1,  
+   dropwhile/1,
+   filter/1,
+   foreach/1,
+   map/1, 
+   split/1,
+   splitwhile/1,
+   take/1,
+   takewhile/1,
+
+   % fold/1,
+   % foldl/1,
+   % foldr/1,
+   % unfold/1,
+
+   min/1,
+   max/1
 ]).
 
 %%%----------------------------------------------------------------------------   
@@ -42,14 +68,25 @@
 %%%----------------------------------------------------------------------------   
 all() ->
    [
-      {group, bst}
+      {group, bst},
+      {group, rbtree}
    ].
 
 groups() ->
    [
       {bst, [parallel], 
-         [new, build, apply, lookup, minmax, map, fold,
-         splitwith, dropwhile, takewhile, take, drop]}
+         [new, 
+         append, insert, lookup, remove, has, keys, apply, 
+         build, drop, dropwhile, filter, foreach, map, split, splitwhile, take, takewhile, 
+         % fold, foldl, foldr, unfold, min, max]},
+         min, max]},
+
+      {rbtree, [parallel],
+         [new, 
+         append, insert, lookup, remove, has, keys, apply, 
+         build, drop, dropwhile, filter, foreach, map, split, splitwhile, take, takewhile, 
+         % fold, foldl, foldr, unfold, min, max]}
+         min, max]}
    ].
 
 %%%----------------------------------------------------------------------------   
@@ -65,8 +102,8 @@ end_per_suite(_Config) ->
 
 %% 
 %%
-init_per_group(bst, Config) ->
-   [{type, bst}|Config];
+init_per_group(Type, Config) ->
+   [{type, Type}|Config];
 init_per_group(_, Config) ->
    Config.
 
@@ -78,111 +115,209 @@ end_per_group(_, _Config) ->
 %%% tree primitives
 %%%
 %%%----------------------------------------------------------------------------   
--define(N,    10).
--define(PAIR, [{1, $a}, {2, $b}, {3, $c}, {4, $d}, {5, $e}, {6, $f}, {7, $g}, {8, $h}, {9, $i}, {10, $j}]).
+-define(LENGTH, 100).
 
-%%
 new(Config) ->
    Type = ?config(type, Config),
-   {t, _, _} = Type:new().
+   tree = erlang:element(1, Type:new()).
 
-%%
+append(Config) ->
+   Type    = ?config(type, Config),
+   [{1,1}] = Type:list(Type:append({1,1}, Type:new())). 
+
+insert(Config) ->
+   Type = ?config(type, Config),
+   List = randseq(?LENGTH),
+   Lens = fun({Key, Val}, Acc) -> Type:insert(Key, Val, Acc) end,
+   Tree = lists:foldl(Lens, Type:new(), List),
+   lists:foreach(
+      fun({Key, Val}) ->
+         Val = Type:lookup(Key, Tree)
+      end,
+      shuffle(List)
+   ).
+
+lookup(Config) ->
+   Type = ?config(type, Config),
+   List = randseq(?LENGTH),
+   Tree = Type:build(List),
+   undefined = Type:lookup(any, Tree),
+   lists:foreach(
+      fun({Key, Val}) ->
+         Val = Type:lookup(Key, Tree)
+      end,
+      shuffle(List)
+   ).
+
+remove(Config) ->
+   Type = ?config(type, Config),
+   List = randseq(?LENGTH),
+   Tree = Type:build(List),
+   Tree = Type:remove(any, Tree),
+   Empty= Type:new(),
+   Empty= lists:foldl(
+      fun({Key, _}, Acc) ->
+         Type:remove(Key, Acc)
+      end,
+      Tree,
+      shuffle(List)
+   ).
+
+has(Config) ->
+   Type = ?config(type, Config),
+   List = randseq(?LENGTH),
+   Tree = Type:build(List),
+   undefined = Type:lookup(any, Tree),
+   lists:foreach(
+      fun({Key, _}) ->
+         true = Type:has(Key, Tree)
+      end,
+      shuffle(List)
+   ).
+
+keys(Config) ->
+   Type = ?config(type, Config),
+   List = randseq(?LENGTH),
+   Tree = Type:build(List),
+   Keys = lists:sort([Key || {Key, _} <- List]),
+   Keys = Type:keys(Tree).
+
+apply(Config) ->
+   Type = ?config(type, Config),
+   List = randseq(?LENGTH),
+   Tree0= Type:build(List),
+   Tree1= lists:foldl(
+      fun({Key, Val}, Acc) -> 
+         Type:apply(Key, fun(X) -> X - Val end, Acc)
+      end,
+      Tree0,
+      shuffle(List)
+   ),
+   0 = Type:foldl(fun({_, X}, Acc) -> Acc + X end, 0, Tree1).
+
+
 build(Config) ->
    Type = ?config(type, Config),
-   {t, _, _} = Type:build(?PAIR).
+   Tree = Type:build([{2, b}, {1, a}, {3, c}]),
+   [{1, a}, {2, b}, {3, c}] = Type:list(Tree).
+
+
+drop(Config) ->
+   Type  = ?config(type, Config),
+   List  = shuffle(seq(?LENGTH)),
+   N     = rand:uniform(?LENGTH),
+   Tree  = Type:drop(N, Type:build(List)),
+   Keys  = lists:seq(N + 1, ?LENGTH),
+   Keys  = Type:keys(Tree).
+
+dropwhile(Config) ->
+   Type  = ?config(type, Config),
+   List  = shuffle(seq(?LENGTH)),
+   N     = rand:uniform(?LENGTH),
+   Tree  = Type:dropwhile(fun({Key, _}) -> Key =< N end, Type:build(List)), 
+   Keys  = lists:seq(N + 1, ?LENGTH),
+   Keys  = Type:keys(Tree).
+   
+filter(Config) ->
+   Type  = ?config(type, Config),
+   List  = shuffle(seq(?LENGTH)),
+   N     = rand:uniform(?LENGTH),
+   Tree  = Type:filter(fun({Key, _}) -> Key =< N end, Type:build(List)), 
+   Keys  = lists:seq(1, N),
+   Keys  = Type:keys(Tree).
 
 %%
-apply(Config) ->
-   Type      = ?config(type, Config),
-   $c        = apply(Type, 2),
-   undefined = apply(Type, x). 
-
-apply(Type, Key) ->
-   [$.|| Type:build(?PAIR), Type:apply(Key, fun '+'/1, _), Type:lookup(Key, _)].
-
-%%
-lookup(Config) ->
-   Type      = ?config(type, Config),
-   $f        = lookup(Type, 6),
-   undefined = lookup(Type, x).
-
-lookup(Type, Key) ->      
-   [$.|| Type:build(?PAIR), Type:lookup(Key, _)].
-
-%%
-minmax(Config) ->
-   Type    = ?config(type, Config),
-   Tree    = Type:build(?PAIR),
-   {1,  $a}= Type:min(Tree),
-   {10, $j}= Type:max(Tree).  
+foreach(Config) ->
+   Type   = ?config(type, Config),
+   List   = randseq(?LENGTH),
+   ok = Type:foreach(fun(X) -> X end, Type:build(List)).
 
 %%
 map(Config) ->
-   Type    = ?config(type, Config),
-   Tree    = Type:map(fun(K, V) -> K + V end, Type:build(?PAIR)),
-   Seq     = [{K, K + V} || {K, V} <- ?PAIR],
-   lists:foreach(
-      fun({K, V}) ->
-         V = Type:lookup(K, Tree)
-      end,
-      Seq
-   ).
-
-%%
-fold(Config) ->
    Type   = ?config(type, Config),
-   Tree   = Type:build(?PAIR),
-   Expect = lists:sum([X || {_, X} <- ?PAIR]),
-   Expect = Type:foldl(fun(_, V, Acc) -> V + Acc end, 0, Tree),
-   Expect = Type:foldr(fun(_, V, Acc) -> V + Acc end, 0, Tree).
-
+   List   = randseq(?LENGTH),
+   Tree   = Type:map(fun({_, _}) -> 0 end, Type:build(List)),
+   0 = Type:foldl(fun({_, X}, Acc) -> Acc + X end, 0, Tree).
 
 %%
-splitwith(Config) ->
+split(Config) ->
    Type   = ?config(type, Config),
-   Tree   = Type:build(?PAIR),
-   {A, B} = Type:splitwith(fun(K) -> K < ?N div 2 end, Tree),
-   {1, _}            = Type:min(A),
-   {?N div 2 - 1, _} = Type:max(A),
-   {?N div 2, _}     = Type:min(B),
-   {?N, _}           = Type:max(B).
+   List   = shuffle(seq(?LENGTH)),
+   N      = rand:uniform(?LENGTH),
+   {TreeA, TreeB} = Type:split(N, Type:build(List)),
+   KeyA   = lists:seq(1, N),
+   KeyA   = Type:keys(TreeA),
+
+   KeyB   = lists:seq(N + 1, ?LENGTH),
+   KeyB   = Type:keys(TreeB).
 
 %%
-takewhile(Config) ->
-   Type = ?config(type, Config),
-   Tree = Type:build(?PAIR),
-   A    = Type:takewhile(fun(K) -> K < ?N div 2 end, Tree),
-   {1, _}            = Type:min(A),
-   {?N div 2 - 1, _} = Type:max(A).
+splitwhile(Config) ->
+   Type   = ?config(type, Config),
+   List   = shuffle(seq(?LENGTH)),
+   N      = rand:uniform(?LENGTH),
+   {TreeA, TreeB} = Type:splitwhile(fun({Key, _}) -> Key =< N end, Type:build(List)),
+   KeyA   = lists:seq(1, N),
+   KeyA   = Type:keys(TreeA),
 
-%%
-dropwhile(Config) ->
-   Type = ?config(type, Config),
-   Tree = Type:build(?PAIR),
-   B    = Type:dropwhile(fun(K) -> K < ?N div 2 end, Tree),
-   {?N div 2, _} = Type:min(B),
-   {?N, _}       = Type:max(B).
+   KeyB   = lists:seq(N + 1, ?LENGTH),
+   KeyB   = Type:keys(TreeB).
 
 %%
 take(Config) ->
-   Type = ?config(type, Config),
-   Tree = Type:build(?PAIR),
-   A    = Type:take(?N div 2, Tree),
-   {1, _}        = Type:min(A),
-   {?N div 2, _} = Type:max(A).
-
-
-%%
-drop(Config) ->
-   Type = ?config(type, Config),
-   Tree = Type:build(?PAIR),
-   B    = Type:drop(?N div 2, Tree),
-   {?N div 2 + 1, _} = Type:min(B),
-   {?N, _}           = Type:max(B).
+   Type  = ?config(type, Config),
+   List  = shuffle(seq(?LENGTH)),
+   N     = rand:uniform(?LENGTH),
+   Tree  = Type:take(N, Type:build(List)),
+   Keys  = lists:seq(1, N),
+   Keys  = Type:keys(Tree).
 
 %%
+takewhile(Config) ->
+   Type  = ?config(type, Config),
+   List  = shuffle(seq(?LENGTH)),
+   N     = rand:uniform(?LENGTH),
+   Tree  = Type:takewhile(fun({Key, _}) -> Key =< N end, Type:build(List)), 
+   Keys  = lists:seq(1, N),
+   Keys  = Type:keys(Tree).
+
 %%
-'+'(undefined) ->
-   undefined;
-'+'(X) ->   
-   X + 1.
+min(Config) ->
+   Type  = ?config(type, Config),
+   List  = shuffle(seq(?LENGTH)),
+   Tree  = Type:build(List),
+   Min   = lists:min(List),
+   Min   = Type:min(Tree).
+
+%%
+max(Config) ->
+   Type  = ?config(type, Config),
+   List  = shuffle(seq(?LENGTH)),
+   Tree  = Type:build(List),
+   Max   = lists:max(List),
+   Max   = Type:max(Tree).
+
+
+%%%----------------------------------------------------------------------------   
+%%%
+%%% private
+%%%
+%%%----------------------------------------------------------------------------   
+
+%%
+randseq(0) -> 
+   [];
+randseq(N) -> 
+   [{rand:uniform(1 bsl 32), N} | randseq(N - 1)].
+
+seq(0) ->
+   [];
+seq(N) ->
+   [{N, N} | seq(N - 1)].
+
+%%
+shuffle(List) ->
+   [Y || {_, Y} <- lists:keysort(1, [{rand:uniform(), X} || X <- List])].
+
+
+

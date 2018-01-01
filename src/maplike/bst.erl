@@ -26,8 +26,9 @@
 -export([
    new/0,         %% O(1)
    new/1,         %% O(1)
-   build/1,       %% O(n)
-   build/2,       %% O(n)
+
+   %%
+   %% tree
 
    %%
    %% map-like
@@ -41,31 +42,28 @@
 
    %%
    %% traversable
-   drop/2,       %% O(n)  
-   dropwhile/2,  %% O(log n)
-   filter/2,     %% O(n)
-   foreach/2,    %% O(n)
-   map/2,        %% O(n)
-   split/2,      %% O(n)
-   splitwhile/2, %% O(log n)
-   take/2,       %% O(log n)
-   takewhile/2,  %% O(log n)
+   build/1,       %% O(n)
+   build/2,       %% O(n)
+   list/1,        %% O(n)
+   drop/2,        %% O(n)  
+   dropwhile/2,   %% O(log n)
+   filter/2,      %% O(n)
+   foreach/2,     %% O(n)
+   map/2,         %% O(n)
+   split/2,       %% O(n)
+   splitwhile/2,  %% O(log n)
+   take/2,        %% O(log n)
+   takewhile/2,   %% O(log n)
 
    %%
    %% foldable
-   fold/3,
-   foldl/3,
-   foldr/3,
-   unfold/2
+   fold/3,        %% O(n)
+   foldl/3,       %% O(n)
+   foldr/3,       %% O(n)
+   unfold/2,      %% O(n)
 
-  ,min/1         %% O(log n)
-  ,max/1         %% O(log n)
-  
-  % ,foldl/3       %% O(n)
-  ,mapfoldl/3    %% O(n)
-  % ,foldr/3       %% O(n)
-  ,mapfoldr/3    %% O(n)
-  ,list/1        %% O(n)
+   min/1,         %% O(log n)
+   max/1          %% O(log n)
 ]).
 
 %%
@@ -241,6 +239,14 @@ apply_el(lt, Ord, K, Fun, {A, Kx, Vx, B}) ->
 %%%----------------------------------------------------------------------------   
 
 %%
+%% converts the collection to Erlang list
+%%
+-spec list(datum:traversable(_)) -> [_].
+
+list(Tree) ->
+   foldr(fun(Pair, Acc) -> [Pair | Acc] end, [], Tree).
+
+%%
 %% return the suffix of collection that starts at the next element after nth.
 %% drop first n elements
 %%
@@ -411,7 +417,7 @@ take_el(N, {A, K, V, B}) ->
 -spec takewhile(datum:predicate(_), datum:traversable(_)) -> datum:traversable(_).
 
 takewhile(Pred, #tree{tree = T} = Tree) ->
-   Tree#tree{tree = erlang:element(2, takewhile_el(Pred, T))}.
+   Tree#tree{tree = takewhile_el(Pred, T)}.
 
 takewhile_el(_, ?None) ->
    ?None;
@@ -485,98 +491,64 @@ unfold(Fun, Seed, Acc) ->
    end.
 
 
-
-
-
-
-
 %%
 %% return smallest element
 -spec min(tree()) -> {key(), val()} | undefined.
 
-min({t, _, T}) ->
+min(#tree{tree = T}) ->
    min_el(T).
 
-min_el({?NULL, K, V, _}) ->
+min_el({?None, K, V, _}) ->
    {K, V};
 min_el({A, _, _, _}) ->
    min_el(A);
-min_el(?NULL) ->
+min_el(?None) ->
    undefined.
 
 %%
 %% return largest element
 -spec max(tree()) -> {key(), val()}.
 
-max({t, _, T}) ->
+max(#tree{tree = T}) ->
    max_el(T).
 
-max_el({_, K, V, ?NULL}) ->
+max_el({_, K, V, ?None}) ->
    {K, V};
 max_el({_, _, _, B}) ->
    max_el(B);
-max_el(?NULL) ->
+max_el(?None) ->
    undefined.
 
-
+%%
+%% map and fold function over tree
+% -spec mapfoldl(function(), any(), datum:tree()) -> {datum:tree(), any()}.
+%
+% mapfoldl(Fun, Acc0, {t, Ord, T}) ->
+%    {Tx, Acc} = mapfoldl_el(Fun, Acc0, T),
+%    {{t, Ord, Tx}, Acc}.
+%
+% mapfoldl_el(_Fun, Acc0, ?NULL) ->
+%    {?NULL, Acc0};
+% mapfoldl_el(Fun, Acc0, {A, K, V, B}) ->
+%    {Ax, AccA} = mapfoldl_el(Fun, Acc0, A),
+%    {Vx, AccK} = Fun(K, V, AccA),
+%    {Bx, AccB} = mapfoldl_el(Fun, AccK, B),
+%    {{Ax, K, Vx, Bx}, AccB}.
 
 
 %%
 %% map and fold function over tree
--spec mapfoldl(function(), any(), datum:tree()) -> {datum:tree(), any()}.
+% -spec mapfoldr(function(), any(), datum:tree()) -> {datum:tree(), any()}.
+%
+% mapfoldr(Fun, Acc0, {t, Ord, T}) ->
+%    {Tx, Acc} = mapfoldr_el(Fun, Acc0, T),
+%    {{t, Ord, Tx}, Acc}.
+%
+% mapfoldr_el(_Fun, Acc0, ?NULL) ->
+%    {?NULL, Acc0};
+% mapfoldr_el(Fun, Acc0, {A, K, V, B}) ->
+%    {Bx, AccB} = mapfoldl_el(Fun, Acc0, B),
+%    {Vx, AccK} = Fun(K, V, AccB),
+%    {Ax, AccA} = mapfoldl_el(Fun, AccK, A),
+%    {{Ax, K, Vx, Bx}, AccA}.
 
-mapfoldl(Fun, Acc0, {t, Ord, T}) ->
-   {Tx, Acc} = mapfoldl_el(Fun, Acc0, T),
-   {{t, Ord, Tx}, Acc}.
-
-mapfoldl_el(_Fun, Acc0, ?NULL) ->
-   {?NULL, Acc0};
-mapfoldl_el(Fun, Acc0, {A, K, V, B}) ->
-   {Ax, AccA} = mapfoldl_el(Fun, Acc0, A),
-   {Vx, AccK} = Fun(K, V, AccA),
-   {Bx, AccB} = mapfoldl_el(Fun, AccK, B),
-   {{Ax, K, Vx, Bx}, AccB}.
-
-
-
-%%
-%% map and fold function over tree
--spec mapfoldr(function(), any(), datum:tree()) -> {datum:tree(), any()}.
-
-mapfoldr(Fun, Acc0, {t, Ord, T}) ->
-   {Tx, Acc} = mapfoldr_el(Fun, Acc0, T),
-   {{t, Ord, Tx}, Acc}.
-
-mapfoldr_el(_Fun, Acc0, ?NULL) ->
-   {?NULL, Acc0};
-mapfoldr_el(Fun, Acc0, {A, K, V, B}) ->
-   {Bx, AccB} = mapfoldl_el(Fun, Acc0, B),
-   {Vx, AccK} = Fun(K, V, AccB),
-   {Ax, AccA} = mapfoldl_el(Fun, AccK, A),
-   {{Ax, K, Vx, Bx}, AccA}.
-
-%%
-%% split tree on left and right according to predicate function.
-%% the predicate function returns true for leftist keys and false otherwise. 
-%% the function behaves as follows: {takewhile(...), dropwhile(...)}
-% -spec splitwith(function(), datum:tree()) -> {datum:tree(), datum:tree()}.
-
-%%
-%% takes elements from tree while predicate function return true
-% -spec takewhile(function(), datum:tree()) -> datum:tree().
-
-
-
-
-
-
-%%
-%% 
--spec list(tree()) -> list().
-
-list(Tree) ->
-   foldr(
-      fun(Key, Val, Acc) -> [{Key, Val} | Acc] end,
-      [],
-      Tree
-   ).
