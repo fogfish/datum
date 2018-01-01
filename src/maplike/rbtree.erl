@@ -40,7 +40,10 @@
 
    %%
    %% traversable
+   head/1,
+   tail/1,
    list/1,        %% O(n)
+   is_empty/1,    %% O(n)
    drop/2,        %% O(n)
    dropwhile/2,   %% O(log n)
    filter/2,      %% O(n)
@@ -62,9 +65,6 @@
    max/1
 ]).
 
-% -type(key()     :: any()).
--type(element() :: any()).
-% -type(tree()    :: datum:rbtree() | ?NULL).
 
 %%
 %% data types
@@ -173,11 +173,11 @@ remove_el(_, _, ?None) ->
 remove_el(Ord, K, {_, _, Kx, _, _} = T) ->
    remove_el(Ord(K, Kx), Ord, K, T).
 
-remove_el(eq,   _, _, {_, A, _, _, ?None}) ->
+remove_el(eq, _, _, {_, A, _, _, ?None}) ->
    A;
-remove_el(eq,   _, _, {_, ?None, _, _, B}) ->
+remove_el(eq, _, _, {_, ?None, _, _, B}) ->
    B;
-remove_el(eq, Ord, _, {C, A, _, _, B0}) ->
+remove_el(eq, _, _, {C, A, _, _, B0}) ->
    {{K, V}, B1} = take_left_node(B0),
    balance({C, A, K, V, B1});
 remove_el(gt, Ord, K, {C, A, Kx, Vx, B}) ->
@@ -236,12 +236,40 @@ apply_el(lt, Ord, K, Fun, {C, A, Kx, Vx, B}) ->
 %%%----------------------------------------------------------------------------   
 
 %%
+%% take collection and return head element of collection
+%%
+-spec head(datum:traversable(_)) -> datum:option(_).
+
+head(_) ->
+   exit(not_implemented).
+
+%%
+%% take collection and return its suffix (all elements except the first)
+%%
+-spec tail(datum:traversable(_)) -> datum:traversable(_).
+
+tail(_) ->
+   exit(not_implemented).
+
+
+%%
 %% converts the collection to Erlang list
 %%
 -spec list(datum:traversable(_)) -> [_].
 
 list(Tree) ->
    foldr(fun(Pair, Acc) -> [Pair | Acc] end, [], Tree).
+
+
+%%
+%% return true if collection is empty 
+%%
+-spec is_empty(datum:traversable(_)) -> true | false.
+
+is_empty(#tree{tree = ?None}) ->
+   true;
+is_empty(_) ->
+   false.
 
 
 %%
@@ -315,7 +343,7 @@ filter_el(Pred, {C, A0, K, V, B0}) ->
 %%
 -spec foreach(datum:effect(_), datum:traversable(_)) -> ok.
 
-foreach(Pred, #tree{tree = T} = Tree) ->
+foreach(Pred, #tree{tree = T}) ->
    foreach_el(Pred, T).
 
 foreach_el(_, ?None) ->

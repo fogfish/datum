@@ -29,9 +29,14 @@
    %% queue
    enq/2,        %% O(1)
    deq/1,        %% O(1)
+   enqh/2,       %% O(1)
+   deqt/1,       %% O(1)
+   last/1,
+   liat/1,
 
    %%
    %% traversable
+   list/1,
    head/1,       %% O(1)
    tail/1,       %% O(1)
    is_empty/1,   %% O(1)
@@ -52,25 +57,8 @@
    foldr/3,
    unfold/2,
 
-   %   q - interface
-   % head/1, 
-   % tail/1, 
-   % enq/2,  
-   % deq/1,  
-
-   % deq - interface
-   last/1, 
-   lead/1,
-   poke/2, 
-   pull/1,
-
    % utility interface
-   length/1, 
-   % is_empty/1, 
-   
-   % takewhile/2,
-   % splitwith/2,
-   list/1
+   length/1
 ]).
 
 %%
@@ -89,18 +77,76 @@ build(List) ->
 
 
 %%
-%% enqueue element
+%% enqueue element to end of queue
 -spec enq(_, datum:q(_)) -> datum:q(_).
 
 enq(E, #queue{} = Queue) ->
    q:enq(E, Queue).
 
 %%
-%% dequeue element
+%% dequeue element from head of queue
 -spec deq(datum:q(_)) -> {datum:option(_), datum:q(_)}.
 
 deq(#queue{} = Queue) ->
    q:deq(Queue).
+
+
+%%
+%% enqueue element to front of the queue
+-spec enqh(_, datum:q(_)) -> datum:q(_).
+
+enqh(E, #queue{length = N, head = [_] = Head, tail = []}) ->
+   #queue{length = N + 1, head = [E], tail = Head};
+
+enqh(E, #queue{length = N, head = Head} = Queue) ->
+   Queue#queue{length = N + 1, head = [E|Head]}.
+
+
+%%
+%% dequeue element from tail of queue
+-spec deqt(datum:q(_)) -> {datum:option(_), datum:q(_)}.
+
+deqt(#queue{tail = [], head = [E]}) ->
+   {E, new()};
+
+deqt(#queue{length = N, tail = [], head = [Head|Tail]}) ->
+   [E|T] = lists:reverse(Tail),
+   {E, #queue{length = N - 1, head = [Head], tail = T}};
+
+deqt(#queue{length = N, tail = [E], head = Head}) ->
+   {E, make_deq_head(N - 1, Head)};
+
+deqt(#queue{length = N, tail = [E|Tail]} = Queue) ->
+   {E, Queue#queue{length = N - 1, tail = Tail}};
+
+deqt(#queue{tail = [], head = []} = Queue) ->
+   {?None, Queue}.
+
+
+%%
+%% take collection and return last element of collection
+%%
+-spec last(datum:traversable(_)) -> datum:option(_).
+
+last(#queue{tail = [Last|_]}) ->
+   Last;
+
+last(#queue{head = [Last]}) ->
+   Last;
+
+last(#queue{head = [_|Head]}) ->
+   lists:last(Head);
+
+last(_) ->
+   ?None.
+
+%%
+%% take collection and return its prefix (all elements except the last)
+%%
+-spec liat(datum:traversable(_)) -> datum:traversable(_).
+
+liat(Queue) ->
+   erlang:element(2, deqt(Queue)).
 
 
 
@@ -258,137 +304,6 @@ unfold(Fun, Seed) ->
    q:unfold(Fun, Seed).
 
 
-%%%------------------------------------------------------------------
-%%%
-%%% q - interface
-%%%
-%%%------------------------------------------------------------------
-
-%%
-%% queue head element
-% -spec head(datum:q()) -> any().
-
-% head({q, _N, _Tail, [Head|_]}) ->
-%    Head;
-
-% head({q, _N, [Head], []}) ->
-%    Head;
-
-% head({q, _N, [_|Tail], []}) ->
-%    lists:last(Tail);
-
-% head(_) ->
-%    exit(badarg).
-
-%%
-%% queue tail (removes head element)
-% -spec tail(datum:q()) -> datum:q().
-
-% tail(Q) ->
-%    {_, Tail} = deq(Q),
-%    Tail.
-
-%%
-%% enqueue element (push to tail)
-% -spec enq(any(), datum:q()) -> datum:q().
-
-% enq(E, {q, N, [_]=Tail, []}) ->
-%    {q, N + 1, [E], Tail};
-
-% enq(E, {q, N, Tail, Head}) ->
-%    {q, N + 1, [E|Tail], Head};
-
-% enq(E, ?NULL) ->
-%    {q, 1, [E], []}.
-
-
-%%
-%% dequeue element (remove first element)
-% -spec deq(datum:q()) -> {any(), datum:q()}.
-
-% deq({q, _N, [E], []}) ->
-%    {E, deq:new()};
-
-% deq({q, N, [Last|Tail], []}) ->
-%    [E|Head] = lists:reverse(Tail, []),
-%    {E, {q, N - 1, [Last], Head}};
-
-% deq({q, N, Tail, [E]}) ->
-%    {E, make_deq_tail(N - 1, Tail)};
-
-% deq({q, N, Tail, [E|Head]}) ->
-%    {E, {q, N - 1, Tail, Head}}.
-
-
-%%%------------------------------------------------------------------
-%%%
-%%% deq - interface
-%%%
-%%%------------------------------------------------------------------
-
-%%
-%% queue last element
--spec last(datum:q()) -> any().
-
-last({q, _N, [Last|_], _Head}) ->
-   Last;
-
-last({q, _N, [], [Last]}) ->
-   Last;
-
-last({q, _N, [], [_|Head]}) ->
-   lists:last(Head);
-
-last(_) ->
-   exit(badarg).
-
-%%
-%% queue lead (removes rear element)
--spec lead(datum:q()) -> datum:q().
-
-lead(Q) ->
-   {_, Lead} = pull(Q),
-   Lead.
-
-
-%%
-%% poke element (insert element to front of queue)
--spec poke(any(), datum:q()) -> datum:q().
-
-poke(E, {q, N, [], [_]=Head}) ->
-   {q, N + 1, Head, [E]};
-
-poke(E, {q, N, Tail, Head}) ->
-   {q, N + 1, Tail, [E|Head]};
-
-poke(E, ?NULL) ->
-   {q, 1, [], [E]}.
-
-
-%%
-%% removes last element
--spec pull(datum:q()) -> {any(), datum:q()}.
-
-pull({q, _N, [], [E]}) ->
-   {E, deq:new()};
-
-pull({q, N, [], [Head|Tail]}) ->
-   [E|T] = lists:reverse(Tail, []),
-   {E, {q, N - 1, T, [Head]}};
-
-pull({q, N, [E], Head}) ->
-   {E, make_deq_head(N - 1, Head)};
-
-pull({q, N, [E|Tail], Head}) ->
-   {E, {q, N - 1, Tail, Head}}.
-
-%%%------------------------------------------------------------------
-%%%
-%%% utility - interface
-%%%
-%%%------------------------------------------------------------------
-
-
 %%
 %% check length of queue
 -spec length(datum:q()) -> boolean().
@@ -398,85 +313,6 @@ length({q, N, _, _}) ->
 length(?NULL) ->
    0.
 
-%%
-%% check if the queue is empty
-% -spec is_empty(datum:q()) -> boolean().
-
-% is_empty(?NULL) ->
-%    true;
-% is_empty(_) ->
-%    false.
-
-%%
-% %% dropwhile head of queue
-% -spec dropwhile(function(), datum:q()) -> datum:q().
-
-% dropwhile(Pred, {q, _, _, _}=Q) ->
-%    {Head, Tail} = deq(Q),
-%    case Pred(Head) of
-%       true  -> dropwhile(Pred, Tail); 
-%       false -> Q
-%    end;
-
-% dropwhile(_,  ?NULL) ->
-%    deq:new().
-
-%%
-%% takewhile head of queue
-% -spec takewhile(function(), datum:q()) -> datum:q().
-
-% takewhile(Pred, Queue) ->
-%    takewhile(Pred, new(), Queue).
-
-% takewhile(Pred, Acc, {q, _N, _Tail, _Head}=Q) ->
-%    {Head, Tail} = deq(Q),
-%    case Pred(Head) of
-%       true  -> takewhile(Pred, enq(Head, Acc), Tail); 
-%       false -> Acc
-%    end;
-
-% takewhile(_,  Acc, ?NULL) ->
-%    Acc.
-
-%%
-%% partitions queue into two queues.
-% -spec split(function(), datum:q()) -> {datum:q(), datum:q()}.
-
-% split(X, {q, N, _, _} = Queue)
-%  when X >= N ->
-%    {Queue, new()};
-
-% split(_, ?NULL) ->
-%    {new(), new()};
-
-% split(N, Queue) ->
-%    split(N, new(), Queue).
-
-% split(0, Acc, Queue) ->
-%    {Acc, Queue};
-% split(N, Acc, Queue) ->
-%    {Head, Tail} = deq(Queue),
-%    split(N - 1, enq(Head, Acc), Tail).
-
-
-%%
-%% partitions queue into two queues according to predicate.
-%% The splitwith/2 behaves as if it is defined as consequent 
-%% takewhile(Pred, Queue), dropwhile(Pred, Queue)
-% -spec splitwith(function(), datum:q()) -> {datum:q(), datum:q()}.
-
-% splitwith(Pred, Queue) ->
-%    splitwith(Pred, new(), Queue).
-
-% splitwith(Pred, Acc, {q, _N, _Tail, _Head}=Q) ->
-%    {Head, Tail} = deq(Q),
-%    case Pred(Head) of
-%       true  -> splitwith(Pred, enq(Head, Acc), Tail); 
-%       false -> {Acc, Q}
-%    end;
-
-% splitwith(_,  Acc, ?NULL) ->
-%    {Acc, new()}.
 
 %%
 %%
@@ -487,15 +323,6 @@ list({q, _, Tail, Head}) ->
 list(?NULL) ->
    [].
 
-%%
-%%
-% -spec map(fun((_) -> _), datum:q()) -> datum:q().
-
-% map(_, ?NULL) ->
-%    ?NULL;
-% map(Fun, {q, N, Tail, Head}) ->
-%    {q, N, lists:map(Fun, Tail), lists:map(Fun, Head)}.
-
 
 %%%------------------------------------------------------------------
 %%%
@@ -505,30 +332,28 @@ list(?NULL) ->
 
 %%
 %% make dequeue from list (supplied list is tail)
-make_deq_tail(N, [_]=List) ->
-   {q, N, [], List};
+% make_deq_tail(N, [_]=List) ->
+%    #queue{length = N, head = List};
 
-make_deq_tail(N, [X,Y]) ->
-   {q, N, [X],[Y]};
+% make_deq_tail(N, [X,Y]) ->
+%    #queue{length = N, head = [Y], tail = [X]};
 
-make_deq_tail(N, [X,Y|List]) ->
-   {q, N, [X,Y], lists:reverse(List, [])};
+% make_deq_tail(N, [X,Y|List]) ->
+%    #queue{length = N, head = lists:reverse(List), tail = [X, Y]};
 
-make_deq_tail(_, []) ->
-   ?NULL.
+% make_deq_tail(_, []) ->
+%    #queue{}.
 
 %%
 %% make dequeue from list (supplied list is head)
 make_deq_head(N, [_]=List) ->
-   {q, N, List, []};
+   #queue{length = N, head = List};
 
 make_deq_head(N, [X,Y]) ->
-   {q, N, [X],[Y]};
+   #queue{length = N, head = [X],  tail = [Y]};
 
 make_deq_head(N, [X,Y|List]) ->
-   {q, N, lists:reverse(List, []), [X,Y]};
+   #queue{length = N, head = [X,Y], tail = lists:reverse(List)};
 
 make_deq_head(_, []) ->
-   ?NULL.
-
-
+   #queue{}.

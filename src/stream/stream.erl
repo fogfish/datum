@@ -88,7 +88,7 @@
 -spec new(_, function()) -> datum:stream(_).
 
 new() ->
-   #stream{}.
+   ?None.
 
 new(Head) ->
    new(Head, fun stream:new/0).
@@ -113,7 +113,7 @@ new(Head, ?None) ->
 %%
 -spec head(datum:traversable(_)) -> datum:option(_).
 
-head(#stream{tail = ?None}) ->
+head(?None) ->
    ?None;
 head(#stream{head = Head}) ->
    Head.
@@ -122,8 +122,8 @@ head(#stream{head = Head}) ->
 %% force stream promise and return new stream (evaluates tail of stream).
 -spec tail(datum:traversable(_)) -> datum:traversable(_).
 
-tail(#stream{tail = ?None} = Stream) ->
-   Stream;
+tail(?None) ->
+   ?None;
 tail(#stream{tail = Fun}) ->
    Fun().
 
@@ -145,7 +145,7 @@ build(X)
 %% returns a newly-allocated list containing stream elements
 -spec list(datum:stream()) -> list().
 
-list(#stream{tail = ?None}) ->
+list(?None) ->
    [];
 list(#stream{} = Stream) ->
    [stream:head(Stream) | list(stream:tail(Stream))].
@@ -163,7 +163,7 @@ list(N, Stream) ->
 %%
 -spec is_empty(datum:traversable(_)) -> true | false.
 
-is_empty(#stream{tail = ?None}) ->
+is_empty(?None) ->
    true;
 is_empty(#stream{}) ->
    false.
@@ -176,60 +176,62 @@ is_empty(#stream{}) ->
 
 drop(0, #stream{} = Stream) ->
    Stream;
-drop(_, #stream{tail = ?None} = Stream) ->
-   Stream;
 drop(N, #stream{} = Stream) ->
-   drop(N - 1, tail(Stream)).
+   drop(N - 1, tail(Stream));
+drop(_, ?None) ->
+   ?None.
 
 %%
 %% drops elements from stream while predicate returns true and returns remaining
 %% stream suffix.
 -spec dropwhile(datum:predicate(_), datum:stream(_)) -> datum:stream(_).      
 
-dropwhile(_, #stream{tail = ?None} = Stream) ->
-   Stream;
 dropwhile(Pred, #stream{} = Stream) ->
    case Pred(head(Stream)) of
       true  -> 
          dropwhile(Pred, tail(Stream)); 
       false -> 
          Stream
-   end.
+   end;
+dropwhile(_, ?None) ->
+   ?None.
 
 %%
 %% returns a newly-allocated stream that contains only those elements x of the 
 %% input stream for which predicate is true.
 -spec filter(datum:predicate(_), datum:stream(_)) -> datum:stream(_).
 
-filter(_, #stream{tail = ?None} = Stream) ->
-   Stream;
 filter(Pred, #stream{head = Head} = Stream) ->
    case Pred(Head) of
       true -> 
          new(Head, fun() -> filter(Pred, tail(Stream)) end);
       false ->
          filter(Pred, tail(Stream))
-   end.
+   end;
+filter(_, ?None) ->
+   ?None.
 
 %%
 %% applies a function to each stream element for its side-effects; 
 %% it returns nothing. 
 -spec foreach(function(), datum:stream()) -> ok.
 
-foreach(_, #stream{tail = ?None}) ->
-   ok;
 foreach(Fun, #stream{} = Stream) ->
    _ = Fun(head(Stream)),
-   foreach(Fun, tail(Stream)).
+   foreach(Fun, tail(Stream));
+foreach(_, ?None) ->
+   ok.
+
 
 %%
 %% create a new stream by apply a function to each element of input stream. 
 -spec map(fun((_) -> _), datum:stream(_)) -> datum:stream(_).
 
-map(_, #stream{tail = ?None} = Stream) ->
-   Stream;
 map(Fun, #stream{} = Stream) ->
-   new(Fun(head(Stream)), fun() -> map(Fun, tail(Stream)) end).
+   new(Fun(head(Stream)), fun() -> map(Fun, tail(Stream)) end);
+map(_, ?None) ->
+   ?None.
+
 
 
 %%
@@ -242,13 +244,12 @@ split(N, Stream) ->
 
 split(0, Acc, Stream) ->
    {stream:build(lists:reverse(Acc)), Stream};
-
-split(_, Acc, #stream{tail = ?None} = Stream) ->
-   {stream:build(lists:reverse(Acc)), Stream};
    
 split(N, Acc, #stream{} = Stream) ->
-   split(N - 1, [head(Stream)|Acc], tail(Stream)).
+   split(N - 1, [head(Stream)|Acc], tail(Stream));
 
+split(_, Acc, ?None) ->
+   {stream:build(lists:reverse(Acc)), ?None}.
 
 %%
 %% partitions stream into two streams according to predicate.
@@ -259,16 +260,17 @@ split(N, Acc, #stream{} = Stream) ->
 splitwhile(Pred, Stream) ->
    splitwhile(Pred, [], Stream).
 
-splitwhile(_, Acc, #stream{tail = ?None} = Stream) ->
-   {stream:build(lists:reverse(Acc)), Stream};
-
 splitwhile(Pred, Acc, #stream{} = Stream) ->
    case Pred(head(Stream)) of
       true  ->
          splitwhile(Pred, [head(Stream)|Acc], tail(Stream));
       false ->
          {stream:build(lists:reverse(Acc)), Stream}
-     end.
+     end;
+
+splitwhile(_, Acc, ?None) ->
+   {stream:build(lists:reverse(Acc)), ?None}.
+
 
 %%
 %% returns a newly-allocated stream containing the first n elements of 
@@ -277,25 +279,25 @@ splitwhile(Pred, Acc, #stream{} = Stream) ->
 
 take(0, _) ->
    new();
-take(_, #stream{tail = ?None} = Stream) ->
-   Stream;
 take(N, #stream{} = Stream) ->
-   new(head(Stream), fun() -> take(N - 1, tail(Stream)) end).
+   new(head(Stream), fun() -> take(N - 1, tail(Stream)) end);
+take(_, ?None) ->
+   ?None.
 
 %%
 %% returns a newly-allocated stream that contains those elements from stream 
 %% while predicate returns true.
 -spec takewhile(datum:predicate(_), datum:traversable(_)) -> datum:traversable(_).
 
-takewhile(_, #stream{tail = ?None} = Stream) ->
-   Stream;
 takewhile(Pred, #stream{} = Stream) ->
    case Pred(head(Stream)) of
       true  -> 
          new(head(Stream), fun() -> takewhile(Pred, tail(Stream)) end);
       false ->
          new()
-     end.
+     end;
+takewhile(_, ?None) ->
+   ?None.
 
 %%%------------------------------------------------------------------
 %%%
@@ -318,10 +320,10 @@ fold(Fun, Acc, Stream) ->
 %%
 -spec foldl(datum:monoid(_), _, datum:foldable(_)) -> _.
 
-foldl(_, Acc, #stream{tail = ?None}) ->
-   Acc;
 foldl(Fun, Acc, #stream{} = Stream) ->
-   foldl(Fun, Fun(head(Stream), Acc), tail(Stream)).
+   foldl(Fun, Fun(head(Stream), Acc), tail(Stream));
+foldl(_, Acc, ?None) ->
+   Acc.
 
 
 %%
@@ -360,9 +362,9 @@ unfold(Fun, Seed)
 %% copied from input streams (in order of input). 
 -spec '++'(datum:stream(_), datum:stream(_)) -> datum:stream(_).
 
-'++'(#stream{tail = ?None}, StreamB) ->
+'++'(?None, StreamB) ->
    StreamB;
-'++'(StreamA, #stream{tail = ?None}) ->
+'++'(StreamA, ?None) ->
    StreamA;
 '++'(StreamA, StreamB) ->
    new(head(StreamA), fun() -> '++'(tail(StreamA), StreamB) end).
@@ -381,7 +383,7 @@ unfold(Fun, Seed)
 %% flat stream of streams
 -spec flat(datum:stream(_)) -> datum:stream(_).
 
-flat(#stream{head = #stream{tail = ?None}} = Stream) ->
+flat(#stream{head = ?None} = Stream) ->
    flat(tail(Stream));
 
 flat(#stream{head = #stream{} = Head} = Stream) ->
@@ -400,10 +402,10 @@ flat(Stream) ->
 scan(Fun, #stream{} = Stream) ->
    scan(Fun, head(Stream), tail(Stream)).
 
-scan(Fun, Acc0, #stream{tail = ?None}) ->
-   new(Acc0);
 scan(Fun, Acc0, #stream{} = Stream) ->
-   new(Acc0, fun() -> scan(Fun, Fun(head(Stream), Acc0), tail(Stream)) end).
+   new(Acc0, fun() -> scan(Fun, Fun(head(Stream), Acc0), tail(Stream)) end);
+scan(_, Acc0, ?None) ->
+   new(Acc0).
 
 
 %%
@@ -414,7 +416,7 @@ scan(Fun, Acc0, #stream{} = Stream) ->
 -spec zip(datum:stream(_), datum:stream(_)) -> datum:stream(_).
 
 zip(Streams) ->
-   case [head(X) || X <- Streams, X#stream.tail =/= ?None] of
+   case [head(X) || X <- Streams, X =/= ?None] of
       Head when length(Head) =:= length(Streams) ->
          new(Head, fun() -> zip([tail(X) || X <- Streams]) end);
       _ ->
@@ -434,7 +436,7 @@ zip(A, B) ->
 zipwith(_, []) ->
    new();
 zipwith(Fun, Streams) ->
-   zipwith1(Fun, [head(X) || X <- Streams, X#stream.tail =/= ?None], Streams).
+   zipwith1(Fun, [head(X) || X <- Streams, X =/= ?None], Streams).
 
 zipwith1(_Fun, [], _Streams) ->
    ?NULL;
@@ -443,7 +445,7 @@ zipwith1(Fun, Head, Streams) ->
       [] ->
          new();
       Hx ->
-         new(Hx, fun() -> zipwith(Fun, [tail(X) || X <- Streams, X#stream.tail =/= ?None]) end)
+         new(Hx, fun() -> zipwith(Fun, [tail(X) || X <- Streams, X =/= ?None]) end)
    end.
    
 zipwith(Fun, A, B) ->
@@ -463,7 +465,7 @@ zipwith(Fun, A, B) ->
 reverse(Stream) ->
    reverse(Stream, new()).
 
-reverse(#stream{tail = ?None}, Acc) ->
+reverse(?None, Acc) ->
    Acc;
 reverse(#stream{} = Stream, Acc) ->
    reverse(tail(Stream), new(head(Stream), Acc)).

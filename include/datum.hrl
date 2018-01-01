@@ -37,6 +37,7 @@
    tree = undefined :: _
 }).
 
+
 %%
 -record(heap, {
    ford = undefined :: datum:compare(_),
@@ -48,6 +49,7 @@
    head = undefined :: _,
    tail = undefined :: datum:option(fun(() -> _))
 }).
+
 
 %%
 -record(queue, {

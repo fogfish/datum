@@ -54,13 +54,16 @@
    fold/3,      %%
    foldl/3,     %%
    foldr/3,     %%
-   unfold/2     %%
+   unfold/2,    %%
+
+   size/1,      %% O(1)
+   list/1,      %% O(n)
 
 
-  % ,insert/3   %% O(log n)
-  ,size/1     %% O(1)
-   % utility interface
-  ,list/1     %% O(n)
+   apply/3,
+   has/2,
+   lookup/2,
+   remove/2
 ]).
 
 -type heap()  :: datum:option({heap(), rank(), key(), val(), heap()}).
@@ -256,7 +259,7 @@ map(Fun, #heap{heap = H} = Heap) ->
 map_el(_, ?None) ->
    ?None;
 map_el(Fun, {A, R, K, V, B}) ->
-   {map_el(Fun, A), R, K, Fun({K, V}), map_el(Fun, A)}.
+   {map_el(Fun, A), R, K, Fun({K, V}), map_el(Fun, B)}.
 
 
 %%
@@ -385,8 +388,6 @@ unfold(Fun, Seed, Acc) ->
    end.
 
 
-
-
 %%
 %% return heap size
 -spec size(datum:heap()) -> integer().
@@ -397,15 +398,17 @@ size(_) ->
    0.
 
 
+apply(_, _, _) ->
+   exit(not_implemented).
 
-%%
-%% takewhile head of heap
-% -spec takewhile(function(), datum:heap()) -> datum:heap().
+has(_, _) ->
+   exit(not_implemented).
 
+lookup(_, _) ->
+   exit(not_implemented).
 
-
-
-
+remove(_, _) ->
+   exit(not_implemented).
 
 
 %%%------------------------------------------------------------------
@@ -423,9 +426,9 @@ merge(_, ?None, R) ->
 merge(Ord, {_, _, Kx, _, _} = L, {_, _, Ky, _, _} = R) ->
    merge(Ord(Kx, Ky), Ord, L, R).
 
-merge(eq, Ord, {A, _, Kx, Vx, B}, {_, _, Ky, _, _} = R) ->
+merge(eq, Ord, {A, _, Kx, Vx, B}, {_, _, _, _, _} = R) ->
    join(Kx, Vx, A, merge(Ord, B, R));
-merge(lt, Ord, {A, _, Kx, Vx, B}, {_, _, Ky, _, _} = R) ->
+merge(lt, Ord, {A, _, Kx, Vx, B}, {_, _, _, _, _} = R) ->
    join(Kx, Vx, A, merge(Ord, B, R));
 merge(gt, Ord, H, {A, _, K, V, B}) ->
    join(K, V, A, merge(Ord, H, B)).

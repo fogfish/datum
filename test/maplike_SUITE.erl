@@ -108,7 +108,7 @@ insert1(Config) ->
    Type = ?config(type, Config),
    List = randseq(?LENGTH),
    Lens = fun({Key, Val}, Acc) -> Type:insert(Key, Val, Acc) end,
-   LMap = lists:foldl(Lens, Type:new(), List).
+   lists:foldl(Lens, Type:new(), List).
 
 
 %%

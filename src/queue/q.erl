@@ -183,7 +183,7 @@ dropwhile(Pred, #queue{} = Queue) ->
 %%
 -spec filter(datum:predicate(_), datum:traversable(_)) -> datum:traversable(_).
 
-filter(Pred, #queue{head = Head0, tail = Tail0} = Queue) ->
+filter(Pred, #queue{head = Head0, tail = Tail0}) ->
    Head1 = lists:filter(Pred, Head0),
    Tail1 = lists:filter(Pred, Tail0),
    #queue{length = erlang:length(Head1) + erlang:length(Tail1), head = Head1, tail = Tail1}.
@@ -242,7 +242,7 @@ split(N, Acc, Queue) ->
 splitwhile(Pred, Queue) ->
    splitwhile(Pred, new(), Queue).
 
-splitwhile(Pred, Acc, #queue{head = [], tail = []} = Queue) ->
+splitwhile(_, Acc, #queue{head = [], tail = []} = Queue) ->
    {Acc, Queue};
 splitwhile(Pred, Acc, #queue{} = Queue) ->
    Head = head(Queue),
@@ -346,35 +346,11 @@ unfold(Fun, Seed, Acc) ->
 
 
 %%
-%% check if the queue is empty
-% -spec is_empty(datum:q()) -> boolean().
-
-% is_empty(?NULL) ->
-%    true;
-% is_empty(_) ->
-%    false.
-
-%%
 %%
 length({q, N, _, _}) ->
    N;
 length(?NULL) ->
    0.
-
-
-%%
-%% takewhile head of queue
-% -spec takewhile(function(), datum:q()) -> datum:q().
-
-
-
-
-%%
-%% partitions queue into two queues according to predicate.
-%% The splitwith/2 behaves as if it is defined as consequent 
-%% takewhile(Pred, Queue), dropwhile(Pred, Queue)
-% -spec splitwith(function(), datum:q()) -> {datum:q(), datum:q()}.
-
 
 
 %%
@@ -385,7 +361,6 @@ list({q, _, Tail, Head}) ->
    Head ++ lists:reverse(Tail, []);
 list(?NULL) ->
    [].
-
 
 
 %%%------------------------------------------------------------------

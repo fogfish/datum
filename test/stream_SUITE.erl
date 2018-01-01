@@ -116,7 +116,7 @@ end_per_group(_, _Config) ->
 %%
 new(_) ->
    Null = fun stream:new/0,
-   {stream, _, undefined} = stream:new(),
+   undefined = stream:new(),
    {stream, 1, Null} = stream:new(1),
 
    Fun = fun() -> stream:new() end,

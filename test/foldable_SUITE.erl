@@ -124,8 +124,8 @@ randseq(0) -> [];
 randseq(N) -> [rand:uniform(1 bsl 32) | randseq(N - 1)].
 
 %%
-shuffle(List) ->
-   [Y || {_, Y} <- lists:keysort(1, [{rand:uniform(), X} || X <- List])].
+% shuffle(List) ->
+%    [Y || {_, Y} <- lists:keysort(1, [{rand:uniform(), X} || X <- List])].
 
 %%
 el1({Key, _}) ->

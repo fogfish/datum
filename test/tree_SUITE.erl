@@ -103,9 +103,7 @@ end_per_suite(_Config) ->
 %% 
 %%
 init_per_group(Type, Config) ->
-   [{type, Type}|Config];
-init_per_group(_, Config) ->
-   Config.
+   [{type, Type}|Config].
 
 end_per_group(_, _Config) ->
    ok.

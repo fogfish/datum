@@ -18,19 +18,19 @@
 -module(htree).
 
 -export([
-   new/0
-  ,build/1
-  ,insert/3
-  ,lookup/2
-  ,remove/2
-  ,foldl/3
-  ,foldr/3
-  ,foreach/2
-  ,hash/1
-  ,hash/2
-  ,evict/2
-  ,diff/2
-  ,list/1
+   new/0,
+   build/1,
+   insert/3,
+   lookup/2,
+   remove/2,
+   foldl/3,
+   foldr/3,
+   foreach/2,
+   hash/1,
+   hash/2,
+   evict/2,
+   diff/2,
+   list/1
 ]).
 
 
