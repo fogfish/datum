@@ -3,7 +3,7 @@
 > You could do this with a macro, but...
 > ...the best macro is a macro you don't maintain
 
-**datum** is a pure functional and generic programming for Erlang. It had its origins in [Purely Functional Data Structures](https://www.cs.cmu.edu/~rwh/theses/okasaki.pdf) by Chris Okasaki, on implementing a various higher rank functional abstractions and patterns, on dealing with [scrap your boilerplate](https://www.microsoft.com/en-us/research/publication/scrap-your-boilerplate-with-class/) and gaining experience from other functional languages. The library is still testing the limits of functional abstractions in Erlang. 
+**datum** is a pure functional and generic programming for Erlang. It had its origins in [Purely Functional Data Structures](https://www.cs.cmu.edu/~rwh/theses/okasaki.pdf) by Chris Okasaki, on implementing a various higher rank functional abstractions and patterns, on dealing with [scrap your boilerplate](https://www.microsoft.com/en-us/research/publication/scrap-your-boilerplate-with-class/) and gaining experience from other functional languages (primary Scala and Haskell). The library is still testing the limits of functional abstractions in Erlang. 
 
 
 [![Build Status](https://secure.travis-ci.org/fogfish/datum.svg?branch=master)](http://travis-ci.org/fogfish/datum) [![Coverage Status](https://coveralls.io/repos/github/fogfish/datum/badge.svg?branch=master)](https://coveralls.io/github/fogfish/datum?branch=master) [![Hex.pm](https://img.shields.io/hexpm/v/datum.svg)](https://hex.pm/packages/datum)
@@ -12,8 +12,8 @@
 
 The [feature overview](doc/features.md) provides an introduction to datum features, use-cases and reasoning of they existence:
 
-* data structures with common behavior: **foldable**, **traversable** and **map-like**
-
+* data structures with common behavior: **foldable**, **traversable** and **map-like** including 
+* binary search tree, red-black tree, heap, queues, streams, and others
 
 ## Getting started
 
@@ -86,6 +86,7 @@ The library uses [semantic versions](http://semver.org) to identify stable relea
 * 3.3.x - Van Laahorven lenses and monads
 * 2.7.x - enhance pure functional data-types with abstract interfaces such Foldable, Collections, etc  
 * 0.9.x - implement pure functional data-types: trees, queues, streams, etc
+
 
 
 ## License
