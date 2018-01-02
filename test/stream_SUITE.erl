@@ -28,23 +28,32 @@
   ,end_per_group/2
 ]).
 
-%%
-%% stream primitive
 -export([
-   empty/1, stream/1, head/1, tail/1
-]).
+   new/1,
 
-%%
-%% stream interface
--export([
-   '++'/1, drop/1, dropwhile/1, filter/1, fold/1, foreach/1, map/1, 
-   scan/1, split/1, splitwhile/1, take/1, takewhile/1, unfold/1, zip/1, zipwith/1
-]).
+   head/1,
+   tail/1,
+   is_empty/1,
+   drop/1,
+   dropwhile/1,
+   filter/1,
+   foreach/1,
+   map/1,
+   split/1,
+   splitwhile/1,
+   take/1,
+   takewhile/1,
 
-%%
-%% stream utility
--export([
-   reverse/1, cycle/1
+   fold/1,
+   unfold/1,
+
+   '++'/1,
+   flat/1,
+   scan/1,
+   zip/1,
+   zipwith/1,
+   reverse/1,
+   cycle/1   
 ]).
 
 %%
@@ -64,25 +73,18 @@
 %%%----------------------------------------------------------------------------   
 all() ->
    [
-      {group, primitives}
-     ,{group, interface}
-     ,{group, utility}
-     ,{group, algorithm}
+      {group, stream},
+      {group, algorithm}
    ].
 
 groups() ->
    [
-      {primitives, [parallel], 
-         [empty, stream, head, tail]}
+      {stream, [parallel], 
+         [new, head, tail, is_empty, drop, dropwhile, filter, foreach, map,
+         split, splitwhile, take, takewhile, fold, unfold, '++', flat, scan,
+         zip, zipwith, reverse, cycle]},
 
-     ,{interface,  [parallel], 
-         ['++', drop, dropwhile, filter, fold, foreach, map, 
-          scan, split, splitwhile, take, takewhile, unfold, zip, zipwith]}
-
-     ,{utility,    [parallel],
-         [reverse, cycle]}
-
-     ,{algorithm,  [parallel],
+      {algorithm,  [parallel],
          [prime, union, join, unique]}
    ].
 
@@ -107,38 +109,109 @@ end_per_group(_, _Config) ->
 
 %%%----------------------------------------------------------------------------   
 %%%
-%%% stream primitives
+%%% stream
 %%%
 %%%----------------------------------------------------------------------------   
 
-empty(_Config) ->
-   {} = stream:new().
-
-
-stream(_Config) ->
+%%
+new(_) ->
    Null = fun stream:new/0,
-   {s, test, Null} = stream:new(test),
+   undefined = stream:new(),
+   {stream, 1, Null} = stream:new(1),
 
-   Lazy = fun() -> stream:new() end,
-   {s, test, Lazy} = stream:new(test, Lazy).
-   
+   Fun = fun() -> stream:new() end,
+   {stream, 1, Fun} = stream:new(1, Fun).
 
+%%
 head(_Config) ->
-   Stream = stream:new(test, fun() -> stream:new(tset) end),
-   test = stream:head(Stream).
+   Stream = stream:new(1, fun() -> stream:new(1) end),
+   1 = stream:head(Stream).
 
-
+%%
 tail(_Config) ->
-   Null   = fun stream:new/0,
-   Stream = stream:new(test, fun() -> stream:new(tset) end),
-   {s, tset, Null} = stream:tail(Stream).
+   Null = fun stream:new/0,
+   Stream = stream:new(1, fun() -> stream:new(2) end),
+   {stream, 2, Null} = stream:tail(Stream).
 
-%%%----------------------------------------------------------------------------   
-%%%
-%%% stream interface
-%%%
-%%%----------------------------------------------------------------------------   
+%%
+is_empty(_Config) ->
+   true  = stream:is_empty(stream:new()),
+   false = stream:is_empty(stream:new(1)).
 
+%%
+drop(_Config) ->
+   ?prefix([3, 4],
+      stream:drop(2, stream:build(1))
+   ).
+
+%%
+dropwhile(_Config) ->
+   ?prefix([3, 4],
+      stream:dropwhile(fun(X) -> X =< 2 end, stream:build(1))
+   ).
+
+%%
+filter(_Config) ->
+   ?prefix([2, 4, 6],
+      stream:filter(fun(X) -> X rem 2 == 0 end, stream:build(1))
+   ).
+
+%%
+foreach(_Config) ->
+   ok = stream:foreach(fun(_) -> ok end, 
+      stream:take(5, stream:build(1))
+   ).
+
+%%
+map(_Config) ->
+   ?prefix([1, 4, 9, 16, 25],
+      stream:map(fun(X) -> X * X end, stream:build(1))
+   ).
+
+%%
+split(_Config) ->
+   {Head, Tail} = stream:split(3, stream:build(1)),
+   ?prefix([1, 2, 3], Head),
+   ?prefix([4, 5, 6], Tail).
+
+%%
+splitwhile(_Config) ->
+   {Head, Tail} = stream:splitwhile(fun(X) -> X < 4 end, stream:build(1)),
+   ?prefix([1, 2, 3], Head),
+   ?prefix([4, 5, 6], Tail).
+
+%%
+take(_Config) ->
+   ?prefix([1, 2],
+      stream:take(2, stream:build(1))
+   ).
+
+%%
+takewhile(_Config) ->
+   ?prefix([1, 2],
+      stream:takewhile(fun(X) -> X < 3 end, stream:build(1))
+   ).
+
+%%
+fold(_Config) ->
+   15 = stream:fold(fun erlang:'+'/2, 0, 
+      stream:take(5, stream:build(1))
+   ).
+
+%%
+unfold(_Config) ->
+   ?prefix([1, 4, 9, 16, 25, 36, 49, 64, 81],
+      stream:map(
+         fun(X) -> X * X end,
+         stream:takewhile(
+            fun(X) -> X < 10 end,
+            stream:unfold(fun(X) -> {X + 1, X + 1} end, 0)
+         )
+      )
+   ).
+
+
+%%
 '++'(_Config) ->
    ?prefix([1, 2, 3, 3, 4, 5],
       stream:'++'(
@@ -153,37 +226,19 @@ tail(_Config) ->
          stream:build(3)
       ])
    ).
-   
-drop(_Config) ->
-   ?prefix([3, 4],
-      stream:drop(2, stream:build(1))
+
+%%
+flat(_Config) ->
+   ?prefix([1, 2, 3, 3, 4, 5],
+      stream:flat(
+         stream:map(
+            fun(X) -> stream:new(X) end,
+            stream:build([1, 2, 3, 3, 4, 5])
+         )
+      )
    ).
 
-dropwhile(_Config) ->
-   ?prefix([3, 4],
-      stream:dropwhile(fun(X) -> X =< 2 end, stream:build(1))
-   ).
-
-filter(_Config) ->
-   ?prefix([2, 4, 6],
-      stream:filter(fun(X) -> X rem 2 == 0 end, stream:build(1))
-   ).
-
-fold(_Config) ->
-   15 = stream:fold(fun erlang:'+'/2, 0, 
-      stream:take(5, stream:build(1))
-   ).
-
-foreach(_Config) ->
-   ok = stream:foreach(fun(_) -> ok end, 
-      stream:take(5, stream:build(1))
-   ).
-
-map(_Config) ->
-   ?prefix([1, 4, 9, 16, 25],
-      stream:map(fun(X) -> X * X end, stream:build(1))
-   ).
-
+%%
 scan(_Config) ->
    ?prefix([0, 1, 3, 6, 10, 15], 
       stream:scan(fun erlang:'+'/2, 0, stream:build(1))
@@ -192,35 +247,7 @@ scan(_Config) ->
       stream:scan(fun erlang:'+'/2, stream:build(1))
    ).
 
-split(_Config) ->
-   {[1, 2, 3], Stream} = stream:split(3, stream:build(1)),
-   ?prefix([4, 5, 6], Stream).
-
-splitwhile(_Config) ->
-   {[1, 2, 3], Stream} = stream:splitwhile(fun(X) -> X < 4 end, stream:build(1)),
-   ?prefix([4, 5, 6], Stream).
-   
-take(_Config) ->
-   ?prefix([1, 2],
-      stream:take(2, stream:build(1))
-   ).
-
-takewhile(_Config) ->
-   ?prefix([1, 2],
-      stream:takewhile(fun(X) -> X < 3 end, stream:build(1))
-   ).
-
-unfold(_Config) ->
-   ?prefix([1, 4, 9, 16, 25, 36, 49, 64, 81],
-      stream:map(
-         fun(X) -> X * X end,
-         stream:takewhile(
-            fun(X) -> X < 10 end,
-            stream:unfold(fun(X) -> {X + 1, X + 1} end, 0)
-         )
-      )
-   ).
-
+%%
 zip(_Config) ->
    ?prefix([[1, 1], [2, 4], [3, 9], [4, 16]],
       stream:zip(
@@ -229,6 +256,7 @@ zip(_Config) ->
       )
    ).
 
+%%
 zipwith(_Config) ->
    ?prefix([[1, 1], [4, 2], [9, 3], [16, 4]],
       stream:zipwith(
@@ -238,18 +266,13 @@ zipwith(_Config) ->
       )
    ).
 
-
-%%%----------------------------------------------------------------------------   
-%%%
-%%% stream utility
-%%%
-%%%----------------------------------------------------------------------------   
-
+%%
 reverse(_Config) ->
    ?prefix([5, 4, 3, 2, 1],
       stream:reverse(stream:take(5, stream:build(1)))
    ).
 
+%%
 cycle(_Config) ->
    ?prefix([1, 2, 1, 2, 1, 2],
       stream:cycle([1, 2])
@@ -315,7 +338,7 @@ sortby(N, Streams) ->
       fun(A, B) -> 
          erlang:element(N, stream:head(A)) =< erlang:element(N, stream:head(B)) 
       end,
-      [X || X <- Streams, X =/= {}]
+      [X || X <- Streams, not stream:is_empty(X)]
    ).
 
 %%
@@ -357,8 +380,11 @@ unique(_Config) ->
       sunique( stream:build([1,1,1,2,2,2,2,3,3,3,4,4,4,4,5,5,5]) )
    ).   
 
-sunique({s, Head, _}=Stream) ->
-   stream:new(Head, fun() -> sunique(stream:dropwhile(fun(X) -> X =:= Head end, Stream)) end);
-sunique({}) ->
-   stream:new().
+sunique(Stream) ->
+   sunique(stream:is_empty(Stream), Stream).
+
+sunique(false, Stream) ->
+   stream:new(stream:head(Stream), fun() -> sunique(stream:dropwhile(fun(X) -> X =:= stream:head(Stream) end, Stream)) end);
+sunique(true, Stream) ->
+   Stream.
 

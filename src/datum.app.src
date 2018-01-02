@@ -1,13 +1,19 @@
 {application, datum,
    [
       {description, "pure functional data structure"},
-      {vsn,         "4.0.3"},
+      {vsn,         "4.1.0"},
       {modules,     []},
       {registered,  []},
       {applications,[
          kernel,
          stdlib
       ]},
-      {env, []}
+      {env, []},
+
+      {licenses, ["Apache"]},
+      {maintainers, ["Dmitry Kolesnikov"]},
+      {links, [
+         {"GitHub", "https://github.com/fogfish/datum"}
+      ]}
    ]
 }.  

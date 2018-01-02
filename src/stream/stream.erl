@@ -18,51 +18,56 @@
 %%   on demand computed elements. Erlang implementation derived from
 %%   scheme stream interface @see http://srfi.schemers.org/srfi-41/srfi-41.html
 -module(stream).
+-behaviour(traversable).
+-behaviour(foldable).
+
 -include("datum.hrl").
 
 %%
 %% stream primitives - abstract data type 
 -export([
-   new/0
-  ,new/1
-  ,new/2
-  ,head/1
-  ,tail/1
-]).
+   new/0,
+   new/1,
+   new/2,
 
-%%
-%% stream interface
--export([
-   '++'/2
-  ,'++'/1
-  ,drop/2
-  ,dropwhile/2
-  ,filter/2
-  ,fold/3
-  ,foreach/2
-  ,flat/1
-  ,map/2
-  ,scan/2
-  ,scan/3
-  ,split/2
-  ,splitwhile/2
-  ,take/2
-  ,takewhile/2
-  ,unfold/2
-  ,zip/1
-  ,zip/2
-  ,zipwith/2
-  ,zipwith/3
-]).
+   %%
+   %% traversable
+   head/1,
+   tail/1,
+   build/1,
+   list/1, 
+   list/2,
+   is_empty/1,
+   drop/2,
+   dropwhile/2,
+   filter/2,
+   foreach/2,
+   map/2,
+   split/2,
+   splitwhile/2,
+   take/2,
+   takewhile/2,
 
-%%
-%% stream utility
--export([
-   reverse/1
-  ,cycle/1
-  ,list/1
-  ,list/2
-  ,build/1
+   %%
+   %% foldable
+   fold/3,
+   foldl/3,
+   foldr/3,
+   unfold/2,
+
+   %%
+   %% stream
+   '++'/2,
+   '++'/1,
+   flat/1,
+   scan/2,
+   scan/3,
+   zip/1,
+   zip/2,
+   zipwith/2,
+   zipwith/3,
+   reverse/1,
+   cycle/1
 ]).
 
 %%
@@ -78,240 +83,266 @@
 %%
 %% creates a newly allocated stream containing stream head and promise.
 %% the promise is recursive, it returns new stream pair when evaluated.
--spec new() -> datum:stream().
--spec new(_) -> datum:stream().
--spec new(_, function()) -> datum:stream().
+-spec new() -> datum:stream(_).
+-spec new(_) -> datum:stream(_).
+-spec new(_, function()) -> datum:stream(_).
 
 new() ->
-   ?NULL.
+   ?None.
+
 new(Head) ->
    new(Head, fun stream:new/0).
+
 new(Head, Fun)
- when is_function(Fun) ->
-   {s, Head, Fun};
-new(Head, {s, _, _} = Stream) ->
-   {s, Head, fun() -> Stream end};
-new(Head, ?NULL) ->
+ when is_function(Fun, 0) ->
+   #stream{head = Head, tail = Fun};
+new(Head, #stream{} = Stream) ->
+   #stream{head = Head, tail = fun() -> Stream end};
+new(Head, ?None) ->
    new(Head).
 
-%%
-%% takes stream and return head element of stream
--spec head(datum:stream()) -> _.
 
-head({s, Head, _}) ->
-   Head;
-head(_) ->
-   exit(badarg).
+%%%------------------------------------------------------------------
+%%%
+%%% traversable
+%%%
+%%%------------------------------------------------------------------
+
+%%
+%% take collection and return head element of collection
+%%
+-spec head(datum:traversable(_)) -> datum:option(_).
+
+head(?None) ->
+   ?None;
+head(#stream{head = Head}) ->
+   Head.
 
 %%
 %% force stream promise and return new stream (evaluates tail of stream).
--spec tail(datum:stream()) -> datum:stream().
+-spec tail(datum:traversable(_)) -> datum:traversable(_).
 
-tail({s, _, Fun}) ->
-   Fun();
-tail(_) ->
-   {}.
-
-%%%------------------------------------------------------------------
-%%%
-%%% stream interface
-%%%
-%%%------------------------------------------------------------------
+tail(?None) ->
+   ?None;
+tail(#stream{tail = Fun}) ->
+   Fun().
 
 %%
-%% concatenate streams, returns newly-allocated stream composed of elements
-%% copied from input streams (in order of input). 
--spec '++'(datum:stream(), datum:stream()) -> datum:stream().
--spec '++'([datum:stream()]) -> datum:stream().
+%% build a new collection from Erlang list
+%%
+-spec build([_] | integer()) -> datum:traversable(_).
 
-'++'(?NULL, StreamB) ->
-   StreamB;
-'++'(StreamA, ?NULL) ->
-   StreamA;
-'++'(StreamA, StreamB) ->
-   new(head(StreamA), fun() -> '++'(tail(StreamA), StreamB) end).
+build([]) ->
+   new();
+build([Head|Tail]) ->
+   new(Head, fun() -> build(Tail) end);
+build(X)
+ when is_integer(X) ->
+   new(X, fun() -> build(X + 1) end).
 
-'++'([A,B|T]) ->
-   '++'(['++'(A,B)|T]);
-'++'([T]) ->
-   T.
+
+%%
+%% returns a newly-allocated list containing stream elements
+-spec list(datum:stream()) -> list().
+
+list(?None) ->
+   [];
+list(#stream{} = Stream) ->
+   [stream:head(Stream) | list(stream:tail(Stream))].
+
+%%
+%% returns a newly-allocated list containing stream elements
+-spec list(integer(), datum:stream()) -> list().
+
+list(N, Stream) ->
+   list(stream:take(N, Stream)).
+
+
+%%
+%% return true if collection is empty 
+%%
+-spec is_empty(datum:traversable(_)) -> true | false.
+
+is_empty(?None) ->
+   true;
+is_empty(#stream{}) ->
+   false.
 
 
 %%
 %% returns the suffix of the input stream that starts at the next element after
 %% the first n elements.
--spec drop(integer(), datum:stream()) -> datum:stream().
+-spec drop(integer(), datum:stream(_)) -> datum:stream(_).
 
-drop(0, Stream) ->
+drop(0, #stream{} = Stream) ->
    Stream;
-drop(N, {s, _, _} = Stream) ->
-  drop(N - 1, tail(Stream));
-drop(_, ?NULL) ->
-   ?NULL.
+drop(N, #stream{} = Stream) ->
+   drop(N - 1, tail(Stream));
+drop(_, ?None) ->
+   ?None.
 
 %%
 %% drops elements from stream while predicate returns true and returns remaining
 %% stream suffix.
--spec dropwhile(function(), datum:stream()) -> datum:stream().
+-spec dropwhile(datum:predicate(_), datum:stream(_)) -> datum:stream(_).      
 
-dropwhile(Pred, {s, _, _}=Stream) ->
+dropwhile(Pred, #stream{} = Stream) ->
    case Pred(head(Stream)) of
       true  -> 
          dropwhile(Pred, tail(Stream)); 
       false -> 
          Stream
    end;
-dropwhile(_, ?NULL) ->
-   ?NULL.
-
+dropwhile(_, ?None) ->
+   ?None.
 
 %%
 %% returns a newly-allocated stream that contains only those elements x of the 
 %% input stream for which predicate is true.
--spec filter(function(), datum:stream()) -> datum:stream().
+-spec filter(datum:predicate(_), datum:stream(_)) -> datum:stream(_).
 
-filter(Pred, {s, _, _} = Stream) ->
-   case Pred(head(Stream)) of
+filter(Pred, #stream{head = Head} = Stream) ->
+   case Pred(Head) of
       true -> 
-         new(head(Stream), fun() -> filter(Pred, tail(Stream)) end);
+         new(Head, fun() -> filter(Pred, tail(Stream)) end);
       false ->
          filter(Pred, tail(Stream))
    end;
-filter(_, ?NULL) ->
-   ?NULL.
-
-
-%%
-%% applies a function to stream head and accumulator to compute a new accumulator,
-%% then applies the function to the new accumulator and the next element of stream to 
-%% compute a succeeding accumulator, and so on, the final accumulated value is returned
-%% when the end of the stream is reached. Stream must be finite.
--spec fold(function(), _, datum:stream()) -> _.
-
-fold(Fun, Acc, {s, _, _} = Stream) ->
-   fold(Fun, Fun(head(Stream), Acc), tail(Stream));
-fold(_, Acc, ?NULL) ->
-   Acc.
-
+filter(_, ?None) ->
+   ?None.
 
 %%
 %% applies a function to each stream element for its side-effects; 
 %% it returns nothing. 
 -spec foreach(function(), datum:stream()) -> ok.
 
-foreach(Fun, {s, _, _} = Stream) ->
+foreach(Fun, #stream{} = Stream) ->
    _ = Fun(head(Stream)),
    foreach(Fun, tail(Stream));
-foreach(_, ?NULL) ->
+foreach(_, ?None) ->
    ok.
 
-%%
-%% flat stream of streams
--spec flat(datum:stream()) -> datum:stream().
-
-flat({s, {s, _, _} = Head, Tail}) ->
-   new(stream:head(Head), fun() -> flat({s, stream:tail(Head), Tail}) end);
-
-flat({s, {}, _} = Stream) ->
-   flat(stream:tail(Stream));
-
-flat(Stream) ->
-   Stream.
 
 %%
 %% create a new stream by apply a function to each element of input stream. 
--spec map(function(), datum:stream()) -> datum:stream().
+-spec map(fun((_) -> _), datum:stream(_)) -> datum:stream(_).
 
-map(Fun, {s, _, _} = Stream) ->
+map(Fun, #stream{} = Stream) ->
    new(Fun(head(Stream)), fun() -> map(Fun, tail(Stream)) end);
-map(_, ?NULL) ->
-   ?NULL.
+map(_, ?None) ->
+   ?None.
 
-%%
-%% accumulates the partial folds of an input stream into a newly-allocated stream.
-%% the output stream is accumulator followed by partial fold.
--spec scan(function(), datum:stream()) -> datum:stream().
--spec scan(function(), _, datum:stream()) -> datum:stream().
 
-scan(Fun, {s, _, _} = Stream) ->
-   scan(Fun, head(Stream), tail(Stream)).
-
-scan(Fun, Acc0, {s, _, _} = Stream) ->
-   new(Acc0, fun() -> scan(Fun, Fun(head(Stream), Acc0), tail(Stream)) end);
-scan(_, Acc0, ?NULL) ->
-   new(Acc0).
 
 %%
 %% partitions stream into two streams. The split behaves as if it is defined as 
 %% consequent take(N, Stream), drop(N, Stream). 
--spec split(integer(), datum:stream()) -> {[_], datum:stream()}.
+-spec split(integer(), datum:traversable(_)) -> {datum:traversable(_), datum:traversable(_)}.
 
 split(N, Stream) ->
    split(N, [], Stream).
 
 split(0, Acc, Stream) ->
-   {lists:reverse(Acc), Stream};
-split(N, Acc, {s, _, _} = Stream) ->
+   {stream:build(lists:reverse(Acc)), Stream};
+   
+split(N, Acc, #stream{} = Stream) ->
    split(N - 1, [head(Stream)|Acc], tail(Stream));
-split(_, Acc, ?NULL) ->
-   {lists:reverse(Acc), ?NULL}.
+
+split(_, Acc, ?None) ->
+   {stream:build(lists:reverse(Acc)), ?None}.
 
 %%
 %% partitions stream into two streams according to predicate.
 %% The splitwith/2 behaves as if it is defined as consequent 
 %% takewhile(Pred, Stream), dropwhile(Pred, Stream)
--spec splitwhile(function(), datum:stream()) -> {[_], datum:stream()}.
+-spec splitwhile(datum:predicate(_), datum:traversable(_)) -> {datum:traversable(_), datum:traversable(_)}.
 
 splitwhile(Pred, Stream) ->
    splitwhile(Pred, [], Stream).
 
-splitwhile(Pred, Acc, {s, _, _} = Stream) ->
+splitwhile(Pred, Acc, #stream{} = Stream) ->
    case Pred(head(Stream)) of
       true  ->
          splitwhile(Pred, [head(Stream)|Acc], tail(Stream));
       false ->
-         {lists:reverse(Acc), Stream}
+         {stream:build(lists:reverse(Acc)), Stream}
      end;
-splitwhile(_, Acc, ?NULL) ->
-   {lists:reverse(Acc), ?NULL}.
+
+splitwhile(_, Acc, ?None) ->
+   {stream:build(lists:reverse(Acc)), ?None}.
 
 
 %%
 %% returns a newly-allocated stream containing the first n elements of 
 %% the input stream. 
--spec take(integer(), datum:stream()) -> datum:stream().
+-spec take(integer(), datum:traversable(_)) -> datum:traversable(_).
 
 take(0, _) ->
-   ?NULL;
-take(N, {s, _, _} = Stream) ->
+   new();
+take(N, #stream{} = Stream) ->
    new(head(Stream), fun() -> take(N - 1, tail(Stream)) end);
-take(_, ?NULL) ->
-   ?NULL.
+take(_, ?None) ->
+   ?None.
 
 %%
 %% returns a newly-allocated stream that contains those elements from stream 
 %% while predicate returns true.
--spec takewhile(function(), datum:stream()) -> datum:stream().
+-spec takewhile(datum:predicate(_), datum:traversable(_)) -> datum:traversable(_).
 
-takewhile(Pred, {s, _, _} = Stream) ->
+takewhile(Pred, #stream{} = Stream) ->
    case Pred(head(Stream)) of
       true  -> 
          new(head(Stream), fun() -> takewhile(Pred, tail(Stream)) end);
       false ->
-         ?NULL
+         new()
      end;
-takewhile(_, ?NULL) ->
-   ?NULL.
+takewhile(_, ?None) ->
+   ?None.
+
+%%%------------------------------------------------------------------
+%%%
+%%% foldable
+%%%
+%%%------------------------------------------------------------------
+
+%%
+%% applies a function to stream head and accumulator to compute a new accumulator,
+%% then applies the function to the new accumulator and the next element of stream to 
+%% compute a succeeding accumulator, and so on, the final accumulated value is returned
+%% when the end of the stream is reached. Stream must be finite.
+-spec fold(datum:monoid(_), _, datum:foldable(_)) -> _.
+
+fold(Fun, Acc, Stream) ->
+   foldl(Fun, Acc, Stream).
+
+%%
+%% Left-associative fold of a structure
+%%
+-spec foldl(datum:monoid(_), _, datum:foldable(_)) -> _.
+
+foldl(Fun, Acc, #stream{} = Stream) ->
+   foldl(Fun, Fun(head(Stream), Acc), tail(Stream));
+foldl(_, Acc, ?None) ->
+   Acc.
 
 
 %%
-%% the fundamental recursive infinite stream constructor. 
+%% Right-associative fold of a structure
+%%
+-spec foldr(datum:monoid(_), _, datum:foldable(_)) -> _.
+
+foldr(Fun, Acc, #stream{} = Stream) ->
+   lists:foldr(Fun, Acc, stream:list(Stream)).
+
+%% 
+%% The fundamental recursive structure constructor, 
 %% it applies a function to each previous seed element in turn
 %% to determine the next element.
--spec unfold(function(), _) -> datum:stream().
+%%
+-spec unfold(fun((_) -> _), _) -> datum:foldable(_).
 
 unfold(Fun, Seed)
- when is_function(Fun) ->
+ when is_function(Fun, 1) ->
    case Fun(Seed) of
       {Head, Next} ->
          new(Head, fun() -> unfold(Fun, Next) end);
@@ -319,19 +350,77 @@ unfold(Fun, Seed)
          new()
    end.
 
+
+%%%------------------------------------------------------------------
+%%%
+%%% stream 
+%%%
+%%%------------------------------------------------------------------
+
+%%
+%% concatenate streams, returns newly-allocated stream composed of elements
+%% copied from input streams (in order of input). 
+-spec '++'(datum:stream(_), datum:stream(_)) -> datum:stream(_).
+
+'++'(?None, StreamB) ->
+   StreamB;
+'++'(StreamA, ?None) ->
+   StreamA;
+'++'(StreamA, StreamB) ->
+   new(head(StreamA), fun() -> '++'(tail(StreamA), StreamB) end).
+
+%%
+%% concatenate streams, returns newly-allocated stream composed of elements
+%% copied from input streams (in order of input). 
+-spec '++'([datum:stream(_)]) -> datum:stream(_).
+
+'++'([A,B|T]) ->
+   '++'(['++'(A,B)|T]);
+'++'([T]) ->
+   T.
+
+%%
+%% flat stream of streams
+-spec flat(datum:stream(_)) -> datum:stream(_).
+
+flat(#stream{head = ?None} = Stream) ->
+   flat(tail(Stream));
+
+flat(#stream{head = #stream{} = Head} = Stream) ->
+   new(head(Head), fun() -> flat(Stream#stream{head = tail(Head)}) end);
+
+flat(Stream) ->
+   Stream.
+
+
+%%
+%% accumulates the partial folds of an input stream into a newly-allocated stream.
+%% the output stream is accumulator followed by partial fold.
+-spec scan(function(), datum:stream(_)) -> datum:stream(_).
+-spec scan(function(), _, datum:stream(_)) -> datum:stream(_).
+
+scan(Fun, #stream{} = Stream) ->
+   scan(Fun, head(Stream), tail(Stream)).
+
+scan(Fun, Acc0, #stream{} = Stream) ->
+   new(Acc0, fun() -> scan(Fun, Fun(head(Stream), Acc0), tail(Stream)) end);
+scan(_, Acc0, ?None) ->
+   new(Acc0).
+
+
 %%
 %% takes one or more input streams and returns a newly-allocated stream 
 %% in which each element is a list of the corresponding elements of the input 
 %% streams. The output stream is as long as the shortest input stream.
--spec zip([datum:stream()]) -> datum:stream().
--spec zip(datum:stream(), datum:stream()) -> datum:stream().
+-spec zip([datum:stream(_)]) -> datum:stream(_).
+-spec zip(datum:stream(_), datum:stream(_)) -> datum:stream(_).
 
 zip(Streams) ->
-   case [head(X) || X <- Streams, X =/= ?NULL] of
+   case [head(X) || X <- Streams, X =/= ?None] of
       Head when length(Head) =:= length(Streams) ->
          new(Head, fun() -> zip([tail(X) || X <- Streams]) end);
       _ ->
-      ?NULL
+         new()
    end.
 
 zip(A, B) ->
@@ -341,22 +430,22 @@ zip(A, B) ->
 %% takes one or more input streams and returns a newly-allocated stream,  
 %% each element produced by composition function that map list of input heads to
 %% new head. The output stream is as long as the longest input stream.
--spec zipwith(function(), [datum:stream()]) -> datum:stream().
--spec zipwith(function(), datum:stream(), datum:stream()) -> datum:stream().
+-spec zipwith(function(), [datum:stream(_)]) -> datum:stream(_).
+-spec zipwith(function(), datum:stream(_), datum:stream(_)) -> datum:stream(_).
 
 zipwith(_, []) ->
-   ?NULL;
+   new();
 zipwith(Fun, Streams) ->
-   zipwith1(Fun, [head(X) || X <- Streams, X =/= ?NULL], Streams).
+   zipwith1(Fun, [head(X) || X <- Streams, X =/= ?None], Streams).
 
 zipwith1(_Fun, [], _Streams) ->
-   ?NULL;
+   new();
 zipwith1(Fun, Head, Streams) ->
    case Fun(Head) of
       [] ->
-         ?NULL;
+         new();
       Hx ->
-         new(Hx, fun() -> zipwith(Fun, [tail(X) || X <- Streams, X =/= ?NULL]) end)
+         new(Hx, fun() -> zipwith(Fun, [tail(X) || X <- Streams, X =/= ?None]) end)
    end.
    
 zipwith(Fun, A, B) ->
@@ -371,16 +460,15 @@ zipwith(Fun, A, B) ->
 
 %%
 %% reverse order of elements in stream.
--spec reverse(datum:stream()) -> datum:stream().
+-spec reverse(datum:stream(_)) -> datum:stream(_).
 
 reverse(Stream) ->
    reverse(Stream, new()).
 
-reverse({s, _, _} = Stream, Acc) ->
-   reverse(tail(Stream), new(head(Stream), Acc));
-
-reverse(?NULL, Acc) ->
-   Acc. 
+reverse(?None, Acc) ->
+   Acc;
+reverse(#stream{} = Stream, Acc) ->
+   reverse(tail(Stream), new(head(Stream), Acc)).
 
 %%
 %% takes list of elements and returns a newly-allocated stream composed of 
@@ -396,31 +484,7 @@ cycle([], [Head|Tail]=List) ->
    new(Head, fun() -> cycle(Tail, List) end).
 
 
-%%
-%% returns a newly-allocated list containing stream elements
--spec list(datum:stream()) -> list().
--spec list(integer(), datum:stream()) -> list().
 
-list({s, _, _}=Stream) ->
-   [stream:head(Stream) | list(stream:tail(Stream))];
-list(_) ->
-   [].
-
-list(N, Stream) ->
-   list(stream:take(N, Stream)).
-
-%%
-%% takes an object of Erlang data type are returns a newly-allocated stream
-%%   list() -> stream contains the objects in the list. 
--spec build(any()) -> datum:stream().
-
-build([]) ->
-   new();
-build([Head|Tail]) ->
-   new(Head, fun() -> build(Tail) end);
-build(X)
- when is_integer(X) ->
-   new(X, fun() -> build(X + 1) end).
 
 
 %%%------------------------------------------------------------------
