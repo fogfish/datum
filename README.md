@@ -82,6 +82,7 @@ If you experience any issues with the library, please let us know via [GitHub is
 
 The library uses [semantic versions](http://semver.org) to identify stable releases. 
 
+* 4.2.x - Data structure isomorphism with lenses
 * 4.1.x - Update interface(s) documentation
 * 4.0.x - Re-implement monads through Kleisli category
 * 3.7.x - Introduce category pattern
