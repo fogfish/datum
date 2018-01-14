@@ -70,7 +70,9 @@
    compose6/1, 
    compose7/1,
    compose8/1,
-   compose9/1
+   compose9/1,
+
+   iso/1
 ]).
 
 %%%----------------------------------------------------------------------------   
@@ -102,7 +104,7 @@ groups() ->
          [pair, pair_om]},
 
       {compose, [parallel], 
-         [compose1, compose2, compose3, compose4, compose5, compose6, compose7, compose8, compose9]}
+         [compose1, compose2, compose3, compose4, compose5, compose6, compose7, compose8, compose9, iso]}
    ].
 
 %%%----------------------------------------------------------------------------   
@@ -404,3 +406,24 @@ compose9(_Config) ->
    law_get_put(Lens, Data),
    law_put_get(Lens, a, Data),
    law_put_put(Lens, a, b, [a, {[{[{[{b}]}], 2}],2}], Data).
+
+
+-record(address, {street = undefined}).
+-record(user,    {name = undefined, address = #address{}}).
+
+iso(_Config) ->
+   Iso = lens:iso(
+      [
+         lens:ti(#user.name),
+         lens:c(lens:ti(#user.address), lens:ti(#address.street))
+      ], 
+      [
+         lens:at(name),
+         lens:c(lens:at(address, #{}), lens:at(street))
+      ]
+   ),
+   Rec = #user{name = "Verner", address = #address{street = "Blumenstraße"}},
+   Map = #{name => "Verner", address => #{street => "Blumenstraße"}},
+
+   Map = lens:isof(Iso, Rec, #{}),
+   Rec = lens:isob(Iso, Map, #user{}).
