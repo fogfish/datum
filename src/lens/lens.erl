@@ -48,7 +48,7 @@
 
 %%
 %% lens primitives
--export([fmap/2, apply/3, get/2, put/3]). 
+-export([fmap/2, apply/3, get/2, put/3, iso/2, isof/3, isob/3]). 
 
 %%
 %% lenses  
@@ -265,6 +265,42 @@ get(Ln, S) ->
 put(Ln, A, S) ->
    apply(Ln, fun(_) -> A end, S).
 
+%%
+%% Isomorphism translates between different data structures
+%% Given an ordered set of lenses that focuses on data structure
+%% and lifts results to abstract view. Another set of lenses
+%% puts data back to concrete view
+-spec iso([lens()], [lens()]) -> {_, _}.
+
+iso(LensesA, LensesB) ->
+   {morphism(LensesA, LensesB), morphism(LensesB, LensesA)}.
+
+morphism(LensesA, LensesB) ->
+   fun(Source, Target) ->
+      View = [lens:get(LnA, Source) || LnA <- LensesA],
+      lists:foldl(
+         fun({LnB, X}, Acc) ->
+            lens:put(LnB, X, Acc)
+         end,
+         Target,
+         lists:zip(LensesB, View)
+      )
+   end.
+
+%%
+%% applies forward isomorphism from A to B
+-spec isof({_, _}, _, _) -> _.
+
+isof({Iso, _}, A, B) ->
+   Iso(A, B).
+
+%%
+%% applies backward isomorphism from B to A
+-spec isob({_, _}, _, _) -> _.
+
+isob({_, Iso}, A, B) ->
+   Iso(A, B).
+
 
 %% 
 %% Lens primitives above requires actual lens implementation. The lens
@@ -412,7 +448,7 @@ ti(I)
 
 at(Key) ->
    fun(Fun, Map) ->
-      fmap(maps:put(Key, _, Map), Fun(maps:get(Key, Map)))
+      fmap(maps:put(Key, _, Map), Fun(maps:get(Key, Map, undefined)))
    end.
 
 at(Key, Om) ->

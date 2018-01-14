@@ -143,9 +143,51 @@ Library implements a few pure functional data structures using common behvaiours
 
 ## Lens
 
-[Lenses](../src/lens/lens.erl) resembles concept of getters and setters, which you can compose using functional concepts. In other words, this is combinator data transformation for pure functional data structure. The library uses van Laarhoven lens generalisation to solve lens scalability when you need to expends with new primitives or support new data types.
+Data access and transformation are common tasks in computing where changes made to the structure are reflected as updates to the original structure. This structure update problem is a classical in imperative languages.
+
+```
+user.address.street = "Blumenstraße"
+```
+
+This operation is complicated in functional languages. In order to change a value of inner structure, we need to re-assign values of multiple structures along the path. Maintenance and refactoring of this functions becomes very tedious compared to imperative languages
+
+```erlang
+set_street_name(Value, #user{address = #address{} = Address} = User) ->
+   User#user{address = Address#address{street = Value}}.
+```
+
+Functional languages solve this issue using [lenses](../src/lens/lens.erl). It resembles concept of getters and setters, which you can compose using functional concepts. 
+
+```erlang
+lens_street_name() ->
+   lens:c(lens:ti(#user.address), lens:ti(#address.street)).
+
+lens:get(lens_street_name(), User).
+lens:set(lens_street_name(), "Blumenstraße", User).
+```
+
+Isomorphism of data structures is another problem solved by lenses. The application often operates with the abstract formats of business objects but communication with clients requires concrete format. We can define a single common format and a collection of lenses that transform each concrete format into this abstract one.
+
+```erlang
+iso_to_map() ->
+   lens:iso(
+      [
+         lens:ti(#user.name),
+         lens:c(lens:ti(#user.address), lens:ti(#address.street))
+      ], 
+      [
+         lens:at(name),
+         lens:c(lens:at(address, #{}), lens:at(name))
+      ]
+   ).
+
+lens:isof(iso_to_map(), #user{name = "Verner", address = #address{street = "Blumenstraße"}}, #{}).
+lens:isob(iso_to_map(), #{name => "Verner", address => #{street => "Blumenstraße"}}, #user{}).
+```
 
 See details about [lenses](../src/lens/lens.erl)
+
+The scalability of lens implementation is another issue, you need to expands lenses with new primitives, support new data types or define custom lenses. The library uses van Laarhoven lens generalisation to solve lens scalability.
 
 For example, we can define a new lens to focus into binary search tree
 
