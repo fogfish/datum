@@ -6,7 +6,7 @@
 **datum** is a pure functional and generic programming for Erlang. It had its origins in [Purely Functional Data Structures](https://www.cs.cmu.edu/~rwh/theses/okasaki.pdf) by Chris Okasaki, on implementing a various higher rank functional abstractions and patterns, on dealing with [scrap your boilerplate](https://www.microsoft.com/en-us/research/publication/scrap-your-boilerplate-with-class/) and gaining experience from other functional languages primary Scala and Haskell. The library is still testing the limits of functional abstractions in Erlang. 
 
 
-[![Build Status](https://secure.travis-ci.org/fogfish/datum.svg?branch=master)](http://travis-ci.org/fogfish/datum) [![Coverage Status](https://coveralls.io/repos/github/fogfish/datum/badge.svg?branch=master)](https://coveralls.io/github/fogfish/datum?branch=master) [![Hex.pm](https://img.shields.io/hexpm/v/datum.svg)](https://hex.pm/packages/datum)
+[![Build Status](https://secure.travis-ci.org/fogfish/datum.svg?branch=master)](http://travis-ci.org/fogfish/datum) [![Coverage Status](https://coveralls.io/repos/github/fogfish/datum/badge.svg?branch=master)](https://coveralls.io/github/fogfish/datum?branch=master) [![Hex.pm](https://img.shields.io/hexpm/v/datum.svg)](https://hex.pm/packages/datum) [![Hex Downloads](https://img.shields.io/hexpm/dt/datum.svg)](https://hex.pm/packages/datum)
 
 ## Key features
 
