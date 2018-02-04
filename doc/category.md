@@ -202,8 +202,8 @@ The category is an inverse to `option` category. The composition implements earl
 
 %% it is transformed into
 case f() of
-   undefined -> 
-      g();
+   X when X =:= undefined -> 
+      g(X);
    X ->
       X
 ends
