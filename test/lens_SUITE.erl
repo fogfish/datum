@@ -61,6 +61,8 @@
 
    pair/1,
    pair_om/1,
+   keylist/1,
+   keylist_om/1,
 
    compose1/1, 
    compose2/1, 
@@ -86,6 +88,7 @@ all() ->
       {group, tuple},
       {group, map},
       {group, pair},
+      {group, keylist},
       {group, compose}
    ].
 
@@ -102,6 +105,9 @@ groups() ->
 
       {pair,   [parallel],
          [pair, pair_om]},
+
+      {keylist,  [parallel],
+         [keylist, keylist_om]},
 
       {compose, [parallel], 
          [compose1, compose2, compose3, compose4, compose5, compose6, compose7, compose8, compose9, iso]}
@@ -292,6 +298,29 @@ pair_om(_Config) ->
    law_put_put(Lens, a, b, [{a, 1}, {b, b}, {c, 3}], List),
    x = lens:get(Lens, []),
    [{b, 1}] = lens:put(Lens, 1, []).
+
+%%%----------------------------------------------------------------------------   
+%%%
+%%% listkey lenses 
+%%%
+%%%----------------------------------------------------------------------------   
+
+keylist(_Config) ->
+   Lens = lens:keylist(b),
+   List = [{a, 1}, {b, 2}, {c, 3}],
+   law_get_put(Lens, List),
+   law_put_get(Lens, {b, a}, List),
+   law_put_put(Lens, {b, a}, {b, b}, [{a, 1}, {b, b}, {c, 3}], List).
+
+keylist_om(_Config) ->
+   Lens = lens:keylist(1, b, x),
+   List = [{a, 1}, {b, 2}, {c, 3}],
+   law_get_put(Lens, List),
+   law_put_get(Lens, {b, a}, List),
+   law_put_put(Lens, {b, a}, {b, b}, [{a, 1}, {b, b}, {c, 3}], List),
+   x = lens:get(Lens, []),
+   [{b, 1}] = lens:put(Lens, {b, 1}, []).
+
 
 
 %%%----------------------------------------------------------------------------   
