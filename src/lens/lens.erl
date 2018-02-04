@@ -59,7 +59,7 @@
 
 %%
 %% traverse
--export([traverse/0, takewith/1, takewith/2]).
+-export([traverse/0, takewith/1, takewith/2, require/1, defined/0]).
 
 %%
 %% lens utility
@@ -546,6 +546,30 @@ takewith(Pred, Om) ->
          Value   -> Value
       end,
       fmap(fun(X) -> Head ++ [X|Tail] end, Fun(El))
+   end.
+
+%%
+%% The lens implements either semantic, returns {ok, _} if focused element 
+%% matches required value, error otherwise 
+-spec require(_) -> lens(_, datum:either(_)).
+
+require(Value) ->
+   fun(Fun, X) ->
+      case X of
+         Value ->
+            lens:fmap(fun(_) -> Value end, Fun({ok, Value}));
+         _    ->
+            lens:fmap(fun(_) -> Value end, Fun({error, {require, Value, X}}))
+      end
+   end.
+
+%%
+%% The lens implements either semantic, returns {ok, _} if focused element is defined
+defined() ->
+   fun(Fun, undefined) ->
+         lens:fmap(fun(X) -> X end, Fun({error, undefined}));
+      (Fun, Value) ->
+         lens:fmap(fun(X) -> X end, Fun({ok, Value}))
    end.
 
 

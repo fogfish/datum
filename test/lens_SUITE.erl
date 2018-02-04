@@ -64,6 +64,9 @@
    keylist/1,
    keylist_om/1,
 
+   require/1,
+   defined/1,
+
    compose1/1, 
    compose2/1, 
    compose3/1, 
@@ -89,6 +92,7 @@ all() ->
       {group, map},
       {group, pair},
       {group, keylist},
+      {group, unittest},
       {group, compose}
    ].
 
@@ -108,6 +112,9 @@ groups() ->
 
       {keylist,  [parallel],
          [keylist, keylist_om]},
+
+      {unittest, [parallel],
+         [require, defined]},
 
       {compose, [parallel], 
          [compose1, compose2, compose3, compose4, compose5, compose6, compose7, compose8, compose9, iso]}
@@ -320,6 +327,21 @@ keylist_om(_Config) ->
    law_put_put(Lens, {b, a}, {b, b}, [{a, 1}, {b, b}, {c, 3}], List),
    x = lens:get(Lens, []),
    [{b, 1}] = lens:put(Lens, {b, 1}, []).
+
+
+%%%----------------------------------------------------------------------------   
+%%%
+%%% unittest lenses 
+%%%
+%%%----------------------------------------------------------------------------   
+
+require(_Config) ->
+   {ok, 1} = lens:get(lens:c(lens:hd(), lens:require(1)), [1]),
+   {error, {require, 1, 2}} = lens:get(lens:c(lens:hd(), lens:require(1)), [2]).
+
+defined(_Config) ->
+   {ok, 1} = lens:get(lens:c(lens:hd(), lens:defined()), [1]),
+   {error, undefined} = lens:get(lens:c(lens:hd(), lens:defined()), []).
 
 
 
