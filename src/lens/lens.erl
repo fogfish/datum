@@ -361,9 +361,7 @@ isob({_, Iso}, A, B) ->
 -spec hd(_) -> lens(_, list()).
 
 hd() ->
-   fun(Fun, [H|T]) ->
-      fmap(fun(X) -> [X|T] end, Fun(H))
-   end.
+   hd(undefined).
 
 hd(Om) ->
    fun
@@ -447,9 +445,7 @@ ti(I)
 -spec at(_, _) -> lens(_, map()).
 
 at(Key) ->
-   fun(Fun, Map) ->
-      fmap(maps:put(Key, _, Map), Fun(maps:get(Key, Map, undefined)))
-   end.
+   at(Key, undefined).
 
 at(Key, Om) ->
    fun(Fun, Map) ->
@@ -471,17 +467,14 @@ at(Key, Om) ->
 keylist(Key) ->
    keylist(1, Key).
 
-keylist(N, Key) -> 
-   fun(Fun, List) ->
-      {value, H, _} = lists:keytake(Key, N, List),
-      fmap(lists:keystore(Key, N, List, _), Fun(H))
-   end.
+keylist(N, Key) ->
+   keylist(N, Key, undefined).
 
 keylist(N, Key, Om) ->
    fun(Fun, List) ->
-      H = case lists:keytake(Key, N, List) of
-         false         -> Om;
-         {value, V, _} -> V
+      H = case lists:keyfind(Key, N, List) of
+         false -> Om;
+         Value -> Value
       end,
       fmap(lists:keystore(Key, N, List, _), Fun(H))
    end.
@@ -492,10 +485,17 @@ keylist(N, Key, Om) ->
 -spec pair(_, _) -> lens(_, [{_, _}]).
 
 pair(Key) ->
-   c(keylist(1, Key), t2()).
+   pair(Key, undefined).
 
 pair(Key, Om) ->
-   c(keylist(1, Key, {Key, Om}), t2()).
+  fun(Fun, List) ->
+      H = case lists:keyfind(Key, 1, List) of
+         false -> Om;
+         {_, Value} -> Value
+      end,
+      fmap(fun(X) -> lists:keystore(Key, 1, List, {Key, X}) end, Fun(H))
+   end.
+
 
 
 %%%------------------------------------------------------------------
