@@ -46,6 +46,13 @@
    syntax_option_transformer/1,
    syntax_option_partial/1,
 
+   syntax_undefined_expr/1,
+   % syntax_undefined_unit/1,
+   syntax_undefined_fail/1,
+   syntax_undefined_state/1,
+   syntax_undefined_transformer/1,
+   syntax_undefined_partial/1,
+
    syntax_either_expr/1,
    syntax_either_unit/1,
    syntax_either_fail/1,
@@ -77,6 +84,11 @@
    laws_option_associativity_1/1,
    laws_option_associativity_2/1,
 
+   laws_undefined_left_identity/1,
+   laws_undefined_right_identity/1,
+   laws_undefined_associativity_1/1,
+   laws_undefined_associativity_2/1,
+
    laws_either_left_identity/1,
    laws_either_right_identity/1,
    laws_either_associativity_1/1,
@@ -93,10 +105,12 @@
    laws_kleisli_associativity_2/1,
 
    transformer_seq_option/1,
+   transformer_seq_undefined/1,
    transformer_seq_either/1,
    transformer_seq_reader/1,
 
    transformer_cat_option/1,
+   transformer_cat_undefined/1,
    transformer_cat_either/1,
    transformer_cat_reader/1,
 
@@ -134,6 +148,13 @@ groups() ->
          syntax_option_transformer,
          syntax_option_partial,
 
+         syntax_undefined_expr,
+         % syntax_undefined_unit,
+         syntax_undefined_fail,
+         syntax_undefined_state,
+         syntax_undefined_transformer,
+         syntax_undefined_partial,
+
          syntax_either_expr,
          syntax_either_unit,
          syntax_either_fail,
@@ -163,6 +184,11 @@ groups() ->
          laws_option_associativity_1,
          laws_option_associativity_2,
 
+         laws_undefined_left_identity,
+         laws_undefined_right_identity,
+         laws_undefined_associativity_1,
+         laws_undefined_associativity_2,
+
          laws_either_left_identity,
          laws_either_right_identity,
          laws_either_associativity_1,
@@ -181,10 +207,12 @@ groups() ->
 
      ,{transformers, [parallel], [
          transformer_seq_option,
+         transformer_seq_undefined,
          transformer_seq_either,
          transformer_seq_reader,
 
          transformer_cat_option,
+         transformer_cat_undefined,
          transformer_cat_either,
          transformer_cat_reader,
 
@@ -221,30 +249,35 @@ end_per_group(_, _Config) ->
 
 a(identity, X) -> X;
 a(option,   X) -> X;
+a(undefined,_) -> undefined;
 a(either,   X) -> {ok, X};
 a(reader,   X) -> {ok, X};
 a(m_identity,   X) -> X.
 
 b(identity, X) -> X + 2;
 b(option,   X) -> X + 2;
+b(undefined,_) -> undefined;
 b(either,   X) -> {ok, X + 2};
 b(reader,   X) -> {ok, X + 2};
 b(m_identity,   X) -> X + 2.
 
 c(identity, X) -> X + 3;
 c(option,   X) -> X + 3;
+c(undefined,_) -> undefined;
 c(either,   X) -> {ok, X + 3};
 c(reader,   X) -> {ok, X + 3};
 c(m_identity,   X) -> X + 3.
 
 d(identity, X, Y, Z) -> X * Y * Z;
 d(option,   X, Y, Z) -> X * Y * Z;
+d(undefined,_, _, _) -> undefined;
 d(either,   X, Y, Z) -> {ok, X * Y * Z};
 d(reader,   X, Y, Z) -> {ok, X * Y * Z};
 d(m_identity,   X, Y, Z) -> X * Y * Z.
 
 t(identity, X) -> X + 2;
 t(option,   X) -> X + 2;
+t(undefined,_) -> undefined;
 t(either,   X) -> {ok, X + 2};
 t(m_identity,   X) -> X + 2.
 
@@ -274,7 +307,7 @@ t(reader,   X, Y) -> {ok, X + Y}.
 -define(cat_compose_fail(Type), 
    [Type ||
       a(Type, 1),
-      fail(_ + 2),
+      fail(3),
       c(Type, _)
    ]
 ).
@@ -348,6 +381,25 @@ syntax_option_transformer(_) ->
 
 syntax_option_partial(_) ->
    6 = (?cat_compose_partial(option))(1).
+
+%%
+syntax_undefined_expr(_) ->
+   undefined = ?cat_compose_expr(undefined).
+
+% syntax_undefined_unit(_) ->
+%    undefined = ?cat_compose_unit(undefined).
+
+syntax_undefined_fail(_) ->
+   3 = ?cat_compose_fail(undefined).
+
+syntax_undefined_state(_) ->
+   undefined = ?cat_compose_state(undefined).
+
+syntax_undefined_transformer(_) ->
+   undefined = ?cat_compose_transformer(undefined).
+
+syntax_undefined_partial(_) ->
+   undefined = (?cat_compose_partial(undefined))(1).
 
 
 %%
@@ -473,6 +525,19 @@ laws_option_associativity_1(_) ->
 laws_option_associativity_2(_) ->
    6 = (?cat_laws_associativity_2(option))(1).
 
+%%
+laws_undefined_left_identity(_) ->
+   undefined = (?cat_laws_left_identity(undefined))(1).
+
+laws_undefined_right_identity(_) ->
+   undefined = (?cat_laws_right_identity(undefined))(1).
+
+laws_undefined_associativity_1(_) ->
+   undefined = (?cat_laws_associativity_1(undefined))(1).
+
+laws_undefined_associativity_2(_) ->
+   undefined = (?cat_laws_associativity_2(undefined))(1).
+
 
 %%
 laws_either_left_identity(_) ->
@@ -538,6 +603,17 @@ transformer_seq_option(_) ->
       unit(_)
    ].
 
+transformer_seq_undefined(_) ->
+   [1, 2, 3] = [undefined ||
+      cats:sequence([1, 2, 3]),
+      unit(_)
+   ],
+
+   undefined = [undefined ||
+      cats:sequence([1, undefined, 3]),
+      unit(_)
+   ].
+
 transformer_seq_either(_) ->
    {ok, [1, 2, 3]} = [either ||
       cats:sequence([{ok, 1}, {ok, 2}, {ok, 3}]),
@@ -568,6 +644,17 @@ transformer_cat_option(_) ->
    ],
 
    undefined = [option ||
+      cats:eitherT({error, badarg}),
+      unit(_)
+   ].
+
+transformer_cat_undefined(_) ->
+   1 = [undefined ||
+      cats:eitherT({ok, 1}),
+      unit(_)
+   ],
+
+   undefined = [undefined ||
       cats:eitherT({error, badarg}),
       unit(_)
    ].

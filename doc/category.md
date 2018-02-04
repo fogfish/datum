@@ -186,6 +186,44 @@ The category implements transformers
 -spec sequence([option()]) -> option([_]).
 ```
 
+
+
+### Undefined
+
+The category is an inverse to `option` category. The composition implements earlier exit, we stop chain execution, not continue in some defined state.
+
+```erlang
+-type category() :: undefined.
+-type object()   :: option(_).
+-type option(T)  :: undefined | T.
+-type arrows()   :: fun((_) -> option(_)).
+
+[undefined || f(), g()].
+
+%% it is transformed into
+case f() of
+   undefined -> 
+      g();
+   X ->
+      X
+ends
+```
+
+The category implements transformers
+
+```erlang
+%% Transforms `either` category into `option`, 
+%% it maps right branch into meaningful value,
+%% left branch to `undefined`
+-spec eitherT(either(_, _)) -> option(_).
+
+%% Transforms sequence of options into optional sequence. 
+%% The sequence is not undefined if input has any undefined value.
+-spec sequence([option()]) -> option([_]).
+```
+
+
+
 ### Either
 
 The category operates with objects of polymorphic type that represents a value of two possible types either an instance of left or right. A typical usage is a representation of either correct -- right value or an error -- left value. The category requires that arrows returns a tagged tuple to represent left/right branches. The category uses `{ok, _}` as right and `{error, _}` as left notations for tuples. The composition implements earlier exit, we stop chain execution, not continue in some broken state.
