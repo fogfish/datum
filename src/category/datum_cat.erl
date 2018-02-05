@@ -17,6 +17,8 @@ is_category({char, _, $?}) ->
    {datum_cat_option, datum_cat_option};
 is_category({atom, _, option}) ->
    {datum_cat_option, datum_cat_option};
+is_category({atom, _, undefined}) ->
+   {datum_cat_undefined, datum_cat_undefined};
 is_category({char, _, $^}) ->
    {datum_cat_either, datum_cat_either};
 is_category({atom, _, either}) ->
