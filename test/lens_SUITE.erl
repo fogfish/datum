@@ -77,6 +77,10 @@
    compose8/1,
    compose9/1,
 
+   get/1,
+   put/1,
+   map/1,
+   apply/1,
    iso/1
 ]).
 
@@ -93,7 +97,8 @@ all() ->
       {group, pair},
       {group, keylist},
       {group, unittest},
-      {group, compose}
+      {group, compose},
+      {group, lens_api}
    ].
 
 groups() ->
@@ -117,7 +122,10 @@ groups() ->
          [require, defined]},
 
       {compose, [parallel], 
-         [compose1, compose2, compose3, compose4, compose5, compose6, compose7, compose8, compose9, iso]}
+         [compose1, compose2, compose3, compose4, compose5, compose6, compose7, compose8, compose9]},
+
+      {lens_api, [parallel],
+         [get, put, map, apply, iso]}
    ].
 
 %%%----------------------------------------------------------------------------   
@@ -457,6 +465,20 @@ compose9(_Config) ->
    law_get_put(Lens, Data),
    law_put_get(Lens, a, Data),
    law_put_put(Lens, a, b, [a, {[{[{[{b}]}], 2}],2}], Data).
+
+
+get(_Config) ->
+   1 = lens:get(lens:hd(), [1]).
+
+put(_Config) ->
+   [a] = lens:put(lens:hd(), a, [1]).
+
+map(_Config) ->
+   [10] = lens:map(fun(X) -> X * 10 end, lens:hd(), [1]).
+
+apply(_Config) ->
+   [10] = lens:apply(lens:hd(), fun(X) -> X * 10 end, [1]).
+
 
 
 -record(address, {street = undefined}).

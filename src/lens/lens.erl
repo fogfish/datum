@@ -48,7 +48,7 @@
 
 %%
 %% lens primitives
--export([fmap/2, apply/3, get/2, put/3, iso/2, isof/3, isob/3]). 
+-export([fmap/2, apply/3, map/3, get/2, put/3, iso/2, isof/3, isob/3]). 
 
 %%
 %% lenses  
@@ -237,6 +237,12 @@ fmap(_,   [const|_] = X) ->
 -spec apply(lens(), fun( (a()) -> a() ), s()) -> s().
 
 apply(Ln, Fun, S) ->
+   erlang:tl( Ln(fun(X) -> fmap(Fun, id(X)) end, S) ).
+
+
+-spec map(fun( (a()) -> a() ), lens(), s()) -> s().
+
+map(Fun, Ln, S) ->
    erlang:tl( Ln(fun(X) -> fmap(Fun, id(X)) end, S) ).
 
 
