@@ -1,0 +1,14 @@
+{application, examples,
+   [
+      {description, "examples of datum library"},
+      {vsn,         "0.0.0"},
+      {modules,     []},
+      {registered,  []},
+      {applications,[
+         kernel, 
+         stdlib,
+         datum
+      ]},
+      {env, []}
+   ]
+}.  
