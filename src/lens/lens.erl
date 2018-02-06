@@ -64,6 +64,7 @@
 %%
 %% lens utility
 -export([c/1, c/2, c/3, c/4, c/5, c/6, c/7, c/8, c/9]).
+-export([p/1, p/2, p/3, p/4, p/5, p/6, p/7, p/8, p/9]).
 
 -export_type([lens/0]).
 
@@ -237,6 +238,7 @@ fmap(_,   [const|_] = X) ->
 -spec apply(lens(), fun( (a()) -> a() ), s()) -> s().
 
 apply(Ln, Fun, S) ->
+   %% @todo: deprecated, remove this variant of function at release 5.x.x 
    erlang:tl( Ln(fun(X) -> fmap(Fun, id(X)) end, S) ).
 
 
@@ -267,24 +269,21 @@ put(Ln, A, S) ->
 
 %%
 %% Isomorphism translates between different data structures
-%% Given an ordered set of lenses that focuses on data structure
+%% Given a product lens (an ordered set of lenses that focuses on data structure)
 %% and lifts results to abstract view. Another set of lenses
 %% puts data back to concrete view
--spec iso([lens()], [lens()]) -> {_, _}.
+-spec iso(lens(), lens()) -> {_, _}.
 
+iso(LensesA, LensesB)
+ when is_list(LensesA), is_list(LensesB) ->
+   %% @todo: deprecated, remove this variant of function at release 5.x.x 
+   iso(lens:p(LensesA), lens:p(LensesB));
 iso(LensesA, LensesB) ->
    {morphism(LensesA, LensesB), morphism(LensesB, LensesA)}.
 
 morphism(LensesA, LensesB) ->
    fun(Source, Target) ->
-      View = [lens:get(LnA, Source) || LnA <- LensesA],
-      lists:foldl(
-         fun({LnB, X}, Acc) ->
-            lens:put(LnB, X, Acc)
-         end,
-         Target,
-         lists:zip(LensesB, View)
-      )
+      lens:put(LensesB, lens:get(LensesA, Source), Target)
    end.
 
 %%
@@ -657,3 +656,60 @@ c(Ln9, Ln8, Ln7, Ln6, Ln5, Ln4, Ln3, Ln2, Ln1) ->
    fun(Fun, S) ->
       Ln9(Ln8(Ln7(Ln6(Ln5(Ln4(Ln3(Ln2(Ln1(Fun, _), _), _), _), _), _), _), _), S)
    end.
+
+%%
+%% The product lens composes lenses to spawn multiple fields at once
+-spec p([lens()]) -> lens().
+
+p(Lenses)
+ when is_list(Lenses) ->
+   fun(Fun, Struct) ->
+      fmap(put_lens_product(Lenses, _, Struct), Fun(get_lens_product(Lenses, Struct)))
+   end.
+
+get_lens_product(Lenses, Struct) ->
+   [lens:get(LnX, Struct) || LnX <- Lenses].
+
+put_lens_product([Lens | Lenses], [X | View], Struct) ->
+   put_lens_product(Lenses, View, lens:put(Lens, X, Struct));
+put_lens_product([], [], Struct) ->
+   Struct.
+
+
+%%
+%% Inline variants of lens product combinator.  
+%%
+
+-spec p(lens(), lens()) -> lens().
+-spec p(lens(), lens(), lens()) -> lens().
+-spec p(lens(), lens(), lens(), lens()) -> lens().
+-spec p(lens(), lens(), lens(), lens(), lens()) -> lens().
+-spec p(lens(), lens(), lens(), lens(), lens(), lens()) -> lens().
+-spec p(lens(), lens(), lens(), lens(), lens(), lens(), lens()) -> lens().
+-spec p(lens(), lens(), lens(), lens(), lens(), lens(), lens(), lens()) -> lens().
+-spec p(lens(), lens(), lens(), lens(), lens(), lens(), lens(), lens(), lens()) -> lens().
+
+p(Ln2, Ln1) ->
+   p([Ln2, Ln1]).
+
+p(Ln3, Ln2, Ln1) ->
+   p([Ln3, Ln2, Ln1]).
+
+p(Ln4, Ln3, Ln2, Ln1) ->
+   p([Ln4, Ln3, Ln2, Ln1]).
+
+p(Ln5, Ln4, Ln3, Ln2, Ln1) ->
+   p([Ln5, Ln4, Ln3, Ln2, Ln1]).
+
+p(Ln6, Ln5, Ln4, Ln3, Ln2, Ln1) ->
+   p([Ln6, Ln5, Ln4, Ln3, Ln2, Ln1]).
+
+p(Ln7, Ln6, Ln5, Ln4, Ln3, Ln2, Ln1) ->
+   p([Ln7, Ln6, Ln5, Ln4, Ln3, Ln2, Ln1]).
+
+p(Ln8, Ln7, Ln6, Ln5, Ln4, Ln3, Ln2, Ln1) ->
+   p([Ln8, Ln7, Ln6, Ln5, Ln4, Ln3, Ln2, Ln1]).
+
+p(Ln9, Ln8, Ln7, Ln6, Ln5, Ln4, Ln3, Ln2, Ln1) ->
+   p([Ln9, Ln8, Ln7, Ln6, Ln5, Ln4, Ln3, Ln2, Ln1]).
+
