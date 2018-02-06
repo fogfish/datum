@@ -15,7 +15,7 @@
 %%   limitations under the License.
 %%
 %% @doc
-%%   Examples of Erlang lenses
+%%   Examples of Lenses usage in Erlang
 -module(examples_lens).
 
 -compile(export_all).
