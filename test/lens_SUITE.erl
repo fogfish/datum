@@ -77,11 +77,22 @@
    compose8/1,
    compose9/1,
 
+   product1/1, 
+   product2/1, 
+   product3/1, 
+   product4/1, 
+   product5/1, 
+   product6/1, 
+   product7/1,
+   product8/1,
+   product9/1,
+
    get/1,
    put/1,
    map/1,
    apply/1,
-   iso/1
+   iso/1,
+   iso4/1
 ]).
 
 %%%----------------------------------------------------------------------------   
@@ -122,10 +133,11 @@ groups() ->
          [require, defined]},
 
       {compose, [parallel], 
-         [compose1, compose2, compose3, compose4, compose5, compose6, compose7, compose8, compose9]},
+         [compose1, compose2, compose3, compose4, compose5, compose6, compose7, compose8, compose9,
+          product1, product2, product3, product4, product5, product6, product7, product8, product9]},
 
       {lens_api, [parallel],
-         [get, put, map, apply, iso]}
+         [get, put, map, apply, iso, iso4]}
    ].
 
 %%%----------------------------------------------------------------------------   
@@ -467,6 +479,81 @@ compose9(_Config) ->
    law_put_put(Lens, a, b, [a, {[{[{[{b}]}], 2}],2}], Data).
 
 
+product1(_Config) ->
+   Lens = lens:p([lens:at(a), lens:at(b)]),
+   Data = #{a => 1, b => 2},
+   [1, 2] = lens:get(Lens, Data),
+   law_get_put(Lens, Data),
+   law_put_get(Lens, [a, b], Data),
+   law_put_put(Lens, [a, b], [-1, -2], #{a => -1, b => -2}, Data).
+
+product2(_Config) ->
+   Lens = lens:p(lens:at(a), lens:at(b)),
+   Data = #{a => 1, b => 2},
+   [1, 2] = lens:get(Lens, Data),
+   law_get_put(Lens, Data),
+   law_put_get(Lens, [a, b], Data),
+   law_put_put(Lens, [a, b], [-1, -2], #{a => -1, b => -2}, Data).
+
+product3(_Config) ->
+   Lens = lens:p(lens:at(a), lens:at(b), lens:at(c)),
+   Data = #{a => 1, b => 2, c => 3},
+   [1, 2, 3] = lens:get(Lens, Data),
+   law_get_put(Lens, Data),
+   law_put_get(Lens, [a, b, c], Data),
+   law_put_put(Lens, [a, b, c], [-1, -2, -3], #{a => -1, b => -2, c => -3}, Data).
+
+product4(_Config) ->
+   Lens = lens:p(lens:at(a), lens:at(b), lens:at(c), lens:at(d)),
+   Data = #{a => 1, b => 2, c => 3, d => 4},
+   [1, 2, 3, 4] = lens:get(Lens, Data),
+   law_get_put(Lens, Data),
+   law_put_get(Lens, [a, b, c, d], Data),
+   law_put_put(Lens, [a, b, c, d], [-1, -2, -3, -4], #{a => -1, b => -2, c => -3, d => -4}, Data).
+
+product5(_Config) ->
+   Lens = lens:p(lens:at(a), lens:at(b), lens:at(c), lens:at(d), lens:at(e)),
+   Data = #{a => 1, b => 2, c => 3, d => 4, e => 5},
+   [1, 2, 3, 4, 5] = lens:get(Lens, Data),
+   law_get_put(Lens, Data),
+   law_put_get(Lens, [a, b, c, d, e], Data),
+   law_put_put(Lens, [a, b, c, d, e], [-1, -2, -3, -4, -5], #{a => -1, b => -2, c => -3, d => -4, e => -5}, Data).
+
+product6(_Config) ->
+   Lens = lens:p(lens:at(a), lens:at(b), lens:at(c), lens:at(d), lens:at(e), lens:at(f)),
+   Data = #{a => 1, b => 2, c => 3, d => 4, e => 5, f => 6},
+   [1, 2, 3, 4, 5, 6] = lens:get(Lens, Data),
+   law_get_put(Lens, Data),
+   law_put_get(Lens, [a, b, c, d, e, f], Data),
+   law_put_put(Lens, [a, b, c, d, e, f], [-1, -2, -3, -4, -5, -6], #{a => -1, b => -2, c => -3, d => -4, e => -5, f => -6}, Data).
+
+product7(_Config) ->
+   Lens = lens:p(lens:at(a), lens:at(b), lens:at(c), lens:at(d), lens:at(e), lens:at(f), lens:at(g)),
+   Data = #{a => 1, b => 2, c => 3, d => 4, e => 5, f => 6, g => 7},
+   [1, 2, 3, 4, 5, 6, 7] = lens:get(Lens, Data),
+   law_get_put(Lens, Data),
+   law_put_get(Lens, [a, b, c, d, e, f, g], Data),
+   law_put_put(Lens, [a, b, c, d, e, f, g], [-1, -2, -3, -4, -5, -6, -7], #{a => -1, b => -2, c => -3, d => -4, e => -5, f => -6, g => -7}, Data).
+
+product8(_Config) ->
+   Lens = lens:p(lens:at(a), lens:at(b), lens:at(c), lens:at(d), lens:at(e), lens:at(f), lens:at(g), lens:at(h)),
+   Data = #{a => 1, b => 2, c => 3, d => 4, e => 5, f => 6, g => 7, h => 8},
+   [1, 2, 3, 4, 5, 6, 7, 8] = lens:get(Lens, Data),
+   law_get_put(Lens, Data),
+   law_put_get(Lens, [a, b, c, d, e, f, g, h], Data),
+   law_put_put(Lens, [a, b, c, d, e, f, g, h], [-1, -2, -3, -4, -5, -6, -7, -8], #{a => -1, b => -2, c => -3, d => -4, e => -5, f => -6, g => -7, h => -8}, Data).
+
+product9(_Config) ->
+   Lens = lens:p(lens:at(a), lens:at(b), lens:at(c), lens:at(d), lens:at(e), lens:at(f), lens:at(g), lens:at(h), lens:at(i)),
+   Data = #{a => 1, b => 2, c => 3, d => 4, e => 5, f => 6, g => 7, h => 8, i => 9},
+   [1, 2, 3, 4, 5, 6, 7, 8, 9] = lens:get(Lens, Data),
+   law_get_put(Lens, Data),
+   law_put_get(Lens, [a, b, c, d, e, f, g, h, i], Data),
+   law_put_put(Lens, [a, b, c, d, e, f, g, h, i], [-1, -2, -3, -4, -5, -6, -7, -8, -9], #{a => -1, b => -2, c => -3, d => -4, e => -5, f => -6, g => -7, h => -8, i => -9}, Data).
+
+
+%%
+%%
 get(_Config) ->
    1 = lens:get(lens:hd(), [1]).
 
@@ -480,7 +567,8 @@ apply(_Config) ->
    [10] = lens:apply(lens:hd(), fun(X) -> X * 10 end, [1]).
 
 
-
+%%
+%%
 -record(address, {street = undefined}).
 -record(user,    {name = undefined, address = #address{}}).
 
@@ -500,3 +588,26 @@ iso(_Config) ->
 
    Map = lens:isof(Iso, Rec, #{}),
    Rec = lens:isob(Iso, Map, #user{}).
+
+%%
+%%
+iso_rec_name_street() ->
+   lens:p(
+      lens:ti(#user.name),
+      lens:c(lens:ti(#user.address), lens:ti(#address.street))
+   ).
+
+iso_map_name_street() ->
+   lens:p(
+      lens:at(name),
+      lens:c(lens:at(address, #{}), lens:at(street))
+   ).
+
+iso4(_Config) ->
+   Rec = #user{name = "Verner", address = #address{street = "Blumenstraße"}},
+   Map = #{name => "Verner", address => #{street => "Blumenstraße"}},
+
+   Map = lens:iso(iso_rec_name_street(), Rec, iso_map_name_street(), #{}),
+   Rec = lens:iso(iso_map_name_street(), Map, iso_rec_name_street(), #user{}).
+
+
