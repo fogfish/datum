@@ -88,20 +88,27 @@ transform_nested_field() ->
 %%
 %% Create a product lens, spawning multiple fields
 lens_name_age_city() ->
-   lens:p({lens_name(), lens_age(), lens_city()}).
+   lens:p(lens_name(), lens_age(), lens_city()).
 
 
 read_product_lens() ->
-   {"Verner Pleishner", 64, "Berne"} = lens:get(lens_name_age_city(), person()).
+   ["Verner Pleishner", 64, "Berne"] = lens:get(lens_name_age_city(), person()).
 
 update_product_lens() ->
-   Person = lens:put(lens_name_age_city(), {"Pleishner", 65, "Bern"}, person()),
+   Person = lens:put(lens_name_age_city(), ["Pleishner", 65, "Bern"], person()),
    #person{name = "Pleishner", age = 65, address = #address{city = "Bern"}} = Person.
-
 
 
 %%
 %% Create a lens isomorphism, transforming a data to new format
+lmap_name_age_city() ->
+   lens:p(lens:at(name), lens:at(age), lens:at(city)).
+
+transform_record_to_map() ->
+   Person = lens:iso(lens_name_age_city(), person(), lmap_name_age_city(), #{}),
+   #{name := "Verner Pleishner", age := 64, city := "Berne"} = Person.
+
+
 
 
 run() ->
@@ -113,6 +120,10 @@ run() ->
    update_nested_field(),
    transform_nested_field(),
 
+   read_product_lens(),
+   update_product_lens(),
+
+   transform_record_to_map(),
    ok.
 
 
