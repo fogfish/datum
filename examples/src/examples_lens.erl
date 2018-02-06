@@ -109,6 +109,28 @@ transform_record_to_map() ->
    #{name := "Verner Pleishner", age := 64, city := "Berne"} = Person.
 
 
+%%
+%% Define a custom lens
+lens_custom() ->
+   fun(Fun, Struct) ->
+      lens:fmap(fun(X) -> lens_custom_put(X, Struct) end, Fun(lens_custom_get(Struct)) )
+   end.
+
+lens_custom_get(#{custom := [H|_]}) ->
+   H.
+lens_custom_put(X, #{custom := [_|T]} = Struct) ->
+   Struct#{custom => [X|T]}.
+
+struct() ->
+   #{custom => [a, b, c]}.
+
+read_custom_struct() ->
+   a = lens:get(lens_custom(), struct()).
+
+update_custom_struct() ->
+   Struct = lens:put(lens_custom(), 1, struct()),
+   #{custom := [1, b, c]} = Struct.
+
 
 
 run() ->
@@ -124,6 +146,8 @@ run() ->
    update_product_lens(),
 
    transform_record_to_map(),
+
+   update_custom_struct(),
    ok.
 
 
