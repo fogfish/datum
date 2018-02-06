@@ -87,7 +87,8 @@
    product8/1,
    product9/1,
 
-   iso/1
+   iso/1,
+   iso4/1
 ]).
 
 %%%----------------------------------------------------------------------------   
@@ -129,7 +130,7 @@ groups() ->
       {compose, [parallel], 
          [compose1, compose2, compose3, compose4, compose5, compose6, compose7, compose8, compose9, 
           product1, product2, product3, product4, product5, product6, product7, product8, product9,
-          iso]}
+          iso, iso4]}
    ].
 
 %%%----------------------------------------------------------------------------   
@@ -546,7 +547,8 @@ product9(_Config) ->
 
 
 
-
+%%
+%%
 -record(address, {street = undefined}).
 -record(user,    {name = undefined, address = #address{}}).
 
@@ -566,3 +568,26 @@ iso(_Config) ->
 
    Map = lens:isof(Iso, Rec, #{}),
    Rec = lens:isob(Iso, Map, #user{}).
+
+%%
+%%
+iso_rec_name_street() ->
+   lens:p(
+      lens:ti(#user.name),
+      lens:c(lens:ti(#user.address), lens:ti(#address.street))
+   ).
+
+iso_map_name_street() ->
+   lens:p(
+      lens:at(name),
+      lens:c(lens:at(address, #{}), lens:at(street))
+   ).
+
+iso4(_Config) ->
+   Rec = #user{name = "Verner", address = #address{street = "Blumenstraße"}},
+   Map = #{name => "Verner", address => #{street => "Blumenstraße"}},
+
+   Map = lens:iso(iso_rec_name_street(), Rec, iso_map_name_street(), #{}),
+   Rec = lens:iso(iso_map_name_street(), Map, iso_rec_name_street(), #user{}).
+
+

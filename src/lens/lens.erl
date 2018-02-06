@@ -48,7 +48,7 @@
 
 %%
 %% lens primitives
--export([fmap/2, apply/3, get/2, put/3, iso/2, isof/3, isob/3]). 
+-export([fmap/2, apply/3, get/2, put/3, iso/2, isof/3, isob/3, iso/4]). 
 
 %%
 %% lenses  
@@ -272,11 +272,12 @@ put(Ln, A, S) ->
 %% Given a product lens (an ordered set of lenses that focuses on data structure)
 %% and lifts results to abstract view. Another set of lenses
 %% puts data back to concrete view
+%%
+%% @todo: deprecated, remove this variant of function at release 5.x.x 
 -spec iso(lens(), lens()) -> {_, _}.
 
 iso(LensesA, LensesB)
  when is_list(LensesA), is_list(LensesB) ->
-   %% @todo: deprecated, remove this variant of function at release 5.x.x 
    iso(lens:p(LensesA), lens:p(LensesB));
 iso(LensesA, LensesB) ->
    {morphism(LensesA, LensesB), morphism(LensesB, LensesA)}.
@@ -288,6 +289,8 @@ morphism(LensesA, LensesB) ->
 
 %%
 %% applies forward isomorphism from A to B
+%%
+%% @todo: deprecated, remove this variant of function at release 5.x.x 
 -spec isof({_, _}, _, _) -> _.
 
 isof({Iso, _}, A, B) ->
@@ -295,10 +298,22 @@ isof({Iso, _}, A, B) ->
 
 %%
 %% applies backward isomorphism from B to A
+%%
+%% @todo: deprecated, remove this variant of function at release 5.x.x 
 -spec isob({_, _}, _, _) -> _.
 
 isob({_, Iso}, A, B) ->
    Iso(A, B).
+
+%%
+%% Isomorphism translates between different data structures
+%% Given a product lens (an ordered set of lenses that focuses on data structure)
+%% and lifts results to abstract view. Another set of lenses
+%% puts data back to concrete view
+-spec iso(lens(), _, lens(), _) -> _.
+
+iso(LensA, A, LensB, B) ->
+   lens:put(LensB, lens:get(LensA, A), B).
 
 
 %% 
