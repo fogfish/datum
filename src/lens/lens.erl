@@ -15,36 +15,13 @@
 %%   limitations under the License.
 %%
 %% @doc
-%%
 %%   Lenses resembles concept of getters and setters, which you can compose 
 %%   using functional concepts. In other words, this is combinator data 
 %%   transformation for pure functional data structure.
 %%
-%% @see
-%% 
-%%   This library implements lens using approaches on Haskell lens library, and 
-%%   techniques references by
-%%
-%%   * Combinators for Bi-Directional Tree Transformations: 
-%%     A Linguistic Approach to the View Update Problem by J. Nathan Foster et al.
-%%     http://repository.upenn.edu/cgi/viewcontent.cgi?article=1044&context=cis_reports
-%%   * Lens tutorial by Jakub Arnold
-%%     http://blog.jakubarnold.cz/2014/07/14/lens-tutorial-introduction-part-1.html
-%%
-%%   There are other approaches to implement lens for Erlang
-%%   * https://github.com/jlouis/erl-lenses by Jesper Louis Andersen
-%%   * http://www.cs.otago.ac.nz/staffpriv/ok/lens.erl by Richard A. O'Keefe
-%%
 -module(lens).
 -compile({parse_transform, partial}).
 -compile({parse_transform, category}).
-
-%%
-%% Note: the support for naive lens is disabled
-%%       the code remains here for education purposes
-%%
-%% naive lens interface
-%% -export([nget/2, nput/3, napply/3, naive/1]).
 
 %%
 %% lens primitives
@@ -71,127 +48,11 @@
 -compile({no_auto_import,[apply/3, hd/1, tl/1]}).
 -compile([inline, {inline_size, 128}, inline_list_funcs]).
 
-%%%------------------------------------------------------------------
-%%%
-%%% naive lens interface
-%%%
-%%%------------------------------------------------------------------
-
 %%
-%% Lens types are defined as ... They are following the convention of Haskell lens library.
-
-%% type of object
+%% data types
 -type s() :: _.
-
-%% type of focused element (focus type)  
 -type a() :: _.  
 
-%% originally lenses are defined using `get` and `put` primitives. 
-%% The third primitive `over` (or `apply`) allows to enhance lens behavior using 
-%% function. The `put` is `over` using `const` function.   
-
-%% -type naive() :: 
-%%    #{
-%%       get   => fun( (s()) -> a() ),
-%%       apply => fun( (fun( (a()) -> a() ), s()) -> s() )
-%%    }.
-
-%%
-%% naive lens interface
-%%
-
-%% -spec nget(naive(), s()) -> a().
-
-%% nget(#{get := Ln}, S) -> 
-%%    Ln(S).
-
-
-%% -spec nput(naive(), a(), s()) -> s().
-
-%% nput(Ln, Val, S) ->
-%%    napply(Ln, fun(_) -> Val end, S).
-
-%% -spec napply(naive(), fun( (a()) -> a() ), s()) -> s().
-
-%% napply(#{apply := Ln}, Fun, S) ->
-%%    Ln(Fun, S).
-   
-
-%%
-%% the simple lens implementation to support built-in types: tuples, maps and key-val lists
-%%    
-%%    Stock  = {stock, "BZNT", 50}.
-%%    Ticker = lens:naive(2).
-%%    Price  = lens:naive(3).
-%% 
-%%    lens:put(Ticker, "NTXX", Stock). 
-%%    lens:apply(Price, fun(X) -> X + 15 end, Stock).
-%%    lens:get(Ticker, Stock).
-%%
-
-%% -spec naive(_) -> naive().
-
-%% naive(Key) ->
-%%    #{
-%%       get   => fun(X) -> naive_get(Key, X) end, 
-%%       apply => fun(Fun, X) -> naive_apply(Key, Fun, X) end
-%%    }.
-
-%%
-%%
-%% naive_get(Key, X)
-%%  when is_map(X) ->
-%%    maps:get(Key, X);
-
-%% naive_get(Key, X)
-%%  when is_tuple(X) ->
-%%    erlang:element(Key, X);
-
-%% naive_get(Key, X)
-%%  when is_list(X) ->
-%%    erlang:element(2, lists:keyfind(Key, 1, X)).
-
-%%
-%%
-%% naive_apply(Key, Fun, X)
-%%  when is_map(X) ->
-%%    maps:put(Key, Fun(maps:get(Key, X)), X);
-
-%% naive_apply(Key, Fun, X)
-%%  when is_tuple(X) ->
-%%    erlang:setelement(Key, X, Fun(erlang:element(Key, X)));
-
-%% naive_apply(Key, Fun, X)
-%%  when is_list(X) ->
-%%    {value, Val, List} = lists:keytake(Key, 1, X),
-%%    [{Key, Fun(Val)} | List].
-
-%%%------------------------------------------------------------------
-%%%
-%%% lens primitives
-%%%
-%%%------------------------------------------------------------------
-
-%%
-%% Previously used lens structure is not scalable when you need to expends with 
-%% new primitives or support new data types. You either grow it by implementing 
-%% various flavors of getters and setters or extend module to support new data types.
-%%
-%% van Laarhoven lens generalization solves the problem, the proposal to use functor
-%% to implement `get`, `put`, `apply`, etc. The lens is defined as 
-%%
-%%    type Lens s a = Functor f => (a -> f a) -> s -> f s
-%%
-%% Note: there is a good tutorial about type classes and functors  
-%% http://learnyouahaskell.com/making-our-own-types-and-typeclasses#the-functor-typeclass
-%% http://scalaz.github.io/scalaz/scalaz-2.9.1-6.0.2/doc.sxr/scalaz/Functor.scala.html
-%% 
-%% Functors do not exists in Erlang, Let's define one with minimal (no) runtime overhead.
-%% Let's skip all details on the design decision about the function definition below. 
-%% In the nutshell, various Erlang native containers (tuple, function, etc) are evaluated.
-%% The list shown best performance. There is not any intent to generalize functor concept 
-%% to Erlang application, it is made to support only lens implementation.
-%%
 -type f(F) :: [atom()|F].
 -spec fmap( fun((a()) -> _), f(a()) ) -> f(_).     
 
@@ -199,10 +60,6 @@
 -type lens(A, S) :: fun( (fun( (A) -> f(A) ), S) -> f(S) ).
 -type lens()     :: lens(a(), s()).
 
-
-%% Implementation of lenses requires two type of functors
-%%  * `apply` / 'over' is built with `identity`
-%%  * `get` is built with `const`
 
 %%
 %% identity functor
@@ -226,22 +83,8 @@ fmap(_,   [const|_] = X) ->
    X.
 
 
-   
-%%
-%% The `apply` is defined as 
-%% Given a lens() that focuses on a() inside of s(), and
-%% a function from a() to a() and instance of object s().
-%% It returns modified s() by applying the function 
-%% to focus point of the lens, e.g. Haskell use following notation 
-%%  over :: Lens s a -> (a -> a) -> s -> s
 %%  
--spec apply(lens(), fun( (a()) -> a() ), s()) -> s().
-
-apply(Ln, Fun, S) ->
-   %% @todo: deprecated, remove this variant of function at release 5.x.x 
-   erlang:tl( Ln(fun(X) -> fmap(Fun, id(X)) end, S) ).
-
-
+%% Returns modified s() by applying the function to focus point of the lens
 -spec map(fun( (a()) -> a() ), lens(), s()) -> s().
 
 map(Fun, Ln, S) ->
@@ -249,12 +92,7 @@ map(Fun, Ln, S) ->
 
 
 %%
-%% The `get` is defined as
-%% Given a lens() that focuses on a() inside of s(), and
-%% instance of object s(). It returns value of focus point a(). 
-%% e.g. Haskell use following notation
-%%  view :: Lens s a -> s -> a
-%%
+%% Returns value of focus point of the lens
 -spec get(lens(), s()) -> a().
 
 get(Ln, S) ->
@@ -262,25 +100,38 @@ get(Ln, S) ->
 
 
 %%
-%% The `put` is defined as 
-%% Given a lens() that focuses on a() inside of s(), and
-%% value a() and instance of object s(). It returns modified 
-%% s() by setting a new value to focus point of the lens,  
-%% The `put` is `over` using `const` function.
-%%
+%% Returns modified s() by setting a new value to focus point of the lens
 -spec put(lens(), a(), s()) -> s().
 
 put(Ln, A, S) ->
-   apply(Ln, fun(_) -> A end, S).
+   map(fun(_) -> A end, Ln, S).
+
 
 %%
-%% Isomorphism translates between different data structures
-%% Given a product lens (an ordered set of lenses that focuses on data structure)
-%% and lifts results to abstract view. Another set of lenses
-%% puts data back to concrete view
+%% Isomorphism translates between different data structures.
+-spec iso(lens(), _, lens(), _) -> _.
+
+iso(LensA, A, LensB, B) ->
+   lens:put(LensB, lens:get(LensA, A), B).
+
+
+%%%------------------------------------------------------------------
+%%%
+%%% deprecated, removed at release 5.x.x
+%%%
+%%%------------------------------------------------------------------
+
 %%
-%% @todo: deprecated, remove this variant of function at release 5.x.x 
--spec iso(lens(), lens()) -> {_, _}.
+%% Use lens:map/3
+-spec apply(lens(), fun( (a()) -> a() ), s()) -> s().
+
+apply(Ln, Fun, S) ->
+   erlang:tl( Ln(fun(X) -> fmap(Fun, id(X)) end, S) ).
+
+
+%%
+%% Use lens:iso/4
+ -spec iso(lens(), lens()) -> {_, _}.
 
 iso(LensesA, LensesB)
  when is_list(LensesA), is_list(LensesB) ->
@@ -295,8 +146,6 @@ morphism(LensesA, LensesB) ->
 
 %%
 %% applies forward isomorphism from A to B
-%%
-%% @todo: deprecated, remove this variant of function at release 5.x.x 
 -spec isof({_, _}, _, _) -> _.
 
 isof({Iso, _}, A, B) ->
@@ -304,68 +153,10 @@ isof({Iso, _}, A, B) ->
 
 %%
 %% applies backward isomorphism from B to A
-%%
-%% @todo: deprecated, remove this variant of function at release 5.x.x 
 -spec isob({_, _}, _, _) -> _.
 
 isob({_, Iso}, A, B) ->
    Iso(A, B).
-
-%%
-%% Isomorphism translates between different data structures
-%% Given a product lens (an ordered set of lenses that focuses on data structure)
-%% and lifts results to abstract view. Another set of lenses
-%% puts data back to concrete view
--spec iso(lens(), _, lens(), _) -> _.
-
-iso(LensA, A, LensB, B) ->
-   lens:put(LensB, lens:get(LensA, A), B).
-
-
-%% 
-%% Lens primitives above requires actual lens implementation. The lens
-%% definition is library agnostic. The function of lens() type is required.
-%%
-%% in Haskell
-%%    Functor f => (a -> f a) -> s -> f s
-%%
-%% in Erlang
-%% -type lens() :: fun( (fun( (a()) -> f(a()) ), s() ) -> f(s()) ).
-%%
-%% Let's define a lens that focuses on head of list lens:hd/2 (see definition below)
-%%
-%% The lens usage is straight forward:
-%%
-%%    lens:get(lens:hd(), [1,2]).  
-%%    lens:put(lens:hd(), 5, [1, 2]).
-%%    lens:apply(lens:hd(), fun(X) -> X + 1 end, [1, 2]).
-%%
-%% Well behaved lens satisfies following laws
-%%  * GetPut - if we get focused element a() from s() and immediately put a() 
-%%             with no modifications back into s(), we must get back exactly s().
-%%
-%%    [a] = lens:put(lens:hd(), lens:get(lens:hd(), [a]), [a]).
-%%
-%%  * PutGet - if putting a() inside s() yields a new s(), 
-%%             then the a() obtained from s is exactly a().
-%%
-%%    b = lens:get(lens:hd(), lens:put(lens:hd(), b, [a])).
-%%
-%%  * PutPut - A sequence of two puts is just the effect of the second, 
-%%             the first gets completely overwritten. This law is applicable 
-%%             to very well behaved lenses.
-%%
-%%    [c] = lens:put(lens:hd(), c, lens:put(lens:hd(), b, [a])).
-%%
-%%
-%% The utility section covers aspects of lens composition and building a complex
-%% applications.
-%%
-%% Failing lenses are not handled if focus is not exists. Each typed lens defines 
-%% Omega friendly variant. It is capable to create a new container from nothing.
-%% The Omega variant(s) is usable for practical application to construct nested data type
-%% but they are not well behaving.  
-%%
 
 
 
@@ -601,16 +392,6 @@ defined() ->
 
 %%
 %% The lens composition is powerful concept to produce complex lenses.
-%% The lens type is a functor but functor composition is not natively 
-%% supported by Erlang.
-%%
-%% E.g. there is list of tuple [{1,2,3}], the composition of 
-%% lens:hd(), fun lens:t2() allows to focus on second element on tuple.
-%% the composition is fundamental approach to deal with nested types.
-%% 
-%%   lens:get(lens:c([lens:hd(), fun lens:t2()]), [{1,2,3}]).
-%%   lens:put(lens:c([lens:hd(), fun lens:t2()]), 6, [{1,2,3}]).
-%%
 -spec c([lens()]) -> lens().
 
 c(Lenses) ->
