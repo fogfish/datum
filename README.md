@@ -14,9 +14,11 @@ The [feature overview](doc/features.md) provides an introduction to datum featur
 
 * data structures with common behavior: **foldable**, **traversable** and **map-like** including 
 * pure functional **data types**: binary search tree, red-black tree, heap, queues, streams and others
-* resembles concept of getters and setters (**lenses**) for complex algebraic data types
+* resembles concept of getters and setters ([**lens**](doc/lens.md)) for complex algebraic data types.
 * define a **category pattern** and **monads**
 
+
+**Cheat Sheet** is available [here](doc/cheatsheet.md)
 
 ## Getting started
 

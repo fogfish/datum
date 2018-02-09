@@ -87,6 +87,10 @@
    product8/1,
    product9/1,
 
+   get/1,
+   put/1,
+   map/1,
+   apply/1,
    iso/1,
    iso4/1
 ]).
@@ -104,7 +108,8 @@ all() ->
       {group, pair},
       {group, keylist},
       {group, unittest},
-      {group, compose}
+      {group, compose},
+      {group, lens_api}
    ].
 
 groups() ->
@@ -128,9 +133,11 @@ groups() ->
          [require, defined]},
 
       {compose, [parallel], 
-         [compose1, compose2, compose3, compose4, compose5, compose6, compose7, compose8, compose9, 
-          product1, product2, product3, product4, product5, product6, product7, product8, product9,
-          iso, iso4]}
+         [compose1, compose2, compose3, compose4, compose5, compose6, compose7, compose8, compose9,
+          product1, product2, product3, product4, product5, product6, product7, product8, product9]},
+
+      {lens_api, [parallel],
+         [get, put, map, apply, iso, iso4]}
    ].
 
 %%%----------------------------------------------------------------------------   
@@ -545,6 +552,19 @@ product9(_Config) ->
    law_put_put(Lens, [a, b, c, d, e, f, g, h, i], [-1, -2, -3, -4, -5, -6, -7, -8, -9], #{a => -1, b => -2, c => -3, d => -4, e => -5, f => -6, g => -7, h => -8, i => -9}, Data).
 
 
+%%
+%%
+get(_Config) ->
+   1 = lens:get(lens:hd(), [1]).
+
+put(_Config) ->
+   [a] = lens:put(lens:hd(), a, [1]).
+
+map(_Config) ->
+   [10] = lens:map(fun(X) -> X * 10 end, lens:hd(), [1]).
+
+apply(_Config) ->
+   [10] = lens:apply(lens:hd(), fun(X) -> X * 10 end, [1]).
 
 
 %%

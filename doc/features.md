@@ -156,7 +156,7 @@ set_street_name(Value, #user{address = #address{} = Address} = User) ->
    User#user{address = Address#address{street = Value}}.
 ```
 
-Functional languages solve this issue using [lenses](../src/lens/lens.erl). It resembles concept of getters and setters, which you can compose using functional concepts. 
+Functional languages solve this issue using [lens](lens.md). It resembles concept of getters and setters, which you can compose using functional concepts. 
 
 ```erlang
 lens_street_name() ->
@@ -185,7 +185,7 @@ lens:isof(iso_to_map(), #user{name = "Verner", address = #address{street = "Blum
 lens:isob(iso_to_map(), #{name => "Verner", address => #{street => "Blumenstraße"}}, #user{}).
 ```
 
-See details about [lenses](../src/lens/lens.erl)
+See details about [lens](lens.md)
 
 The scalability of lens implementation is another issue, you need to expands lenses with new primitives, support new data types or define custom lenses. The library uses van Laarhoven lens generalisation to solve lens scalability.
 
