@@ -16,6 +16,7 @@
 %%
 -module(stream_SUITE).
 -include_lib("common_test/include/ct.hrl").
+-include_lib("datum/include/datum.hrl").
 
 %%
 %% common test
@@ -30,6 +31,7 @@
 
 -export([
    new/1,
+   empty/1,
 
    head/1,
    tail/1,
@@ -80,7 +82,7 @@ all() ->
 groups() ->
    [
       {stream, [parallel], 
-         [new, head, tail, is_empty, drop, dropwhile, filter, foreach, map,
+         [new, empty, head, tail, is_empty, drop, dropwhile, filter, foreach, map,
          split, splitwhile, take, takewhile, fold, unfold, '++', flat, scan,
          zip, zipwith, reverse, cycle]},
 
@@ -121,6 +123,9 @@ new(_) ->
 
    Fun = fun() -> stream:new() end,
    {stream, 1, Fun} = stream:new(1, Fun).
+
+empty(_) ->
+   ?stream() = stream:new().
 
 %%
 head(_Config) ->

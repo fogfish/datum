@@ -16,6 +16,9 @@
 %%
 -module(tree_SUITE).
 -include_lib("common_test/include/ct.hrl").
+-include_lib("datum/include/datum.hrl").
+
+
 -compile({parse_transform, category}).
 -compile({no_auto_import,[apply/2]}).
 
@@ -32,6 +35,7 @@
 
 -export([
    new/1,
+   empty/1,
 
    append/1,
    insert/1,
@@ -75,14 +79,14 @@ all() ->
 groups() ->
    [
       {bst, [parallel], 
-         [new, 
+         [new, empty,
          append, insert, lookup, remove, has, keys, apply, 
          build, drop, dropwhile, filter, foreach, map, split, splitwhile, take, takewhile, 
          % fold, foldl, foldr, unfold, min, max]},
          min, max]},
 
       {rbtree, [parallel],
-         [new, 
+         [new, empty,
          append, insert, lookup, remove, has, keys, apply, 
          build, drop, dropwhile, filter, foreach, map, split, splitwhile, take, takewhile, 
          % fold, foldl, foldr, unfold, min, max]}
@@ -118,6 +122,11 @@ end_per_group(_, _Config) ->
 new(Config) ->
    Type = ?config(type, Config),
    tree = erlang:element(1, Type:new()).
+
+empty(Config) ->
+   Type = ?config(type, Config),
+   ?tree() = Type:new().
+
 
 append(Config) ->
    Type    = ?config(type, Config),

@@ -35,19 +35,21 @@
    ford = undefined :: datum:compare(_),
    tree = undefined :: _
 }).
-
+-define(tree(), #tree{tree = undefined}).
 
 %%
 -record(heap, {
    ford = undefined :: datum:compare(_),
    heap = undefined :: _
 }).
+-define(heap(), #heap{heap = undefined}).
 
 %%
 -record(stream, {
    head = undefined :: _,
    tail = undefined :: datum:option(fun(() -> _))
 }).
+-define(stream(), undefined).
 
 
 %%
@@ -56,4 +58,5 @@
    head   = [] :: [_],
    tail   = [] :: [_]
 }).
+-define(queue(), #queue{length = 0, head = [], tail = []}).
 

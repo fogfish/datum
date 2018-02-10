@@ -1,5 +1,6 @@
 -module(q_SUITE).
 -include_lib("common_test/include/ct.hrl").
+-include_lib("datum/include/datum.hrl").
 
 %%
 %% common test
@@ -14,6 +15,7 @@
 
 -export([
    queue/1,
+   empty/1,
    deq_option/1,
    dequeue/1,
    deqt_option/1,
@@ -35,7 +37,7 @@ all() ->
 groups() ->
    [
       {q, [parallel], 
-         [queue, deq_option]},
+         [queue, empty, deq_option]},
 
       {deq, [parallel], 
          [queue, deq_option, dequeue, deqt_option, last, liat]}
@@ -85,6 +87,9 @@ queue(Config) ->
    {5, Queue5} = Type:deq(Queue4),
    true = Type:is_empty(Queue5).
 
+empty(Config) ->
+   Type = ?config(type, Config),
+   ?queue() = Type:new().
 
 deq_option(Config) ->
    Type   = ?config(type, Config),
