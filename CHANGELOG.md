@@ -6,10 +6,10 @@ The library uses [semantic versions](http://semver.org) to identify stable relea
 
 **Features**
 
-* #20 New category `undefined`  
-* #25 Product lens combinator `lens:p(...)` to spawn multiple fields into abstract view
-* #19 Macros to pattern match empty data structures (see `datum.hrl`)
-* #22 Define new lens `lens:require/1`, `lens:defined/0` to support development of unit testing (validate nested structures using lenses) 
+* [#20](https://github.com/fogfish/datum/issues/20) New category `undefined`  
+* [#25](https://github.com/fogfish/datum/issues/25) Product lens combinator `lens:p(...)` to spawn multiple fields into abstract view
+* [#19](https://github.com/fogfish/datum/issues/19) Macros to pattern match empty data structures (see `datum.hrl`)
+* [#22](https://github.com/fogfish/datum/issues/22) Define new lens `lens:require/1`, `lens:defined/0` to support development of unit testing (validate nested structures using lenses) 
 
 **Improvements**
 
