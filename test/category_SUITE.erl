@@ -793,7 +793,19 @@ transformer_either_sequence(_) ->
    {error, badarg} = (?seqT(either))([{ok, 1}, {error, badarg}, {ok, 3}]).
 
 transformer_either_flatten(_) ->
-   {ok, 1} = ?flattenT(either).
+   {ok, 1} = ?flattenT(either),
+   {ok, 1} = [either ||
+      cats:unit({ok, {ok, 1}}),
+      cats:flatten(_)
+   ],
+   {error, 1} = [either ||
+      cats:unit({ok, {error, 1}}),
+      cats:flatten(_)
+   ],
+   {error, 1} = [either ||
+      cats:unit({error, {error, 1}}),
+      cats:flatten(_)
+   ].
 
 transformer_either_option(_) ->
    {ok, 1} = ?optionT(either, 1),
@@ -826,7 +838,18 @@ transformer_reader_sequence(_) ->
 
 transformer_reader_flatten(_) ->
    % {ok, 1} = (?flattenT(reader))(#{}).
-   ok.
+   {ok, 1} = ([reader ||
+      cats:unit({ok, {ok, 1}}),
+      cats:flatten(_)
+   ])(#{}),
+   {error, 1} = ([reader ||
+      cats:unit({ok, {error, 1}}),
+      cats:flatten(_)
+   ])(#{}),
+   {error, 1} = ([reader ||
+      cats:unit({error, {error, 1}}),
+      cats:flatten(_)
+   ])(#{}).
 
 transformer_reader_option(_) ->
    {ok, 1} = (?optionT(reader, 1))(#{}),
