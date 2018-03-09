@@ -104,18 +104,45 @@
    laws_kleisli_associativity_1/1,
    laws_kleisli_associativity_2/1,
 
-   transformer_seq_option/1,
-   transformer_seq_undefined/1,
-   transformer_seq_either/1,
-   transformer_seq_reader/1,
+   transformer_identity_unit/1,
+   transformer_identity_fail/1,
+   transformer_identity_require/1,
+   transformer_identity_sequence/1,
+   transformer_identity_flatten/1,
+   transformer_identity_option/1,
+   transformer_identity_either/1,
 
-   transformer_cat_option/1,
-   transformer_cat_undefined/1,
-   transformer_cat_either/1,
-   transformer_cat_reader/1,
+   transformer_option_unit/1,
+   transformer_option_fail/1,
+   transformer_option_require/1,
+   transformer_option_sequence/1,
+   transformer_option_flatten/1,
+   transformer_option_option/1,
+   transformer_option_either/1,
 
-   transformer_flatten_either/1,
-   transformer_flatten_reader/1
+   transformer_undefined_unit/1,
+   transformer_undefined_fail/1,
+   transformer_undefined_require/1,
+   transformer_undefined_sequence/1,
+   transformer_undefined_flatten/1,
+   transformer_undefined_option/1,
+   transformer_undefined_either/1,
+
+   transformer_either_unit/1,
+   transformer_either_fail/1,
+   transformer_either_require/1,
+   transformer_either_sequence/1,
+   transformer_either_flatten/1,
+   transformer_either_option/1,
+   transformer_either_either/1,
+
+   transformer_reader_unit/1,
+   transformer_reader_fail/1,
+   transformer_reader_require/1,
+   transformer_reader_sequence/1,
+   transformer_reader_flatten/1,
+   transformer_reader_option/1,
+   transformer_reader_either/1
 ]).
 
 
@@ -206,18 +233,45 @@ groups() ->
       ]}
 
      ,{transformers, [parallel], [
-         transformer_seq_option,
-         transformer_seq_undefined,
-         transformer_seq_either,
-         transformer_seq_reader,
+         transformer_identity_unit,
+         transformer_identity_fail,
+         transformer_identity_require,
+         transformer_identity_sequence,
+         transformer_identity_flatten,
+         transformer_identity_option,
+         transformer_identity_either,
 
-         transformer_cat_option,
-         transformer_cat_undefined,
-         transformer_cat_either,
-         transformer_cat_reader,
+         transformer_option_unit,
+         transformer_option_fail,
+         transformer_option_require,
+         transformer_option_sequence,
+         transformer_option_flatten,
+         transformer_option_option,
+         transformer_option_either,
 
-         transformer_flatten_either,
-         transformer_flatten_reader
+         transformer_undefined_unit,
+         transformer_undefined_fail,
+         transformer_undefined_require,
+         transformer_undefined_sequence,
+         transformer_undefined_flatten,
+         transformer_undefined_option,
+         transformer_undefined_either,
+
+         transformer_either_unit,
+         transformer_either_fail,
+         transformer_either_require,
+         transformer_either_sequence,
+         transformer_either_flatten,
+         transformer_either_option,
+         transformer_either_either,
+
+         transformer_reader_unit,
+         transformer_reader_fail,
+         transformer_reader_require,
+         transformer_reader_sequence,
+         transformer_reader_flatten,
+         transformer_reader_option,
+         transformer_reader_either
      ]}
    ].
 
@@ -591,117 +645,198 @@ laws_kleisli_associativity_2(_) ->
 %%%
 %%%----------------------------------------------------------------------------   
 
+-define(unitT(Type), 
+   [Type ||
+      cats:unit(1), cats:unit(_)
+   ]
+).
+
+-define(failT(Type), 
+   [Type ||
+      cats:fail(1), cats:unit(_)
+   ]
+).
+
+-define(requireT(Type),
+   [Type ||
+      A <- cats:unit(_), cats:require(A > 0, A, nil)
+   ]
+).
+
+-define(seqT(Type),
+   [Type ||
+      cats:sequence(_), cats:unit(_) 
+   ]
+).
+
+-define(flattenT(Type),
+   [Type ||
+      A <- cats:unit(1),
+      cats:unit([Type || cats:unit(A), cats:unit(_)]),
+      cats:flatten(_)
+   ]
+).
+
+-define(optionT(Type, X),
+   [Type ||
+      cats:optionT(X),
+      cats:unit(_)
+   ]
+).
+
+-define(eitherT(Type, X),
+   [Type ||
+      cats:eitherT(X),
+      cats:unit(_)
+   ]
+).
+
+
 %%
-transformer_seq_option(_) ->
-   [1, 2, 3] = [option ||
-      cats:sequence([1, 2, 3]),
-      unit(_)
-   ],
+%%
+transformer_identity_unit(_) ->
+   1 = ?unitT(identity).
 
-   undefined = [option ||
-      cats:sequence([1, undefined, 3]),
-      unit(_)
-   ].
+transformer_identity_fail(_) ->
+   1 = (catch ?failT(identity)).
 
-transformer_seq_undefined(_) ->
-   [1, 2, 3] = [undefined ||
-      cats:sequence([1, 2, 3]),
-      unit(_)
-   ],
+transformer_identity_require(_) ->
+   1 = (?requireT(identity))(1),
+   nil = (catch (?requireT(identity))(0)).
 
-   undefined = [undefined ||
-      cats:sequence([1, undefined, 3]),
-      unit(_)
-   ].
+transformer_identity_sequence(_) ->
+   [1, 2, 3] = (?seqT(identity))([1, 2, 3]).
 
-transformer_seq_either(_) ->
-   {ok, [1, 2, 3]} = [either ||
-      cats:sequence([{ok, 1}, {ok, 2}, {ok, 3}]),
-      unit(_)
-   ],
+transformer_identity_flatten(_) ->
+   1 = ?flattenT(identity).
 
-   {error, badarg} = [either ||
-      cats:sequence([{ok, 1}, {error, badarg}, {ok, 3}]),
-      unit(_)
-   ].
+transformer_identity_option(_) ->
+   1 = ?optionT(identity, 1),
+   undefined = ?optionT(identity, undefined).
 
-transformer_seq_reader(_) ->
-   {ok, [1, 2, 3]} = ([reader ||
-      cats:sequence([{ok, 1}, {ok, 2}, {ok, 3}]),
-      unit(_)
-   ])(1),
+transformer_identity_either(_) ->
+   1 = ?eitherT(identity, {ok, 1}),
+   undefined = ?eitherT(identity, {error, badarg}).
 
-   {error, badarg} = ([reader ||
-      cats:sequence([{ok, 1}, {error, badarg}, {ok, 3}]),
-      unit(_)
-   ])(1).
 
 %%
-transformer_cat_option(_) ->
-   1 = [option ||
-      cats:eitherT({ok, 1}),
-      unit(_)
-   ],
+%%
+transformer_option_unit(_) ->
+   1 = ?unitT(option).
 
-   undefined = [option ||
-      cats:eitherT({error, badarg}),
-      unit(_)
-   ].
+transformer_option_fail(_) ->
+   undefined = ?failT(option).
 
-transformer_cat_undefined(_) ->
-   1 = [undefined ||
-      cats:eitherT({ok, 1}),
-      unit(_)
-   ],
+transformer_option_require(_) ->
+   1 = (?requireT(option))(1),
+   undefined = (?requireT(option))(0).
 
-   undefined = [undefined ||
-      cats:eitherT({error, badarg}),
-      unit(_)
-   ].
+transformer_option_sequence(_) ->
+   [1, 2, 3] = (?seqT(option))([1, 2, 3]),
+   undefined = (?seqT(option))([1, undefined, 3]).
 
-transformer_cat_either(_) ->
-   {ok, 1} = [either ||
-      cats:optionT(badarg, 1),
-      unit(_)
-   ],
+transformer_option_flatten(_) ->
+   1 = ?flattenT(option).
 
+transformer_option_option(_) ->
+   1 = ?optionT(option, 1),
+   undefined = ?optionT(option, undefined).
+
+transformer_option_either(_) ->
+   1 = ?eitherT(option, {ok, 1}),
+   undefined = ?eitherT(option, {error, badarg}).
+
+
+%%
+%%
+transformer_undefined_unit(_) ->
+   undefined = ?unitT(undefined).
+
+transformer_undefined_fail(_) ->
+   1 = ?failT(undefined).
+
+transformer_undefined_require(_) ->
+   undefined = (?requireT(undefined))(1),
+   undefined = (?requireT(undefined))(0).
+
+transformer_undefined_sequence(_) ->
+   [1, 2, 3] = (?seqT(undefined))([1, 2, 3]),
+   undefined = (?seqT(undefined))([1, undefined, 3]).
+
+
+transformer_undefined_flatten(_) ->
+   undefined = ?flattenT(undefined).
+
+transformer_undefined_option(_) ->
+   1 = ?optionT(undefined, 1),
+   undefined = ?optionT(undefined, undefined).
+
+transformer_undefined_either(_) ->
+   1 = ?eitherT(undefined, {ok, 1}),
+   undefined = ?eitherT(undefined, {error, badarg}).
+
+
+%%
+%%
+transformer_either_unit(_) ->
+   {ok, 1} = ?unitT(either).
+
+transformer_either_fail(_) ->
+   {error, 1} = ?failT(either).
+
+transformer_either_require(_) ->
+   {ok, 1} = (?requireT(either))(1),
+   {error, nil} = (?requireT(either))(0).
+
+transformer_either_sequence(_) ->
+   {ok, [1, 2, 3]} = (?seqT(either))([{ok, 1}, {ok, 2}, {ok, 3}]),
+   {error, badarg} = (?seqT(either))([{ok, 1}, {error, badarg}, {ok, 3}]).
+
+transformer_either_flatten(_) ->
+   {ok, 1} = ?flattenT(either).
+
+transformer_either_option(_) ->
+   {ok, 1} = ?optionT(either, 1),
+   {error, undefined} = ?optionT(either, undefined),
    {error, badarg} = [either ||
       cats:optionT(badarg, undefined),
       unit(_)
    ].
 
-transformer_cat_reader(_) ->
-   {ok, 1} = ([reader ||
-      cats:optionT(badarg, 1),
-      unit(_)
-   ])(1),
-
-   {error, badarg} = ([reader ||
-      cats:optionT(badarg, undefined),
-      unit(_)
-   ])(1).
+transformer_either_either(_) ->
+   {ok, 1} = ?eitherT(either, {ok, 1}),
+   {error, badarg} = ?eitherT(either, {error, badarg}).
 
 
 %%
-transformer_flatten_either(_) ->
-   {ok, 1} = [either ||
-      unit({ok, {ok, {ok, 1}}}),
-      cats:flatten(_)
-   ],
+%%
+transformer_reader_unit(_) ->
+   {ok, 1} = (?unitT(reader))(#{}).
 
-   {error, badarg} = [either ||
-      unit({ok, {ok, {error, badarg}}}),
-      cats:flatten(_)
-   ].
+transformer_reader_fail(_) ->
+   {error, 1} = (?failT(reader))(#{}).
 
-transformer_flatten_reader(_) ->
-   {ok, 1} = ([reader ||
-      unit({ok, {ok, {ok, 1}}}),
-      cats:flatten(_)
-   ])(1),
+transformer_reader_require(_) ->
+   {ok, 1} = ((?requireT(reader))(1))(#{}),
+   {error, nil} = ((?requireT(reader))(0))(#{}).
 
+transformer_reader_sequence(_) ->
+   {ok, [1, 2, 3]} = ((?seqT(reader))([{ok, 1}, {ok, 2}, {ok, 3}]))(#{}),
+   {error, badarg} = ((?seqT(reader))([{ok, 1}, {error, badarg}, {ok, 3}]))(#{}).
+
+transformer_reader_flatten(_) ->
+   % {ok, 1} = (?flattenT(reader))(#{}).
+   ok.
+
+transformer_reader_option(_) ->
+   {ok, 1} = (?optionT(reader, 1))(#{}),
+   {error, undefined} = (?optionT(reader, undefined))(#{}),
    {error, badarg} = ([reader ||
-      unit({ok, {ok, {error, badarg}}}),
-      cats:flatten(_)
-   ])(1).
+      cats:optionT(badarg, undefined),
+      unit(_)
+   ])(#{}).
+
+transformer_reader_either(_) ->
+   {ok, 1} = (?eitherT(reader, {ok, 1}))(#{}),
+   {error, badarg} = (?eitherT(reader, {error, badarg}))(#{}).
 

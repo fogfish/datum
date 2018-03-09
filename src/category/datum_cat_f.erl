@@ -8,8 +8,8 @@
 %% (.) operation
 -export(['.'/3, chain/1, curry/1]).
 
-%% transformers
--export([unit/1, fail/1, sequence/1, eitherT/1]).
+%% category transformers
+-export([unit/1, fail/1, require/3, sequence/1, flatten/1, optionT/1, eitherT/1]).
 
 %%
 %%
@@ -59,24 +59,59 @@ curry({_, Ln, _, _} = Expr) ->
    }.    
 
 
+%%%------------------------------------------------------------------
+%%%
+%%% transformers
+%%%
+%%%------------------------------------------------------------------   
+
 %%
-%%
+%% lifts a value to object of category
+-spec unit(_) -> _.
+
 unit(X) ->
    X.
 
 %%
-%%
+%% lifts a failure to error object of category
+-spec fail(_) -> _.
+
 fail(X) ->
    throw(X).
 
 %%
+%% conditionally lifts a value to object or error of category 
+-spec require(boolean(), _, _) -> _.
+
+require(true,  X, _) ->
+   X;
+require(false, _, X) ->
+   throw(X).
+
 %%
+%% transforms sequence of objects into object of category.
+-spec sequence([_]) -> [_].
+
 sequence(Seq) ->
    Seq.
 
 %%
+%% transforms nested objects into object of category
+-spec flatten(_) -> _.
+
+flatten(X) ->
+   X.
+
 %%
--spec eitherT( datum:either(_) ) -> datum:option(_).
+%% transforms option category to identity
+-spec optionT( datum:option() ) -> _.
+
+optionT(X) ->
+   X.
+
+%%
+%%
+-spec eitherT( datum:either(_) ) -> _.
 
 eitherT({ok, X}) ->
    X;

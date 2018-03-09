@@ -8,8 +8,8 @@
 %% (.) operation
 -export(['.'/3, chain/1, curry/1]).
 
-%% category utility
--export([unit/1, unit/2, fail/1, sequence/1, optionT/2, flatten/1]).
+%% category transformers
+-export([unit/1, unit/2, fail/1, require/3, sequence/1, flatten/1, optionT/1, optionT/2, eitherT/1]).
 
 %%
 %%
@@ -94,23 +94,41 @@ curry({either, VarX, {'case', Ln, _, _} = Expr}) ->
    }.
 
 
+%%%------------------------------------------------------------------
+%%%
+%%% transformers
+%%%
+%%%------------------------------------------------------------------   
+
 %%
-%%
+%% lifts a value to object of category
+-spec unit(_) -> datum:either(_).
+
 unit(X) ->
    {ok, X}.
 
 unit(A, X) ->
    {ok, A, X}.
 
+%%
+%% lifts a failure to error object of category
+-spec fail(_) -> datum:either(_).
 
-%%
-%%
 fail(X) ->
    {error, X}.
 
 %%
-%% 
--spec sequence( [datum:either(_)] ) -> datum:either([_]).
+%% conditionally lifts a value to object or error of category 
+-spec require(boolean(), _, _) -> datum:either().
+
+require(true,  X, _) ->
+   {ok, X};
+require(false, _, X) ->
+   {error, X}.
+
+%%
+%% transforms sequence of objects into object of category.
+-spec sequence([datum:either(_)]) -> datum:either([_]).
 
 sequence([{ok, Head} | Seq]) ->
    case sequence(Seq) of
@@ -127,20 +145,9 @@ sequence([]) ->
    {ok, []}.
 
 
-
 %%
-%%
--spec optionT(_, datum:option(_) ) -> datum:either(_). 
-
-optionT(Reason, undefined) ->
-   {error, Reason};
-optionT(_, X) ->
-   {ok, X}.
-
-
-%%
-%%
--spec flatten(_) ->  datum:either(_).
+%% transforms nested objects into object of category
+-spec flatten(datum:either(datum:either(_))) -> datum:either(_).
 
 flatten({ok, {ok, _} = X}) ->
    flatten(X);
@@ -156,4 +163,26 @@ flatten({error, _} = X) ->
    X.
 
 
+%%
+%% transforms option category to identity
+-spec optionT( datum:option() ) -> datum:either(_).
+
+optionT(undefined) ->
+   {error, undefined};
+optionT(X) ->
+   {ok, X}.
+
+optionT(Reason, undefined) ->
+   {error, Reason};
+optionT(_, X) ->
+   {ok, X}.
+
+%%
+%%
+-spec eitherT( datum:either(_) ) -> datum:either(_).
+
+eitherT({ok, _} = X) ->
+   X;
+eitherT({error, _} = X) ->
+   X.
 
