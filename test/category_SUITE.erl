@@ -357,6 +357,14 @@ t(reader,   X, Y) -> {ok, X + Y}.
    ]
 ).
 
+-define(cat_compose_unit_with_case(Type),
+   [Type ||
+      A =< case 1 of 1 -> 1 end,
+      B =< case 1 of 1 -> 3 end,
+      cats:unit(A + B)
+   ]
+).
+
 %% eq error
 -define(cat_compose_fail(Type), 
    [Type ||
@@ -403,7 +411,8 @@ syntax_identity_expr(_) ->
    6 = ?cat_compose_expr(identity).
 
 syntax_identity_unit(_) ->
-   6 = ?cat_compose_unit(identity).
+   6 = (fun() -> ?cat_compose_unit(identity) end)(),
+   4 = (fun() -> ?cat_compose_unit_with_case(identity) end)().
 
 syntax_identity_fail(_) ->
    3 = (catch ?cat_compose_fail(identity)).
@@ -422,7 +431,8 @@ syntax_option_expr(_) ->
    6 = ?cat_compose_expr(option).
 
 syntax_option_unit(_) ->
-   6 = ?cat_compose_unit(option).
+   6 = (fun() -> ?cat_compose_unit(option) end)(),
+   4 = (fun() -> ?cat_compose_unit_with_case(option) end)().
 
 syntax_option_fail(_) ->
    undefined = ?cat_compose_fail(option).
@@ -442,6 +452,7 @@ syntax_undefined_expr(_) ->
 
 % syntax_undefined_unit(_) ->
 %    undefined = ?cat_compose_unit(undefined).
+%    undefined = ?cat_compose_unit_with_case(undefined).
 
 syntax_undefined_fail(_) ->
    3 = ?cat_compose_fail(undefined).
@@ -461,7 +472,8 @@ syntax_either_expr(_) ->
    {ok, 6} = ?cat_compose_expr(either).
 
 syntax_either_unit(_) ->
-   {ok, 6} = ?cat_compose_unit(either).
+   {ok, 6} = (fun() -> ?cat_compose_unit(either) end)(),
+   {ok, 4} = (fun() -> ?cat_compose_unit_with_case(either) end)().
 
 syntax_either_fail(_) ->
    {error, 3} = ?cat_compose_fail(either).
@@ -480,7 +492,8 @@ syntax_reader_expr(_) ->
    {ok, 6} = (?cat_compose_expr(reader))(2).
 
 syntax_reader_unit(_) ->
-   {ok, 6} = (?cat_compose_unit(reader))(2).
+   {ok, 6} = (?cat_compose_unit(reader))(2),
+   {ok, 4} = (?cat_compose_unit_with_case(reader))(2).
 
 syntax_reader_fail(_) ->
    {error, 3} = (?cat_compose_fail(reader))(2).
@@ -500,7 +513,8 @@ syntax_kleisli_expr(_) ->
    6 = ?cat_compose_expr(m_identity).
 
 syntax_kleisli_unit(_) ->
-   6 = ?cat_compose_unit(m_identity).
+   6 = ?cat_compose_unit(m_identity),
+   4 = ?cat_compose_unit_with_case(m_identity).
 
 syntax_kleisli_fail(_) ->
    3 = (catch ?cat_compose_fail(m_identity)).
