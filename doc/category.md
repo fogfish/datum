@@ -1,6 +1,6 @@
 # Category pattern
 
-> Composition is is the essence of programming...
+> Composition is the essence of programming...
 
 The *composition* is a style of development to build a new things from small reusable elements. The category theory formalises principles (laws) that help us to define own abstraction applicable in functional programming through composition. The *composition* becomes a fundamental operation: the *codomain* of *f* be the *domain* of *g* so that the composite operation *f* ◦ *g* is defined. 
 
@@ -121,6 +121,30 @@ Transformers are written using following syntax
 
 Here, `Category` is an identity of category, `cats:` is reserved prefix that executes the defined transformation as part of the composition, `/= `yields the result of transformation to the state. Formally, this is a composition of functions: `f . transform . update . g`.
 
+The library defines transformers
+
+```erlang
+%%
+%% lifts a value to object of category
+-spec unit(_) -> object().
+
+%%
+%% lifts a failure to error object of category
+-spec fail(_) -> object().
+
+%%
+%% conditionally lifts a value to object or error of category 
+-spec require(boolean(), _, _) -> object().
+
+%%
+%% transforms sequence of objects into object of category.
+-spec sequence([object()]) -> object([_]).
+
+%%
+%% transforms nested objects into object of category
+-spec flatten(object(object(...))) -> object().
+```
+
 
 ## Categories
 
@@ -145,6 +169,11 @@ g(f()).
 The category implements transformers
 
 ```erlang
+%% Transforms `option` category into `identity`, 
+%% it maps meaningful value into itself,
+%% `undefined` value into `undefined` atom.
+-spec optionT(_, option(_)) -> _.
+
 %% Transforms `either` category into `identity`, 
 %% it maps right branch into meaningful value,
 %% left branch to `undefined`
@@ -180,10 +209,6 @@ The category implements transformers
 %% it maps right branch into meaningful value,
 %% left branch to `undefined`
 -spec eitherT(either(_, _)) -> option(_).
-
-%% Transforms sequence of options into optional sequence. 
-%% The sequence is not undefined if input has any undefined value.
--spec sequence([option()]) -> option([_]).
 ```
 
 
@@ -216,10 +241,6 @@ The category implements transformers
 %% it maps right branch into meaningful value,
 %% left branch to `undefined`
 -spec eitherT(either(_, _)) -> option(_).
-
-%% Transforms sequence of options into optional sequence. 
-%% The sequence is not undefined if input has any undefined value.
--spec sequence([option()]) -> option([_]).
 ```
 
 
@@ -248,16 +269,10 @@ ends
 The category implements transformers
 
 ```erlang
-%%  Lifts value into right branch of either type
--spec unit(_) -> either(_, _). 
-
 %% Transforms `option` category into `either`, 
 %% it maps meaningful value into right branch,
 %% `undefined` value into left.
 -spec optionT(_, option(_)) -> either(_, _).
-
-%% Transforms sequence of either values into either sequence.
--spec sequence([either()]) -> either(_, [_]).
 ```
 
 ### Reader
@@ -291,16 +306,10 @@ fun(Env) ->
 The category implements transformers
 
 ```erlang
-%%  Lifts value into right branch of either type
--spec unit(_) -> either(_, _). 
-
 %% Transforms `option` category into `either`, 
 %% it maps meaningful value into right branch,
 %% `undefined` value into left.
 -spec optionT(_, option(_)) -> either(_, _).
-
-%% Transforms sequence of either values into either sequence.
--spec sequence([either()]) -> either(_, [_]).
 ```
 
 

@@ -8,8 +8,8 @@
 %% (.) operation
 -export(['.'/3, chain/1, curry/1]).
 
-%% category utility
--export([unit/1, fail/1, sequence/2, optionT/3, flatten/2]).
+%% category transformers
+-export([unit/1, fail/1, require/4, sequence/2, flatten/2, optionT/2, optionT/3, eitherT/2]).
 
 
 '/='({call, Ln, Ff0, Fa0}) ->
@@ -102,20 +102,39 @@ curry({either, VarX, {'case', Ln, _, _}} = Either) ->
       ]}
    }.
 
+%%%------------------------------------------------------------------
+%%%
+%%% transformers
+%%%
+%%%------------------------------------------------------------------   
+
 %%
-%%
+%% lifts a value to object of category
+-spec unit(_) -> datum:either(_).
+
 unit(X) ->
    {ok, X}.
 
 
 %%
-%%
+%% lifts a failure to error object of category
+-spec fail(_) -> datum:either(_).
+
 fail(X) ->
    {error, X}.
 
 %%
-%% 
--spec sequence( [datum:either(_)], _ ) -> datum:either([_]).
+%% conditionally lifts a value to object or error of category 
+-spec require(boolean(), _, _, _) -> datum:either().
+
+require(true,  X, _, _) ->
+   {ok, X};
+require(false, _, X, _) ->
+   {error, X}.
+
+%%
+%% transforms sequence of objects into object of category.
+-spec sequence([datum:either(_)], _) -> datum:either([_]).
 
 sequence([{ok, Head} | Seq], Env) ->
    case sequence(Seq, Env) of
@@ -132,20 +151,9 @@ sequence([], _Env) ->
    {ok, []}.
 
 
-
 %%
-%%
--spec optionT(_, datum:option(_), _) -> datum:either(_). 
-
-optionT(Reason, undefined, _Env) ->
-   {error, Reason};
-optionT(_, X, _Env) ->
-   {ok, X}.
-
-
-%%
-%%
--spec flatten(_, _) ->  datum:either(_).
+%% transforms nested objects into object of category
+-spec flatten(datum:either(datum:either(_)), _) -> datum:either(_).
 
 flatten({ok, {ok, _} = X}, Env) ->
    flatten(X, Env);
@@ -159,5 +167,30 @@ flatten({ok, _} = X, _Env) ->
    X;
 flatten({error, _} = X, _Env) ->
    X.
+
+
+%%
+%% transforms option category to identity
+-spec optionT( datum:option(), _ ) -> datum:either(_).
+
+optionT(undefined, _) ->
+   {error, undefined};
+optionT(X, _) ->
+   {ok, X}.
+
+optionT(Reason, undefined, _) ->
+   {error, Reason};
+optionT(_, X, _) ->
+   {ok, X}.
+
+%%
+%%
+-spec eitherT( datum:either(_), _ ) -> datum:either(_).
+
+eitherT({ok, _} = X, _) ->
+   X;
+eitherT({error, _} = X, _) ->
+   X.
+
 
 
