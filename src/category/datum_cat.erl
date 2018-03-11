@@ -53,7 +53,10 @@ is_partial({'fun', _, _}) ->
    true;
 
 is_partial({var, _, _}) ->
-   true.
+   true;
+
+is_partial(_) ->
+   false.
 
 
 %%
