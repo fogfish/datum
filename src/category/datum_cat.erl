@@ -86,9 +86,16 @@ cc_bind_var(Vx, X)
       cc_bind_var(Vx, erlang:tuple_to_list(X))
    );
 
-cc_bind_var(Vx, [{lc, _, _, _} = H | T]) ->
-   % skip binding for nested objects
-   [H | cc_bind_var(Vx, T)];
+cc_bind_var(Vx, [{lc, _, Type, _} = H | T]) ->
+   case is_category(Type) of
+      %% enable variable binding for comprehension
+      false ->
+         [erlang:list_to_tuple(cc_bind_var(Vx, erlang:tuple_to_list(H))) | cc_bind_var(Vx, T)];
+
+      % skip binding for nested category
+      true ->
+         [H | cc_bind_var(Vx, T)]
+   end;
 cc_bind_var(Vx, [{var, _, '_'} | T]) ->
    [Vx | cc_bind_var(Vx, T)];
 cc_bind_var(Vx, [H | T]) ->
@@ -103,9 +110,18 @@ cc_bind_var(_, X) ->
 %% helper function to derive variables from expression with blank variables
 -spec cc_derive(erl_parse:abstract_expr(), [_]) -> {[_], erl_parse:abstract_expr()}.
 
-cc_derive({lc, _, _, _} = Expr, Acc) ->
-   % skip binding for nested objects
-   {Expr, Acc};
+cc_derive({lc, _, Type, _} = Expr, Acc) ->
+   case is_category(Type) of
+
+      %% enable variable binding for comprehension
+      false ->
+         {Code, Var} = lists:mapfoldr(fun cc_derive/2, Acc, erlang:tuple_to_list(Expr)),
+         {erlang:list_to_tuple(Code), Var};   
+
+      %% skip variable binding for nested categories
+      true  ->
+         {Expr, Acc}
+   end;
 
 cc_derive({var, Ln, '_'}, Acc) ->
    Uuid = uuid(),

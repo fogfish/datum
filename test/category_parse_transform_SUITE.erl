@@ -6,7 +6,8 @@
    syntax_composition/1,
    syntax_composition_with_state/1,
    syntax_composition_with_transformer/1,
-   syntax_composition_partial/1
+   syntax_composition_partial/1,
+   syntax_nested_list_comprehension/1
 ]).
 
 all() ->
@@ -14,7 +15,8 @@ all() ->
       syntax_composition,
       syntax_composition_with_state,
       syntax_composition_with_transformer,
-      syntax_composition_partial
+      syntax_composition_partial,
+      syntax_nested_list_comprehension
    ].
 
 %%
@@ -54,7 +56,10 @@ syntax_composition_partial(_) ->
    ok = transform("[reader || cats:unit(_), do:this(_), do:that(_)]."),
    ok = transform("[m_identity || cats:unit(_), do:this(_), do:that(_)].").
 
-
+syntax_nested_list_comprehension(_) ->
+   ok = transform("[identity || do:this(1), cats:sequence([X || X <- _]), do:that(_)]."),
+   ok = transform("[option || do:this(1), cats:sequence([X || X <- _]), do:that(_)]."),
+   ok = transform("[either || do:this(1), cats:sequence([X || X <- _]), do:that(_)].").
 
 %%%------------------------------------------------------------------
 %%%
