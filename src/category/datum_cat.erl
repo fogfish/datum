@@ -157,10 +157,10 @@ compile(Cat, Mod, List) ->
    lists:reverse([c(Cat, Mod, X) || X <- List]).
 
 c(Cat, Mod, {generate, Line, VarS, Arrow}) ->
-   {generate, Line, VarS, c_arrow(Cat, Mod, Arrow)};
+   {generate, Line, VarS, c_cats(Mod, c_arrow(Cat, Arrow))};
 
 c(Cat, Mod, Arrow) ->
-   c_arrow(Cat, Mod, Arrow).
+   c_cats(Mod, c_arrow(Cat, Arrow)).
 
 
 %%
@@ -168,47 +168,47 @@ c(Cat, Mod, Arrow) ->
 %% thing that behaves like a function. It represents [A] process that takes as 
 %% input something of type [B] and outputs something of type [C].
 %%
-c_arrow(_Cat, Mod, {call, Ln, {atom, _, unit} = Fn, Fa}) ->
-   {call, Ln, {remote, Ln, {atom, Ln, Mod}, Fn}, Fa};
+c_arrow(_Cat, {call, Ln, {atom, _, unit} = Fn, Fa}) ->
+   {call, Ln, {remote, Ln, {atom, Ln, cats}, Fn}, Fa};
 
-c_arrow(_Cat, Mod, {call, Ln, {atom, _, fail} = Fn, Fa}) ->
-   {call, Ln, {remote, Ln, {atom, Ln, Mod}, Fn}, Fa};
+c_arrow(_Cat, {call, Ln, {atom, _, fail} = Fn, Fa}) ->
+   {call, Ln, {remote, Ln, {atom, Ln, cats}, Fn}, Fa};
 
-c_arrow(_Cat, Mod, {call, Ln, {remote, Ln, {atom, _, cats}, {atom, _, unit} = Fn}, Fa}) ->
-   {call, Ln, {remote, Ln, {atom, Ln, Mod}, Fn}, Fa};
+c_arrow(_Cat, {call, _, {remote, _, {atom, _, cats}, {atom, _, unit}}, _} = Expr) ->
+   Expr;
 
-c_arrow(_Cat, Mod, {call, Ln, {remote, Ln, {atom, _, cats}, {atom, _, fail} = Fn}, Fa}) ->
-   {call, Ln, {remote, Ln, {atom, Ln, Mod}, Fn}, Fa};
+c_arrow(_Cat, {call, _, {remote, _, {atom, _, cats}, {atom, _, fail}}, _} = Expr) ->
+   Expr;
 
-c_arrow(Cat, Mod, {call, Ln, {remote, Ln, {atom, _, cats}, {atom, _, _} = Fn}, Fa}) ->
-   Cat:'/='({call, Ln, {remote, Ln, {atom, Ln, Mod}, Fn}, Fa});
+c_arrow(Cat, {call, Ln, {remote, Ln, {atom, _, cats}, {atom, _, _} = Fn}, Fa}) ->
+   Cat:'/='({call, Ln, {remote, Ln, {atom, Ln, cats}, Fn}, Fa});
 
-c_arrow(_Cat, _Mod, {call, _, _, _} = H) ->
+c_arrow(_Cat, {call, _, _, _} = H) ->
    % explicit call: f(...)
    H;
 
-c_arrow(_Cat, _Mod, {'fun', Line, {function, Id, _}}) ->
+c_arrow(_Cat, {'fun', Line, {function, Id, _}}) ->
    % reference to function: fun f/n 
    {call, Line, {atom, Line, Id}, [{var, Line, '_'}]};
 
-c_arrow(_Cat, _Mod, {'fun', Line, {function, Mod, Fun, _}}) ->
+c_arrow(_Cat, {'fun', Line, {function, Mod, Fun, _}}) ->
    % reference to function: fun mod:f/n
    {call, Line, {remote, Line, Mod, Fun}, [{var, Line, '_'}]};
 
-c_arrow(_Cat, _Mod, {'fun', Line, {clauses, _}} = H) ->
+c_arrow(_Cat, {'fun', Line, {clauses, _}} = H) ->
    % inline function: fun(_) -> ... end
    {call, Line, H, [{var, Line, '_'}]};
 
-c_arrow(_Cat, _Mod, {var, Line, _} = H) ->
+c_arrow(_Cat, {var, Line, _} = H) ->
    % function reference within variable: X = ... 
    {call, Line, H, [{var, Line, '_'}]};
 
-c_arrow(_Cat, Mod, {op, Ln, '=<', VarS, Arrow}) ->
+c_arrow(_Cat, {op, Ln, '=<', VarS, Arrow}) ->
    {generate, Ln, VarS, 
-      {call, Ln, {remote, Ln, {atom, Ln, Mod}, {atom, Ln, unit}}, [Arrow]}};
+      {call, Ln, {remote, Ln, {atom, Ln, cats}, {atom, Ln, unit}}, [Arrow]}};
 
-c_arrow(Cat, Mod, {op, Ln, '/=', VarS, {call, Ln, {remote, Ln, {atom, _, cats}, {atom, _, _} = Fn}, Fa}}) ->
-   {generate, Ln, VarS, Cat:'/='({call, Ln, {remote, Ln, {atom, Ln, Mod}, Fn}, Fa})};
+c_arrow(Cat, {op, Ln, '/=', VarS, {call, Ln, {remote, Ln, {atom, _, cats}, {atom, _, _} = Fn}, Fa}}) ->
+   {generate, Ln, VarS, Cat:'/='({call, Ln, {remote, Ln, {atom, Ln, cats}, Fn}, Fa})};
 
 %
 % it would be nice to have a short syntax for transformer
@@ -222,11 +222,31 @@ c_arrow(Cat, Mod, {op, Ln, '/=', VarS, {call, Ln, {remote, Ln, {atom, _, cats}, 
 % c_arrow(Cat, Mod, {op, Ln, '/=', VarS, {atom, _, _} = Fn}) ->
 %    {generate, Ln, VarS, Cat:'/='({call, Ln, {remote, Ln, {atom, Ln, Mod}, Fn}, []})};
 
-c_arrow(Cat, _Mod, {op, Ln, '/=', VarS, Arrow}) ->
+c_arrow(Cat, {op, Ln, '/=', VarS, Arrow}) ->
    {generate, Ln, VarS, Cat:'/='(Arrow)};
 
-c_arrow(_, _, H) ->
+c_arrow(_, H) ->
    exit( lists:flatten(io_lib:format("Category composition do not support: ~p", [H])) ).
+
+%%
+%%
+c_cats(Mod, Expr)
+ when is_tuple(Expr) ->
+   erlang:list_to_tuple(
+      c_cats(Mod, erlang:tuple_to_list(Expr))
+   );
+
+c_cats(Mod, [{atom, Ln, cats} | T]) ->
+   [{atom, Ln, Mod} | c_cats(Mod, T)];
+
+c_cats(Mod, [H | T]) ->
+   [c_cats(Mod, H) | c_cats(Mod, T)];
+
+c_cats(_, []) ->
+   [];
+
+c_cats(_, Expr) ->
+   Expr.
 
 
 %%
