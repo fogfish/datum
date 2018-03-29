@@ -207,6 +207,14 @@ c_arrow(_Cat, {op, Ln, '=<', VarS, Arrow}) ->
    {generate, Ln, VarS, 
       {call, Ln, {remote, Ln, {atom, Ln, cats}, {atom, Ln, unit}}, [Arrow]}};
 
+c_arrow(_Cat, {op, Ln, '>', VarS, Arrow}) ->
+   {generate, Ln, VarS, 
+      {call, Ln, {remote, Ln, {atom, Ln, cats}, {atom, Ln, put}}, [Arrow]}};
+
+c_arrow(_Cat, {op, Ln, '<', VarS, Arrow}) ->
+   {generate, Ln, VarS, 
+      {call, Ln, {remote, Ln, {atom, Ln, cats}, {atom, Ln, get}}, [Arrow]}};
+
 c_arrow(Cat, {op, Ln, '/=', VarS, {call, Ln, {remote, Ln, {atom, _, cats}, {atom, _, _} = Fn}, Fa}}) ->
    {generate, Ln, VarS, Cat:'/='({call, Ln, {remote, Ln, {atom, Ln, cats}, Fn}, Fa})};
 
