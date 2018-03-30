@@ -142,7 +142,9 @@
    transformer_reader_sequence/1,
    transformer_reader_flatten/1,
    transformer_reader_option/1,
-   transformer_reader_either/1
+   transformer_reader_either/1,
+
+   transformer_kleisli_io/1
 ]).
 
 
@@ -271,7 +273,9 @@ groups() ->
          transformer_reader_sequence,
          transformer_reader_flatten,
          transformer_reader_option,
-         transformer_reader_either
+         transformer_reader_either,
+
+         transformer_kleisli_io
      ]}
    ].
 
@@ -876,4 +880,11 @@ transformer_reader_option(_) ->
 transformer_reader_either(_) ->
    {ok, 1} = (?eitherT(reader, {ok, 1}))(#{}),
    {error, badarg} = (?eitherT(reader, {error, badarg}))(#{}).
+
+%%
+transformer_kleisli_io(_) ->
+   1 = [m_identity ||
+      _ > 1,
+      _ < 1
+   ].
 
