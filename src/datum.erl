@@ -48,6 +48,9 @@
 -type effect(T)    :: fun((T) -> ok).
 -type compare(T)   :: fun((T, T) -> eq | gt | lt).
 
+-type lens(A, S)   :: fun( (fun( (A) -> _ ), S) -> _ ).
+-type lens()       :: lens(_, _).
+
 -export_type([
    option/1,
    either/0,
@@ -62,14 +65,17 @@
    tree/1,
    heap/1,
    stream/1,
-   q/1
+   q/1,
 
-  ,ring/0
+   ring/0,
 
-  ,monoid/1
-  ,predicate/1
-  ,effect/1
-  ,compare/1
+   monoid/1,
+   predicate/1,
+   effect/1,
+   compare/1,
+
+   lens/2,
+   lens/0
 ]).
 
 
