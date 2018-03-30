@@ -17,7 +17,7 @@
 %%   identity monad
 -module(m_identity).
 
--export([unit/1, fail/1, '>>='/2, put/1, get/1]).
+-export([unit/1, fail/1, '>>='/2, putT/1, getT/1]).
 
 -type m(A)    :: A.
 -type f(A, B) :: fun((A) -> m(B)).
@@ -45,14 +45,14 @@ fail(X) ->
 
 %%
 %%
--spec put(_) -> m(_).
+-spec putT(_) -> m(_).
 
-put(X) -> 
+putT(X) -> 
    X.
 
 %%
 %%
--spec get(_) -> m(_).
+-spec getT(_) -> m(_).
 
-get(X) -> 
+getT(X) -> 
    X.
