@@ -8,7 +8,7 @@
 ## @doc
 ##   This makefile is the wrapper of rebar to build and ship erlang software
 ##
-## @version 1.0.4
+## @version 1.0.9
 .PHONY: all compile test unit clean distclean run console mock-up mock-rm benchmark release dist
 
 APP := $(strip $(APP))
@@ -33,13 +33,13 @@ IID     = ${URI}${ORG}/${APP}
 ## required tools
 ##  - rebar version (no spaces at end)
 ##  - path to basho benchmark 
-REBAR  ?= 3.3.2
+REBAR  ?= 3.5.0
 BB      = ../basho_bench
 
 
 ## erlang runtime configration flags
 ROOT   = $(shell pwd)
-ADDR   = 127.0.0.1
+ADDR   = localhost.localdomain
 EFLAGS = \
 	-name ${APP}@${ADDR} \
 	-setcookie ${COOKIE} \
@@ -58,15 +58,18 @@ BOOT_CT = \
    -export([run/1]). \
    run(Spec) -> \
       {ok, Test} = file:consult(Spec), \
-      Error = case lists:keyfind(node, 1, Test) of \
-         false -> element(2, ct:run_test([{spec, Spec}])); \
-         true  -> ct_master:run(Spec) \
-      end, \
-      erlang:halt(Error).
+      case lists:keymember(node, 1, Test) of \
+         false -> \
+            erlang:halt(element(2, ct:run_test([{spec, Spec}]))); \
+         true  -> \
+            ct_master:run(Spec), \
+            erlang:halt(0) \
+      end.
+
 
 ## 
 BUILDER = FROM ${DOCKER}\nARG VERSION=\nRUN mkdir ${APP}\nCOPY . ${APP}/\nRUN cd ${APP} && make VSN=\x24{VERSION} && make release VSN=\x24{VERSION}\n
-SPAWNER = FROM ${DOCKER}\nENV VERSION=${VSN}\nRUN mkdir ${APP}\nCOPY . ${APP}/\nRUN cd ${APP} && make VSN=\x24{VERSION} && make release VSN=\x24{VERSION}\nCMD sh -c 'cd ${APP} && make console VSN=\x24{VERSION}'\n
+SPAWNER = FROM ${DOCKER}\nENV VERSION=${VSN}\nRUN mkdir ${APP}\nCOPY . ${APP}/\nRUN cd ${APP} && make VSN=\x24{VERSION} && make release VSN=\x24{VERSION}\nCMD sh -c 'cd ${APP} && make console VSN=\x24{VERSION} RELX_REPLACE_OS_VARS=true ERL_NODE=${APP}'\n
 
 ## self extracting bundle archive
 BUNDLE_INIT = PREFIX=${PREFIX}\nREL=${PREFIX}/${REL}\nAPP=${APP}\nVSN=${VSN}\nLINE=`grep -a -n "BUNDLE:$$" $$0`\nmkdir -p $${REL}\ntail -n +$$(( $${LINE%%%%:*} + 1)) $$0 | gzip -vdc - | tar -C $${REL} -xvf - > /dev/null\n
@@ -168,7 +171,7 @@ release: ${PKG}.tar.gz
 ifeq (${PLAT},$(shell uname -s))
 ${PKG}.tar.gz: relx.config
 	@./rebar3 tar -n ${APP} -v ${VSN} ;\
-	cp _build/default/rel/${APP}/${APP}-${VSN}.tar.gz $@ ;\
+	mv _build/default/rel/${APP}/${APP}-${VSN}.tar.gz $@ ;\
 	echo "==> tarball: $@"
 
 relx.config: rel/relx.config.src
