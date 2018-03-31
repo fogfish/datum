@@ -2,7 +2,7 @@
 
 > Composition is the essence of programming...
 
-The *composition* is a style of development to build a new things from small reusable elements. The category theory formalises principles (laws) that help us to define own abstraction applicable in functional programming through composition. The *composition* becomes a fundamental operation: the *codomain* of *f* be the *domain* of *g* so that the composite operation *f* ◦ *g* is defined. 
+The *composition* is a style of development to build a new things from small reusable elements. The category theory formalizes principles (laws) that help us to define own abstraction applicable in functional programming through composition. The *composition* becomes a fundamental operation: the *codomain* of *f* be the *domain* of *g* so that the composite operation *f* ◦ *g* is defined. 
 
 A **category** is a concept that is defined in abstract terms of **objects**, **arrows** together with two functions **composition** (`.`) and **identity** (`id`). These functions shall be compliant with category laws
 
@@ -14,12 +14,12 @@ The category leaves the definition of *object*, *arrows*, *composition* and *ide
 
 Let's consider an example of category `𝕽`
 
-* objects are real number `𝐑` 
-* arrows are functions `𝐑 ⟶ 𝐑`.
+* objects are real numbers `𝐑` 
+* arrows are functions `𝐑 ⟶ 𝐑`
 * identity `id x = x`
 * composition `(f . g) x = g (f x)`
 
-This example using Erlang 
+This example uses Erlang syntax
 
 ```erlang
 id(X) -> X.
@@ -32,9 +32,11 @@ g(X) -> X * X.
 h(X) -> ('.'(fun f/1, fun g/1))(X).  %% g(f(X)).
 ```
 
+In this example, we have defined a scalar data type and rules to build a program to manipulate this type. 
+
 ## Composition in Erlang
 
-Erlang do not support infix notation. This notation improves readability of functional *composition* and allows to implement complex compositions. The chaining of ordinary functions do not allow us to make arbitrary program.  
+Erlang do not support infix notation. This notation improves readability of functional *composition* and allows to implement complex compositions. The chaining of ordinary functions do not allow us to make arbitrary program.
 
 The `parse_transform` feature implements a syntax sugar for *composition*, which is compiled into valid Erlang code using defined composition operator at compile-time.
 
@@ -53,10 +55,10 @@ The example composition within category `𝕽` becomes
 
 ```erlang
 h(X) ->
-    [$. ||      %% composition operator (chaining of function)
-        f(X),   %% arrow 𝐑 ⟶ 𝐑, feeds result to next arrow 
-        g(_),   %% arrow 𝐑 ⟶ 𝐑, feeds result to next arrow  
-        ...     %% and so on
+    [identity || %% composition operator (chaining of function)
+        f(X),    %% arrow 𝐑 ⟶ 𝐑, feeds result to next arrow 
+        g(_),    %% arrow 𝐑 ⟶ 𝐑, feeds result to next arrow  
+        ...      %% and so on
     ].
 ```
 
@@ -95,7 +97,7 @@ Our example becomes...
 
 ```erlang
 f(X, Y, R) ->
-    [$. ||
+    [identity ||
        div(1, X),
        sub(_, 3),
        A <- pow(_, 2), %% (1 / X - 3)^2
@@ -109,9 +111,10 @@ f(X, Y, R) ->
 
 The usage of intermediate state do not benefit for chains of ordinary functions. Unfortunately, we can't express all of our programs as chains of ordinary functions. Later' we will demonstrate the benefit of intermediate states for computation with a side-effect. 
 
+
 ### Composition with transformers
 
-Category pattern provides a powerful abstraction to build computations. Each category is specialises to compose one type of *objects*. In reality, we need to use several categories at once. The composition requires a transformation: category to category, types within category. As an example, a lifting of the object into category.
+Category pattern provides a powerful abstraction to build computations. Each category is specializes to compose one type of *objects*. In reality, we need to use several categories at once. The composition requires a transformation: category to category, types within category. As an example, a lifting of the object into category.
 
 Transformers are written using following syntax
 
@@ -143,6 +146,20 @@ The library defines transformers
 %%
 %% transforms nested objects into object of category
 -spec flatten(object(object(...))) -> object().
+```
+
+
+### Category constructor
+
+Arrows concept operate with object (data type) complaint with a category. Often, we need to takes non-category value or plain type expression and "lifts" it into category. The library implements a category constructor: `cats:unit/1` and its syntax equivalence `=<` operator. 
+
+```erlang
+f() ->
+  [identity ||
+    A =< 1,         %% lifts expression to category and assign its evaluation to state
+    cats:unit(1),   %% lifts expression to category and compose it with computation 
+    _ + A
+  ]
 ```
 
 
