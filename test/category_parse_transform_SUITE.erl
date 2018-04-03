@@ -8,7 +8,9 @@
    syntax_composition_with_transformer/1,
    syntax_composition_partial/1,
    syntax_nested_list_comprehension/1,
-   syntax_side_effect_operator/1
+   syntax_side_effect_operator/1,
+   syntax_kleisli_with_list_ops/1,
+   syntax_composition_parial/1
 ]).
 
 all() ->
@@ -18,7 +20,9 @@ all() ->
       syntax_composition_with_transformer,
       syntax_composition_partial,
       syntax_nested_list_comprehension,
-      syntax_side_effect_operator
+      syntax_side_effect_operator,
+      syntax_kleisli_with_list_ops,
+      syntax_composition_parial
    ].
 
 %%
@@ -65,6 +69,14 @@ syntax_nested_list_comprehension(_) ->
 
 syntax_side_effect_operator(_) ->
    ok = transform("[m_identity || _ > put, _ < get].").
+
+syntax_kleisli_with_list_ops(_) ->
+   ok = transform("[m_identity || _ > \"a\" ++ X, _ < get].").
+
+syntax_composition_parial(_) ->
+   ok = transform("[identity || fun(X) -> X end, do:that(_)]."),
+   ok = transform("[identity || X, do:that(_)].").
+
 
 %%%------------------------------------------------------------------
 %%%
