@@ -73,6 +73,7 @@
    syntax_kleisli_state/1,
    syntax_kleisli_transformer/1,
    syntax_kleisli_partial/1,
+   syntax_kleisli_list/1,
 
    laws_identity_left_identity/1,
    laws_identity_right_identity/1,
@@ -199,7 +200,8 @@ groups() ->
          syntax_reader_partial,
 
          syntax_kleisli_expr,
-         syntax_kleisli_unit
+         syntax_kleisli_unit,
+         syntax_kleisli_list
       ]}
 
      ,{laws, [parallel], [
@@ -531,6 +533,14 @@ syntax_kleisli_transformer(_) ->
 
 syntax_kleisli_partial(_) ->
    6 = (?cat_compose_partial(m_identity))(1).
+
+syntax_kleisli_list(_) ->
+   Tail  = "c",
+   1     = [m_identity ||
+      _ > "ab" ++ Tail,
+      cats:unit(1) 
+   ].
+
 
 %%%----------------------------------------------------------------------------   
 %%%

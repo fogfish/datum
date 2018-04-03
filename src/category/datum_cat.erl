@@ -43,6 +43,9 @@ is_partial([Head | _]) ->
 is_partial({generate, _, _, Arrow}) ->
    is_partial(Arrow);
 
+is_partial({op, _, '++', _, _}) ->
+   false;
+
 is_partial({op, _, _, _, Arrow}) ->
    is_partial(Arrow);
 
