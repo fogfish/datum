@@ -536,9 +536,9 @@ syntax_kleisli_partial(_) ->
 
 syntax_kleisli_list(_) ->
    Tail  = "c",
-   1     = [m_identity ||
-      _ > "ab" ++ Tail,
-      cats:unit(1) 
+   "abc" = [m_identity ||
+      A =< "ab" ++ Tail,
+      cats:unit(A) 
    ].
 
 
