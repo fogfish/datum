@@ -2,7 +2,22 @@
 
 The library uses [semantic versions](http://semver.org) to identify stable releases. 
 
-## Release 4.3.x
+## Release 4.3.2
+
+**Features**
+* [#30](https://github.com/fogfish/datum/issues/30) Define a conditional fail (`require`) that conditionally lifts a value either to object or error of category
+* [#29](https://github.com/fogfish/datum/issues/29) Support category transformers as part of nested expressions
+* Define a generic operators to modify monad context or execute side-effect
+
+**Improvements**
+
+* Fix various of compilation errors of function compositions
+* Improve test coverage of parse transforms
+* Support list comprehensions and list operators as part of function composition 
+* Export `datum:lens()` data type
+
+
+## Release 4.3.0
 
 **Features**
 
