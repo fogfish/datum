@@ -678,7 +678,7 @@ map_pair_types([{type,Line,map_field_exact,K,V}|Ps]) ->
     K1 = type(K),
     V1 = type(V),
     [{type,Line,map_field_exact,K1,V1}|map_pair_types(Ps)];
-    
+
 map_pair_types([]) -> [].
 
 field_types([{type,Line,field_type,[{atom,La,A},T]}|Fs]) ->
@@ -765,7 +765,7 @@ partial_application_curry([], _, F0) ->
 uuid() ->
    list_to_atom("_Vpa" ++ integer_to_list(unique())).
 
--ifdef(NO_MONOTONIC).
+-ifdef(OTP_17).
 unique() ->
     {A, B, C} = erlang:now(),
     (A * 1000000 + B) * 1000000 + C.
