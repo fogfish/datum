@@ -147,7 +147,7 @@ cc_derive(Expr, Acc) ->
 uuid() ->
    list_to_atom("_Vx" ++ integer_to_list(unique())).
 
--ifdef(NO_MONOTONIC).
+-ifdef(OTP_17).
 unique() ->
     {A, B, C} = erlang:now(),
     (A * 1000000 + B) * 1000000 + C.
