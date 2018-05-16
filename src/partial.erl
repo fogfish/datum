@@ -18,7 +18,7 @@
 %% N.B. if this module is to be used as a basis for transforms then
 %% all the error cases must be handled otherwise this module just crashes!
 
--export([parse_transform/2]).
+-export([parse_transform/2, unique/0]).
 
 parse_transform(Forms, _Options) ->
     forms(Forms).
@@ -752,4 +752,13 @@ partial_application_curry([], _, F0) ->
 %%
 %% unique variable
 uuid() ->
-   list_to_atom("_Vpa" ++ integer_to_list(erlang:unique_integer([monotonic, positive]))).
+   list_to_atom("_Vpa" ++ integer_to_list(unique())).
+
+-ifdef(NO_MONOTONIC).
+unique() ->
+    {A, B, C} = erlang:now(),
+    (A * 1000000 + B) * 1000000 + C.
+-else.
+unique() ->
+    erlang:unique_integer([monotonic, positive]).
+-endif.
