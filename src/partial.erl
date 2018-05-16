@@ -752,4 +752,13 @@ partial_application_curry([], _, F0) ->
 %%
 %% unique variable
 uuid() ->
-   list_to_atom("_Vpa" ++ integer_to_list(erlang:unique_integer([monotonic, positive]))).
+   list_to_atom("_Vpa" ++ integer_to_list(unique())).
+
+-ifdef(NO_MONOTONIC).
+unique() ->
+    {A, B, C} = erlang:now(),
+    (A * 1000000 + B) * 1000000 + C.
+-else.
+unique() ->
+    erlang:unique_integer([monotonic, positive]).
+-endif.
