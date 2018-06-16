@@ -45,9 +45,9 @@
 -export([
    id/1,
    const/1,
-   bh/1,
-   bt/1,
-   bf/1,
+   hbits/1,
+   tbits/1,
+   bits/1,
    hd/1,
    hd_om/1,
    tl/1, 
@@ -125,7 +125,7 @@ groups() ->
          [id, const]},
 
       {binary, [parallel],
-         [bh, bt, bf]},
+         [hbits, tbits, bits]},
 
       {list, [parallel],
          [hd, hd_om, tl, tl_om, traverse, takewith, takewith_om]},
@@ -221,22 +221,22 @@ const(_Config) ->
 %%%
 %%%----------------------------------------------------------------------------   
 
-bh(_Config) ->
-   Lens = lens:bh(8),
+hbits(_Config) ->
+   Lens = lens:hbits(8),
    List = <<"abc">>,
    law_get_put(Lens, List),
    law_put_get(Lens, <<"x">>, List),
    law_put_put(Lens, <<"x">>, <<"y">>, <<"ybc">>, List).
 
-bt(_Config) ->
-   Lens = lens:bt(16),
+tbits(_Config) ->
+   Lens = lens:tbits(16),
    List = <<"abc">>,
    law_get_put(Lens, List),
    law_put_get(Lens, <<"x">>, List),
    law_put_put(Lens, <<"x">>, <<"y">>, <<"aby">>, List).
 
-bf(_Config) ->
-   Lens = lens:bf(8, 8),
+bits(_Config) ->
+   Lens = lens:bits(8, 8),
    List = <<"abc">>,
    law_get_put(Lens, List),
    law_put_get(Lens, <<"x">>, List),

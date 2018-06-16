@@ -34,7 +34,7 @@
 -export([t1/0, t2/0, t3/0, ti/1]).
 -export([at/1, at/2]).
 -export([keylist/1, keylist/2, keylist/3, pair/1, pair/2]).
--export([bh/1, bt/1, bf/2]).
+-export([hbits/1, tbits/1, bits/2]).
 
 %%
 %% traverse
@@ -413,27 +413,27 @@ defined() ->
 %%%
 %%%------------------------------------------------------------------
 
--spec bh(_) -> lens(_, bitstring()).
+-spec hbits(_) -> lens(_, bitstring()).
 
-bh(X) 
+hbits(X) 
  when is_integer(X) ->
    fun(Fun, <<Head:X/bits, Tail/bits>>) ->
       fmap(fun(Value) -> <<Value/bits, Tail/bits>> end, Fun(Head))
    end.
 
--spec bt(_) -> lens(_, bitstring()).
+-spec tbits(_) -> lens(_, bitstring()).
 
-bt(X) 
+tbits(X) 
  when is_integer(X) ->
    fun(Fun, <<Head:X/bits, Tail/bits>>) ->
       fmap(fun(Value) -> <<Head/bits, Value/bits>> end, Fun(Tail))
    end.
 
--spec bf(_, _) -> lens(_, bitstring()).
+-spec bits(_, _) -> lens(_, bitstring()).
 
-bf(A, B)
- when is_integer(A), is_integer(B) ->
-   fun(Fun, <<Head:A/bits, Focus:B/bits, Tail/bits>>) ->
+bits(At, Length)
+ when is_integer(At), is_integer(Length) ->
+   fun(Fun, <<Head:At/bits, Focus:Length/bits, Tail/bits>>) ->
       fmap(fun(Value) -> <<Head/bits, Value/bits, Tail/bits>> end, Fun(Focus))
    end.
 
