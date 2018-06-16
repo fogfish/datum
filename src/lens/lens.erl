@@ -29,7 +29,7 @@
 
 %%
 %% lenses
--export([id/0]).
+-export([id/0, const/1]).
 -export([hd/0, hd/1, tl/0, tl/1]).
 -export([t1/0, t2/0, t3/0, ti/1]).
 -export([at/1, at/2]).
@@ -64,22 +64,22 @@
 
 %%
 %% identity functor
--spec id(a()) -> f(a()).
+-spec with_id(a()) -> f(a()).
 
-id(X) ->
+with_id(X) ->
    [id|X].
 
 %%
 %% const functor
--spec const(a()) -> f(a()).
+-spec with_const(a()) -> f(a()).
 
-const(X) ->
+with_const(X) ->
    [const|X].
 
 %%
 %% functor fmap implementation, see spec above
 fmap(Fun, [id|X]) -> 
-   id( Fun(X) );
+   with_id( Fun(X) );
 fmap(_,   [const|_] = X) -> 
    X.
 
@@ -89,7 +89,7 @@ fmap(_,   [const|_] = X) ->
 -spec map(fun( (a()) -> a() ), lens(), s()) -> s().
 
 map(Fun, Ln, S) ->
-   erlang:tl( Ln(fun(X) -> fmap(Fun, id(X)) end, S) ).
+   erlang:tl( Ln(fun(X) -> fmap(Fun, with_id(X)) end, S) ).
 
 
 %%
@@ -97,7 +97,7 @@ map(Fun, Ln, S) ->
 -spec get(lens(), s()) -> a().
 
 get(Ln, S) ->
-   erlang:tl( Ln(fun(X) -> fmap(undefined, const(X)) end, S) ).
+   erlang:tl( Ln(fun(X) -> fmap(undefined, with_const(X)) end, S) ).
 
 
 %%
@@ -127,7 +127,7 @@ iso(LensA, A, LensB, B) ->
 -spec apply(lens(), fun( (a()) -> a() ), s()) -> s().
 
 apply(Ln, Fun, S) ->
-   erlang:tl( Ln(fun(X) -> fmap(Fun, id(X)) end, S) ).
+   erlang:tl( Ln(fun(X) -> fmap(Fun, with_id(X)) end, S) ).
 
 
 %%
@@ -174,6 +174,14 @@ id() ->
       lens:fmap(fun(X) -> X end, Fun(Focus))
    end.
 
+%%
+%%
+-spec const(_) -> lens(_, _).
+
+const(X) ->
+   fun(Fun, _) ->
+      lens:fmap(fun(_) -> X end, Fun(X))
+   end.
 
 %%%------------------------------------------------------------------
 %%%

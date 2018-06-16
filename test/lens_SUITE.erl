@@ -44,6 +44,7 @@
 %% pure lens interface
 -export([
    id/1,
+   const/1,
    hd/1,
    hd_om/1,
    tl/1, 
@@ -117,7 +118,7 @@ all() ->
 groups() ->
    [
       {basic, [parallel],
-         [id]},
+         [id, const]},
 
       {list, [parallel],
          [hd, hd_om, tl, tl_om, traverse, takewith, takewith_om]},
@@ -202,6 +203,10 @@ id(_Config) ->
    law_put_get(Lens, a, Value),
    law_put_put(Lens, a, b, b, Value).
 
+const(_Config) ->
+   Lens = lens:const(a),
+   a = lens:get(Lens, 1),
+   a = lens:put(Lens, b, 1).
 
 %%%----------------------------------------------------------------------------   
 %%%
