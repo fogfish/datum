@@ -43,6 +43,7 @@
 %%
 %% pure lens interface
 -export([
+   id/1,
    hd/1,
    hd_om/1,
    tl/1, 
@@ -102,6 +103,7 @@
 %%%----------------------------------------------------------------------------   
 all() ->
    [
+      {group, basic},
       {group, list},
       {group, tuple},
       {group, map},
@@ -114,6 +116,9 @@ all() ->
 
 groups() ->
    [
+      {basic, [parallel],
+         [id]},
+
       {list, [parallel],
          [hd, hd_om, tl, tl_om, traverse, takewith, takewith_om]},
 
@@ -183,6 +188,19 @@ law_put_get(Lens, Value, Struct) ->
 %%          to very well behaved lenses.
 law_put_put(Lens, Value1, Value2, Expect, Struct) ->
    Expect = lens:put(Lens, Value2, lens:put(Lens, Value1, Struct)).
+
+%%%----------------------------------------------------------------------------   
+%%%
+%%% basic lenses 
+%%%
+%%%----------------------------------------------------------------------------   
+
+id(_Config) ->
+   Lens = lens:id(),
+   Value = 1,
+   law_get_put(Lens, Value),
+   law_put_get(Lens, a, Value),
+   law_put_put(Lens, a, b, b, Value).
 
 
 %%%----------------------------------------------------------------------------   

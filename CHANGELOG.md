@@ -2,6 +2,12 @@
 
 The library uses [semantic versions](http://semver.org) to identify stable releases. 
 
+## Release 4.4.0
+
+**Features**
+* Implements new lenses: identity (`lens:id/0`)
+
+
 ## Release 4.3.2
 
 **Features**
