@@ -28,11 +28,13 @@
 -export([fmap/2, apply/3, map/3, get/2, put/3, iso/2, isof/3, isob/3, iso/4]). 
 
 %%
-%% lenses  
+%% lenses
+-export([id/0, const/1]).
 -export([hd/0, hd/1, tl/0, tl/1]).
 -export([t1/0, t2/0, t3/0, ti/1]).
 -export([at/1, at/2]).
 -export([keylist/1, keylist/2, keylist/3, pair/1, pair/2]).
+-export([hbits/1, tbits/1, bits/2]).
 
 %%
 %% traverse
@@ -63,22 +65,22 @@
 
 %%
 %% identity functor
--spec id(a()) -> f(a()).
+-spec with_id(a()) -> f(a()).
 
-id(X) ->
+with_id(X) ->
    [id|X].
 
 %%
 %% const functor
--spec const(a()) -> f(a()).
+-spec with_const(a()) -> f(a()).
 
-const(X) ->
+with_const(X) ->
    [const|X].
 
 %%
 %% functor fmap implementation, see spec above
 fmap(Fun, [id|X]) -> 
-   id( Fun(X) );
+   with_id( Fun(X) );
 fmap(_,   [const|_] = X) -> 
    X.
 
@@ -88,7 +90,7 @@ fmap(_,   [const|_] = X) ->
 -spec map(fun( (a()) -> a() ), lens(), s()) -> s().
 
 map(Fun, Ln, S) ->
-   erlang:tl( Ln(fun(X) -> fmap(Fun, id(X)) end, S) ).
+   erlang:tl( Ln(fun(X) -> fmap(Fun, with_id(X)) end, S) ).
 
 
 %%
@@ -96,7 +98,7 @@ map(Fun, Ln, S) ->
 -spec get(lens(), s()) -> a().
 
 get(Ln, S) ->
-   erlang:tl( Ln(fun(X) -> fmap(undefined, const(X)) end, S) ).
+   erlang:tl( Ln(fun(X) -> fmap(undefined, with_const(X)) end, S) ).
 
 
 %%
@@ -126,7 +128,7 @@ iso(LensA, A, LensB, B) ->
 -spec apply(lens(), fun( (a()) -> a() ), s()) -> s().
 
 apply(Ln, Fun, S) ->
-   erlang:tl( Ln(fun(X) -> fmap(Fun, id(X)) end, S) ).
+   erlang:tl( Ln(fun(X) -> fmap(Fun, with_id(X)) end, S) ).
 
 
 %%
@@ -158,7 +160,29 @@ isof({Iso, _}, A, B) ->
 isob({_, Iso}, A, B) ->
    Iso(A, B).
 
+%%%------------------------------------------------------------------
+%%%
+%%% lenses 
+%%%
+%%%------------------------------------------------------------------
 
+%%
+%%
+-spec id() -> lens(_, _).
+
+id() ->
+   fun(Fun, Focus) ->
+      lens:fmap(fun(X) -> X end, Fun(Focus))
+   end.
+
+%%
+%%
+-spec const(_) -> lens(_, _).
+
+const(X) ->
+   fun(Fun, _) ->
+      lens:fmap(fun(_) -> X end, Fun(X))
+   end.
 
 %%%------------------------------------------------------------------
 %%%
@@ -383,6 +407,35 @@ defined() ->
          lens:fmap(fun(X) -> X end, Fun({ok, Value}))
    end.
 
+%%%------------------------------------------------------------------
+%%%
+%%% binary lenses 
+%%%
+%%%------------------------------------------------------------------
+
+-spec hbits(_) -> lens(_, bitstring()).
+
+hbits(X) 
+ when is_integer(X) ->
+   fun(Fun, <<Head:X/bits, Tail/bits>>) ->
+      fmap(fun(Value) -> <<Value/bits, Tail/bits>> end, Fun(Head))
+   end.
+
+-spec tbits(_) -> lens(_, bitstring()).
+
+tbits(X) 
+ when is_integer(X) ->
+   fun(Fun, <<Head:X/bits, Tail/bits>>) ->
+      fmap(fun(Value) -> <<Head/bits, Value/bits>> end, Fun(Tail))
+   end.
+
+-spec bits(_, _) -> lens(_, bitstring()).
+
+bits(At, Length)
+ when is_integer(At), is_integer(Length) ->
+   fun(Fun, <<Head:At/bits, Focus:Length/bits, Tail/bits>>) ->
+      fmap(fun(Value) -> <<Head/bits, Value/bits, Tail/bits>> end, Fun(Focus))
+   end.
 
 %%%------------------------------------------------------------------
 %%%
