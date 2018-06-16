@@ -5,7 +5,8 @@ The library uses [semantic versions](http://semver.org) to identify stable relea
 ## Release 4.4.0
 
 **Features**
-* Implements new lenses: identity (`lens:id/0`), constant (`lens:const/1`)
+* Implements basic lenses: identity (`lens:id/0`), constant (`lens:const/1`)
+* Implements binary lenses: head of binary (`lens:bh/1`), tail of binary (`lens:bt/`), bit focus (`lens:bf/2`)
 
 
 ## Release 4.3.2

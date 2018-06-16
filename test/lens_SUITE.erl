@@ -45,6 +45,9 @@
 -export([
    id/1,
    const/1,
+   bh/1,
+   bt/1,
+   bf/1,
    hd/1,
    hd_om/1,
    tl/1, 
@@ -105,6 +108,7 @@
 all() ->
    [
       {group, basic},
+      {group, binary},
       {group, list},
       {group, tuple},
       {group, map},
@@ -119,6 +123,9 @@ groups() ->
    [
       {basic, [parallel],
          [id, const]},
+
+      {binary, [parallel],
+         [bh, bt, bf]},
 
       {list, [parallel],
          [hd, hd_om, tl, tl_om, traverse, takewith, takewith_om]},
@@ -207,6 +214,34 @@ const(_Config) ->
    Lens = lens:const(a),
    a = lens:get(Lens, 1),
    a = lens:put(Lens, b, 1).
+
+%%%----------------------------------------------------------------------------   
+%%%
+%%% binary lenses 
+%%%
+%%%----------------------------------------------------------------------------   
+
+bh(_Config) ->
+   Lens = lens:bh(8),
+   List = <<"abc">>,
+   law_get_put(Lens, List),
+   law_put_get(Lens, <<"x">>, List),
+   law_put_put(Lens, <<"x">>, <<"y">>, <<"ybc">>, List).
+
+bt(_Config) ->
+   Lens = lens:bt(16),
+   List = <<"abc">>,
+   law_get_put(Lens, List),
+   law_put_get(Lens, <<"x">>, List),
+   law_put_put(Lens, <<"x">>, <<"y">>, <<"aby">>, List).
+
+bf(_Config) ->
+   Lens = lens:bf(8, 8),
+   List = <<"abc">>,
+   law_get_put(Lens, List),
+   law_put_get(Lens, <<"x">>, List),
+   law_put_put(Lens, <<"x">>, <<"y">>, <<"ayc">>, List).
+
 
 %%%----------------------------------------------------------------------------   
 %%%
