@@ -56,7 +56,7 @@ Monads are defined in terms of `unit`, `bind` and `fail` operations
 Let's show these operation at "do"-notation 
 
 ```erlang
--compile({parse_transform, monad}).
+-compile({parse_transform, category}).
 f() ->
    [m_identity ||      %% (Monad m)
       X <- one(),      %% (>>=) :: m a -> (a -> m b) -> m b
