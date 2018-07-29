@@ -22,28 +22,27 @@
 %%   The shard allocation algorithm uses token approach to bind shard to key.
 -module(ring).
 
--export([
-   new/0
-  ,new/1
-  ,size/1
-  ,n/1
-  ,address/2
-  ,address/1
-  ,whereis/2
-  ,predecessors/2
-  ,predecessors/3
-  ,successors/2
-  ,successors/3
-  ,members/1
-  ,i/1
-  ,dump/1
-  ,whois/2
-  ,get/2
-  ,join/3
-  ,leave/2
+-include_lib("datum/include/datum.hrl").
 
-  ,hashes/2
-  ,lookup/2
+-export([
+   new/0,
+   new/1,
+   size/1,
+   n/1,
+   q/1,
+   address/2,
+   address/1,
+   whereis/2,
+   predecessors/2,
+   predecessors/3,
+   successors/2,
+   successors/3,
+   members/1,
+   i/1,
+   dump/1,
+   whois/2,
+   join/2,
+   leave/2
 ]).
 
 -type(key()  :: any()).
@@ -58,7 +57,7 @@
   ,hash   = sha       :: atom()       % hash algorithm (md5, sha)
   ,size   =   0       :: integer()    % number of nodes
   ,tokens = undefined :: datum:tree() % token table
-  ,keys   = []        :: [{addr(), {key(), val()}}]
+  ,keys   = []        :: [key()]      % set of keys
 }).
 
 %% token
@@ -67,10 +66,6 @@
   ,addr   = undefined :: integer()    % ring address of hash generation 
   ,key    = undefined :: any()        % key claiming shard
 }).
-
-%%
-%% ring feature: do not allow to claim neighbor tokens
-% -define(CONFIG_NFILTER, true).
 
 
 %%
@@ -112,18 +107,25 @@ init([], R) ->
    empty(R).
 
 %%
-%% number of ring members
--spec size(#ring{}) -> integer().
-
-size(#ring{}=R) ->
-   length(R#ring.keys).
-
-%%
 %% number of replica
 -spec n(#ring{}) -> integer().
 
-n(#ring{n=N}) ->
+n(#ring{n = N}) ->
    N.
+
+%%
+%% number of shards
+-spec q(#ring{}) -> integer().
+
+q(#ring{q = Q}) ->
+   Q.
+
+%%
+%% number of ring members
+-spec size(#ring{}) -> integer().
+
+size(#ring{keys = Keys}) ->
+   length(Keys).
 
 %%
 %% maps key into address on the ring
@@ -133,17 +135,18 @@ address(X, #ring{}=R)
  when is_integer(X) ->
    X rem ringtop(R);
 
-address({hash, X}, #ring{m=M}) ->
+address({hash, X}, #ring{m = M})
+ when is_binary(X) ->
    <<Addr:M, _/bits>> = X,
    Addr;
 
-address(X, #ring{}=R)
+address(X, #ring{hash = Mthd}=R)
  when is_binary(X) ->
-   Hash = crypto:hash(R#ring.hash, X),
+   Hash = crypto:hash(Mthd, X),
    address({hash, Hash}, R);
 
-address(X, #ring{}=R) ->
-   Hash = crypto:hash(R#ring.hash, term_to_binary(X)),
+address(X, #ring{hash = Mthd}=R) ->
+   Hash = crypto:hash(Mthd, term_to_binary(X)),
    address({hash, Hash}, R).
 
 %%
@@ -159,18 +162,18 @@ address(#ring{}=R) ->
 %% lookup the key position on the ring
 -spec whereis(key() | addr(), #ring{}) -> {addr(), key()}.
 
-whereis(Addr, #ring{}=R)
+whereis(Addr, #ring{} = Ring)
  when is_integer(Addr) ->
-   {Addr0, T} = lookup(Addr, R),
-   {Addr0, T#t.key};
+   {Shard, #t{key = Key}} = lookup(Addr, Ring),
+   {Shard, Key};
 whereis(Key, #ring{}=R) ->
    whereis(address(Key, R), R).
    
-lookup(Addr, #ring{}=R)
+lookup(Addr, #ring{tokens = Tokens})
  when is_integer(Addr) ->
-   case bst:dropwhile(fun(Shard) -> Shard < Addr end, R#ring.tokens) of
-      nil  -> 
-         bst:min(R#ring.tokens);
+   case bst:dropwhile(fun({Shard, _}) -> Shard < Addr end, Tokens) of
+      ?tree()  -> 
+         bst:min(Tokens);
       Tree -> 
          bst:min(Tree)
    end.
@@ -178,21 +181,22 @@ lookup(Addr, #ring{}=R)
 %%
 %% return list of N - predecessors slots
 %% those N slots are claimed by hopefully distinct N nodes 
-%% [ {X,Y} || {_, X} <- ring:predecessors(3, 0, R), Y <- [ring:get(X, R)] ].
+%% [ {X,Y} || {_, X} <- ring:predecessors(3, 0, R) ].
 -spec predecessors(key() | addr(), #ring{}) -> [{addr(), key()}].
 -spec predecessors(integer(), key() | addr(), #ring{}) -> [{addr(), key()}].
 
-predecessors(Key, #ring{}=R) ->
-   predecessors(R#ring.n, Key, R).
+predecessors(Key, #ring{n = N} = Ring)->
+   predecessors(N, Key, Ring).
 
-predecessors(_, _Addr, #ring{keys=[]}) ->
+predecessors(_, _, #ring{keys = []}) ->
    [];
+
 predecessors(N,  Addr, #ring{tokens = Tokens})
  when is_integer(Addr) ->
-   {Head, Tail} = bst:splitwith(fun(Addr0) -> Addr0 < Addr end, Tokens),
+   {Head, Tail} = bst:splitwhile(fun({Shard, _}) -> Shard < Addr end, Tokens),
    List = (
       catch bst:foldr(
-         fun(Key, Val, Acc) -> 
+         fun({Key, Val}, Acc) -> 
             accumulate(N, Key, Val, Acc) 
          end, 
          [], 
@@ -200,7 +204,7 @@ predecessors(N,  Addr, #ring{tokens = Tokens})
    ),
    lists:reverse(
       catch bst:foldr(
-         fun(Key, Val, Acc) -> 
+         fun({Key, Val}, Acc) -> 
             accumulate(N, Key, Val, Acc) 
          end, 
          List, 
@@ -214,7 +218,7 @@ predecessors(N, Key, Ring) ->
 %% 
 %% return list of N - successors slots
 %% those N slots are claimed by hopefully distinct N nodes 
-%% [ {X,Y} || {_, X} <- ring:successors(3, 0, R), Y <- [ring:get(X, R)] ].
+%% [ {X,Y} || {_, X} <- ring:successors(3, 0, R) ].
 -spec successors(key() | addr(), #ring{}) ->[{addr(), key()}].
 -spec successors(integer(), key() | addr(), #ring{}) -> [{addr(), key()}].
 
@@ -225,10 +229,10 @@ successors(_,_Addr, #ring{keys=[]}) ->
    [];
 successors(N, Addr, #ring{tokens = Tokens})
  when is_integer(Addr) ->
-   {Head, Tail} = bst:splitwith(fun(Addr0) -> Addr0 < Addr end, Tokens),
+   {Head, Tail} = bst:splitwhile(fun({Shard, _}) -> Shard < Addr end, Tokens),
    List = (
       catch bst:foldl(
-         fun(Key, Val, Acc) -> 
+         fun({Key, Val}, Acc) -> 
             accumulate(N, Key, Val, Acc) 
          end, 
          [], 
@@ -237,7 +241,7 @@ successors(N, Addr, #ring{tokens = Tokens})
    ),
    lists:reverse(
       catch bst:foldl(
-         fun(Key, Val, Acc) -> 
+         fun({Key, Val}, Acc) -> 
             accumulate(N, Key, Val, Acc) 
          end, 
          List, 
@@ -252,21 +256,21 @@ successors(N, Key, Ring) ->
 %% return list of ring members
 -spec members(#ring{}) -> [{key(), val()}].
 
-members(#ring{}=S) ->
-   [X || {_, X} <- S#ring.keys].
+members(#ring{keys = Keys}) ->
+   [X || {_, X} <- Keys].
 
 %%
 %% return ring statistic
 -spec i(#ring{}) -> [{key(), integer()}].
 
 i(#ring{tokens=Tokens}) ->
-   bst:foldr(fun i/3, [], Tokens).
+   bst:foldr(fun i/2, [], Tokens).
 
-i(_, #t{h  = -1, key = Key}, Acc) -> 
+i({_, #t{h  = -1, key = Key}}, Acc) -> 
    orddict:update_counter(undefined, 1,
       orddict:update_counter(Key, 1, Acc)
    );
-i(_, #t{key=Key}, Acc) -> 
+i({_, #t{key=Key}}, Acc) -> 
    orddict:update_counter(Key, 1, Acc).
 
 %%
@@ -274,11 +278,11 @@ i(_, #t{key=Key}, Acc) ->
 -spec dump(#ring{}) -> [{addr(), key()}].
 
 dump(#ring{tokens=Tokens}) ->
-   bst:foldr(fun dump/3, [], Tokens).
+   bst:foldr(fun dump/2, [], Tokens).
 
-dump(Addr, #t{h  = -1}, Acc) -> 
+dump({Addr, #t{h  = -1}}, Acc) -> 
    [{Addr, undefined} | Acc];
-dump(Addr, #t{key=Key}, Acc) -> 
+dump({Addr, #t{key=Key}}, Acc) -> 
    [{Addr, Key} | Acc].
 
 
@@ -286,152 +290,160 @@ dump(Addr, #t{key=Key}, Acc) ->
 %% return list of addresses associated with given key
 -spec whois(any() | function(), #ring{}) -> [{addr(), key()}].
 
-whois(Key, #ring{keys = Keys, tokens = Tokens}=R) ->
-   Addr = address(Key, R),
-   case lists:keyfind(Addr, 1, Keys) of
-      false ->
-         [];
-      {_, {Key0, _}} ->
-         bst:foldr(
-            fun
-            (X, #t{key = Key1}, Acc) when Key1 =:= Key0 -> 
-               [{X, Key1}|Acc]; 
-            (_, _, Acc) -> 
-               Acc 
-            end,
-            [],
-            Tokens
-         )
-   end.
-
-%%
-%% return value associated with given key
--spec get(key(), #ring{}) -> val().
-
-get(Key, #ring{}=R) ->
-   Addr = address(Key, R),
-   case lists:keyfind(Addr, 1, R#ring.keys) of
-      false ->
-         exit(badarg);
-      {_X, {_Key, Val}} ->
-         Val
-   end.
-
-
-%%
-%% join key-value to the ring
--spec join(key(), val(), #ring{}) -> #ring{}.
-
-join(Key, Val, #ring{}=R) ->
-   join(address(Key, R), Key, Val, R).
-
-join(Addr, Key, Val, #ring{keys = Keys}=R) ->
-   case lists:keyfind(Addr, 1, R#ring.keys) of
-      %% new key, update token allocation
-      false ->
-         repair(
-            join_token(hashes(Key, R), Key, 
-               R#ring{
-                  keys = orddict:store(Addr, {Key, Val}, Keys)
-               }
-            )
-         );
-      %% existed key update value only
-      _     ->
-         R#ring{
-            keys = orddict:store(Addr, {Key, Val}, R#ring.keys)
-         }
-   end.
-
-join_token([{I, Addr}|Tail], Key, #ring{tokens = Tokens}=R) ->
-   %% allocate hash token from address space
-   case lookup(Addr, R) of
-      %% slot is not allocated to any one
-      {Addr0, #t{addr = undefined}} ->
-         join_token(Tail, Key,
-            R#ring{tokens = bst:insert(Addr0, #t{h = I, addr = Addr, key = Key}, Tokens)}
-         );
-
-      %% Key own master shard, claim it unconditionally
-      {Addr0, #t{h = X}} when X =/= 0, I =:= 0 ->
-         join_token(Tail, Key,
-            R#ring{tokens = bst:insert(Addr0, #t{h = I, addr = Addr, key = Key}, Tokens)}
-         );
-
-      %% Key collides with allocated shard, smaller address wins
-      {Addr0, #t{h = X, addr =Y}} when X =:= I, Y > Addr ->
-         join_token(Tail, Key,
-            R#ring{tokens = bst:insert(Addr0, #t{h = I, addr = Addr, key = Key}, Tokens)}
-         );
-
-      %% Key collides with allocated shard, smaller hash wins
-      %% @todo: evaluate role of N-hash generation on allocation
-      % {Addr0, #t{h = X, addr = Y}} when X =/= 0, Y > Addr ->
-      {Addr0, #t{h = X, addr = _}} when X > I ->
-         join_token(Tail, Key, 
-            R#ring{tokens = bst:insert(Addr0, #t{h = I, addr = Addr, key = Key}, Tokens)}
-         );
-
-      %% shard is allocated, previous key has priority
-      _ ->
-         join_token(Tail, Key, R)
-   end;
-
-join_token([], _Key, #ring{}=R) ->
-   R.
-
-%%
-%% repair ring, N-hashes set do not claim all shards
-%% some tokens collides to one shard, thus ring has unallocated shards 
-%% repair operation allocates these empty shards to keys in consistent manner
-repair(#ring{tokens = Tokens0}=R) ->
-   {Tkns, _} = bst:mapfoldl(
-      fun(_, #t{h = H, key = Key}=T, Acc) ->
-         case H of
-            -1 ->
-               {T#t{key = Acc}, Acc};
-            _  ->
-               {T, Key}
-         end
+whois(Key, #ring{tokens = Tokens}) ->
+   bst:foldr(
+      fun
+      ({Shard, #t{key = X}}, Acc) when X =:= Key -> 
+         [{Shard, Key} | Acc]; 
+      (_, Acc) -> 
+         Acc 
       end,
-      undefined,
-      Tokens0
-   ),
-   Tokens = case bst:min(Tkns) of
-      {_, #t{key = undefined}} ->
-         {_, #t{key = Key}} = bst:max(Tkns),
-         bst:map(
-            fun(_, #t{key = undefined}=T) -> T#t{key = Key}; (_, T) -> T end, 
-            Tkns
-         );
-      _ ->
-         Tkns
-   end,
-   R#ring{tokens = Tokens}.
+      [],
+      Tokens
+   ).
+
+
+has(Addr, #ring{keys = Keys}) ->
+   orddict:is_key(Addr, Keys).
 
 
 %%
-%% leave node from ring
+%% Join an actor to topology, the operation causes restructure of the topology
+%% according its internal optimization algorithms and returns a new topology.
+%%
+%% A key space is divided into equally sized shards, there are Q shards.
+%% Each actor claims about Q/N shards (Q number of shards, N number of keys/nodes).
+%% The shard re-allocation process is triggered every time when new actor
+%% joins the topology. The ring algorithm uses consistent schema to allocate shards
+%% (e.g. other algorithms uses random allocation). Each actor builds a consistent,
+%% ordered list of allocations that is used to resolve allocation conflicts.
+%%
+-spec join(key(), #ring{}) -> #ring{}.
+
+join(Key, #ring{} = Ring)
+ when is_binary(Key) ->
+   join(address(Key, Ring), Key, Ring).
+
+join(Addr, Key, Ring) ->
+   join(has(Addr, Ring), Addr, Key, Ring).
+
+join(false, Addr, Key, Ring) ->
+   repair(allocate(hashes(Key, Ring), append(Addr, Key, Ring)));
+
+join(_, _, _, Ring) ->
+   Ring.
+
+%%
+%%
+append(Addr, Key, #ring{keys = Keys} = Ring) ->
+   Ring#ring{
+      keys = orddict:store(Addr, Key, Keys)
+   }.
+
+%%
+%% return N generation hashes, derived from key
+%% the function ensure that there is N-shard distance
+hashes(Key, #ring{q=Q, hash=Mthd}=Ring)
+ when is_binary(Key) ->
+   lists:sort(
+      fun(A, B) -> A#t.addr =< B#t.addr end, 
+      naddr(nhash(lists:seq(0, 2 * Q), Mthd, Key), Key, Ring)
+   ).
+
+nhash([I|Tail], Mthd, Key) ->
+   Hash = crypto:hash(Mthd, Key),
+   [{I, Hash} | nhash(Tail, Hash, Mthd, Key)].
+nhash([I|Tail], Hash0, Mthd, Key) ->
+   Hash = crypto:hash(Mthd, [Key, Hash0]),
+   [{I, Hash} | nhash(Tail, Hash, Mthd, Key)];
+nhash([], _Hash0, _Mthd, _Key) ->
+   [].
+
+naddr(Hashes, Key, Ring) ->
+   [#t{h = I, addr = address({hash, Hash}, Ring), key = Key} || {I, Hash} <- Hashes].
+
+%%
+%%
+allocate(Hashes, Ring) ->
+   lists:foldl(fun allocate_hash/2, Ring, Hashes).
+
+allocate_hash(#t{addr = Addr} = Hash, Ring) ->
+   allocate_hash_to_shard(lookup(Addr, Ring), Hash, Ring).
+
+%% shard is not allocated to any one
+allocate_hash_to_shard({Shard, #t{addr = undefined}}, Hash, Ring) ->
+   allocate_shard(Shard, Hash, Ring);
+
+%% this is a master shard of key (key is shard owner), claim it unconditionally
+allocate_hash_to_shard({Shard, #t{h = X}}, #t{h = 0} = Hash, Ring)
+ when X =/= 0 ->
+   allocate_shard(Shard, Hash, Ring);
+
+%% Key collides with allocated shard, smaller address wins
+allocate_hash_to_shard({Shard, #t{h = X, addr = Y}}, #t{h = I, addr = Addr} = Hash, Ring) 
+ when X =:= I, Y > Addr ->
+   allocate_shard(Shard, Hash, Ring);
+
+%% Key collides with allocated shard, smaller hash wins
+allocate_hash_to_shard({Shard, #t{h = X}}, #t{h = I} = Hash, Ring) 
+ when X > I ->
+   allocate_shard(Shard, Hash, Ring);
+
+%% shard is allocated, previous key has higher priority
+allocate_hash_to_shard(_, _, Ring) ->
+   Ring.
+
+allocate_shard(Shard, Hash, #ring{tokens = Tokens} = Ring) ->
+   Ring#ring{tokens = bst:insert(Shard, Hash, Tokens)}.
+
+%%
+%% N-hashes set do not claim all shards, some tokens collides to one shard, 
+%% thus ring has unallocated shards. repair operation allocates these empty 
+%% shards to keys in consistent manner
+repair(#ring{tokens = Tokens} = Ring) ->
+   Ring#ring{
+      tokens = repair_head_shards(
+         bst:mapfoldl(fun repair_shard/2, undefined, Tokens)
+      )
+   }.
+
+%% shard is not allocate, let's temporary assign previous key as holder 
+repair_shard({_, #t{h = -1} = Hash}, Key) ->
+   {Hash#t{key = Key}, Key};
+
+%% shard is allocated, use its key as candidate 
+repair_shard({_, #t{key = Key} = Hash}, _) ->
+   {Hash, Key}.
+
+%% head shards might not be allocated, we need to use ring tail 
+repair_head_shards({Tokens, _}) ->
+   repair_head_shards(bst:min(Tokens), Tokens).
+
+repair_head_shards({_, #t{key = undefined}}, Tokens) ->
+   {_, #t{key = Key}} = bst:max(Tokens),
+   bst:map(
+      fun({_, #t{key = undefined} = T}) -> T#t{key = Key}; ({_, T}) -> T end, 
+      Tokens
+   );
+
+repair_head_shards(_, Tokens) ->
+   Tokens.
+
+
+%%
+%% Leave an actor from topology, the operation causes restructure of the topology
+%% according its internal optimization algorithms and returns a new topology.
+%% Note, semantic of leave operation do not assume leave due to transitive failures.
+%%
 -spec leave(key() | addr(), #ring{}) -> #ring{}.
 
-leave(Addr, #ring{}=R)
- when is_integer(Addr) ->
-   case lists:keytake(Addr, 1, R#ring.keys) of
-      false ->
-         R;
-      {value, {_, {_Key, _}}, Keys} ->
-         %% re-join remaining keys to empty ring
-         lists:foldl(
-            fun({_, {Key, Val}}, Acc) ->
-               join(Key, Val, Acc)
-            end,
-            empty(R),
-            Keys
-         )
-   end;
-
-leave(Key, #ring{}=R) ->
-   leave(address(Key, R), R).
+leave(Key, #ring{keys = Keys} = Ring)
+ when is_binary(Key) ->
+   lists:foldl(
+      fun join/2,
+      empty(Ring),
+      [X || {_, X} <- orddict:erase(address(Key, Ring), Keys)]
+   ).
 
 %%%------------------------------------------------------------------
 %%%
@@ -441,8 +453,8 @@ leave(Key, #ring{}=R) ->
 
 %%
 %% ring 
-ringtop(#ring{}=R) ->
-   trunc(math:pow(2, R#ring.m)).
+ringtop(#ring{m = Modulo}) ->
+   trunc(math:pow(2, Modulo)).
 
 %%
 %% empties ring
@@ -461,61 +473,4 @@ accumulate(N,  Addr, #t{key = Key}, Acc)
    [{Addr, Key} | Acc];
 accumulate(_, _Addr, _T, Acc) ->
    throw(Acc).
-
-%%
-%% return N generation hashes, derived from key
-%% the function ensure that there is N-shard distance
-hashes(Key, #ring{q=Q, hash=Mthd}=Ring) ->
-   List = lists:sort(
-      fun({_, A}, {_, B}) -> A =< B end, 
-      naddr(nhash(lists:seq(0, 2 * Q), Mthd, s(Key)), Ring)
-   ),
-   nfilter(List, Ring).
-
-nhash([I|Tail], Mthd, Key) ->
-   Hash = crypto:hash(Mthd, Key),
-   [{I, Hash} | nhash(Tail, Hash, Mthd, Key)].
-nhash([I|Tail], Hash0, Mthd, Key) ->
-   Hash = crypto:hash(Mthd, [Key, Hash0]),
-   [{I, Hash} | nhash(Tail, Hash, Mthd, Key)];
-nhash([], _Hash0, _Mthd, _Key) ->
-   [].
-
-naddr([{I, Hash}|Tail], Ring) ->
-   Addr = address({hash, Hash}, Ring),
-   [{I, Addr} | naddr(Tail, Ring)];
-naddr([], _Ring) ->
-   [].
-
--ifndef(CONFIG_NFILTER).
-nfilter(List, _Ring) ->
-   List.
--else.
-nfilter([{I, Addr}|T], #ring{n = N, q = Q}=Ring) ->
-   {Addr0, _} = lookup(Addr, Ring),
-   Skip = Addr0 + N * (ringtop(Ring) div Q),
-   Tail = lists:dropwhile(fun({_, X}) -> X < Skip end, T),
-   [{I, Addr} | nfilter(Tail, Ring)];
-
-nfilter([], _Ring) ->
-   [].
--endif.
-
-
-s(X)
- when is_binary(X) ->
-   X;
-s(X)
- when is_list(X) ->
-   erlang:list_to_binary(X);
-s(X)
- when is_integer(X) ->
-   erlang:list_to_binary(erlang:integer_to_list(X));
-s(X)
- when is_atom(X) ->
-   erlang:list_to_binary(erlang:atom_to_list(X)).
-
-
-
-
 

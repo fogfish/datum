@@ -35,6 +35,7 @@
 -type foldable(T)    :: T.
 -type traversable(T) :: T.
 -type maplike()      :: _.
+-type topological()  :: _.
 
 -type tree(T)   :: {t, compare(T), _}.
 -type heap(T)   :: {h, compare(T), _}.
@@ -61,6 +62,7 @@
    foldable/1,
    traversable/1,
    maplike/0,
+   topological/0,
 
    tree/1,
    heap/1,
