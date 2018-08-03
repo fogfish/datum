@@ -21,7 +21,6 @@
 %%
 -module(lens).
 -compile({parse_transform, partial}).
--compile({parse_transform, category}).
 
 %%
 %% lens primitives
@@ -48,7 +47,7 @@
 -export_type([lens/0]).
 
 -compile({no_auto_import,[apply/3, hd/1, tl/1]}).
--compile([inline, {inline_size, 128}, inline_list_funcs]).
+% -compile([inline, {inline_size, 128}, inline_list_funcs]).
 
 %%
 %% data types
@@ -323,7 +322,7 @@ pair(Key) ->
    pair(Key, undefined).
 
 pair(Key, Om) ->
-  fun(Fun, List) ->
+   fun(Fun, List) ->
       H = case lists:keyfind(Key, 1, List) of
          false -> Om;
          {_, Value} -> Value
@@ -351,12 +350,12 @@ traverse() ->
          fun(X, Acc) ->
             '++'(fmap(fun(Y) -> Y end, Fun(X)), Acc)
          end,
-         [],
+         [const|[]],
          List
       )
    end.
 
-'++'([F|X], [])    -> [F|[X]];
+'++'([F|X], [_])   -> [F|[X]];
 '++'([F|H], [F|T]) -> [F|[H|T]].
 
 
