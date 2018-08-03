@@ -72,8 +72,8 @@
 %% create new token ring
 %%
 %% Options:
-%%   {m,    integer()} - ring module power of 2 is required
-%%   {n,    integer()} - number of replicas
+%%   {m,    integer()}  - ring module power of 2 is required
+%%   {n,    integer()}  - number of replicas
 %%   {q,    integer()}  - number of shard 
 %%   {hash, md5 | sha1} - ring hashing algorithm
 -spec new() -> #ring{}.
