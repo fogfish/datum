@@ -53,6 +53,7 @@
    tl/1, 
    tl_om/1,
    traverse/1,
+   traverse_empty/1,
    takewith/1, 
    takewith_om/1,
 
@@ -128,7 +129,7 @@ groups() ->
          [hbits, tbits, bits]},
 
       {list, [parallel],
-         [hd, hd_om, tl, tl_om, traverse, takewith, takewith_om]},
+         [hd, hd_om, tl, tl_om, traverse, traverse_empty, takewith, takewith_om]},
 
       {tuple, [parallel],
          [t1, t2, t3, ti]},
@@ -287,6 +288,15 @@ traverse(_Config) ->
    List = [1, 2, 3],
    List = lens:get(Lens, List),
    [x, x, x] = lens:put(Lens, x, List).
+
+traverse_empty(_Config) ->
+   Lens = lens:c(lens:traverse(), lens:t1()),
+   List = [{1}, {2}, {3}],
+   [1, 2, 3] = lens:get(Lens, List),
+   [] = lens:get(Lens, []),
+
+   [{1}, {1}, {1}] = lens:put(Lens, 1, List),
+   [] = lens:put(Lens, 1, []).
 
 takewith(_Config) ->
    Lens = lens:takewith(fun erlang:is_atom/1),
