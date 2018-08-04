@@ -66,7 +66,9 @@
    unfold/2,      %% O(n)
 
    min/1,         %% O(log n)
-   max/1          %% O(log n)
+   max/1,         %% O(log n)
+   mapfoldl/3,    %% O(n)
+   mapfoldr/3     %% O(n)
 ]).
 
 
@@ -546,34 +548,34 @@ max_el(?None) ->
 
 %%
 %% map and fold function over tree
-% -spec mapfoldl(function(), any(), datum:tree()) -> {datum:tree(), any()}.
-%
-% mapfoldl(Fun, Acc0, {t, Ord, T}) ->
-%    {Tx, Acc} = mapfoldl_el(Fun, Acc0, T),
-%    {{t, Ord, Tx}, Acc}.
-%
-% mapfoldl_el(_Fun, Acc0, ?NULL) ->
-%    {?NULL, Acc0};
-% mapfoldl_el(Fun, Acc0, {A, K, V, B}) ->
-%    {Ax, AccA} = mapfoldl_el(Fun, Acc0, A),
-%    {Vx, AccK} = Fun(K, V, AccA),
-%    {Bx, AccB} = mapfoldl_el(Fun, AccK, B),
-%    {{Ax, K, Vx, Bx}, AccB}.
+-spec mapfoldl(function(), any(), datum:tree()) -> {datum:tree(), any()}.
+
+mapfoldl(Fun, Acc0, #tree{tree = T0} = Tree) ->
+   {T1, Acc} = mapfoldl_el(Fun, Acc0, T0),
+   {Tree#tree{tree = T1}, Acc}.
+
+mapfoldl_el(_Fun, Acc0, ?None) ->
+   {?None, Acc0};
+mapfoldl_el(Fun, Acc0, {A, K, V, B}) ->
+   {Ax, AccA} = mapfoldl_el(Fun, Acc0, A),
+   {Vx, AccK} = Fun({K, V}, AccA),
+   {Bx, AccB} = mapfoldl_el(Fun, AccK, B),
+   {{Ax, K, Vx, Bx}, AccB}.
 
 
 %%
 %% map and fold function over tree
-% -spec mapfoldr(function(), any(), datum:tree()) -> {datum:tree(), any()}.
-%
-% mapfoldr(Fun, Acc0, {t, Ord, T}) ->
-%    {Tx, Acc} = mapfoldr_el(Fun, Acc0, T),
-%    {{t, Ord, Tx}, Acc}.
-%
-% mapfoldr_el(_Fun, Acc0, ?NULL) ->
-%    {?NULL, Acc0};
-% mapfoldr_el(Fun, Acc0, {A, K, V, B}) ->
-%    {Bx, AccB} = mapfoldl_el(Fun, Acc0, B),
-%    {Vx, AccK} = Fun(K, V, AccB),
-%    {Ax, AccA} = mapfoldl_el(Fun, AccK, A),
-%    {{Ax, K, Vx, Bx}, AccA}.
+-spec mapfoldr(function(), any(), datum:tree()) -> {datum:tree(), any()}.
+
+mapfoldr(Fun, Acc0, #tree{tree = T0} = Tree) ->
+   {T1, Acc} = mapfoldr_el(Fun, Acc0, T0),
+   {Tree#tree{tree = T1}, Acc}.
+
+mapfoldr_el(_Fun, Acc0, ?None) ->
+   {?None, Acc0};
+mapfoldr_el(Fun, Acc0, {A, K, V, B}) ->
+   {Bx, AccB} = mapfoldr_el(Fun, Acc0, B),
+   {Vx, AccK} = Fun({K, V}, AccB),
+   {Ax, AccA} = mapfoldr_el(Fun, AccK, A),
+   {{Ax, K, Vx, Bx}, AccA}.
 

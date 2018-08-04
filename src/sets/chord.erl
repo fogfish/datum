@@ -24,6 +24,7 @@
   ,new/1
   ,size/1
   ,n/1
+  ,q/1
   ,address/2
   ,address/1
   ,whereis/2
@@ -35,8 +36,7 @@
   ,stats/1
   ,filter/2
   ,whois/2
-  ,get/2
-  ,join/3
+  ,join/2
   ,leave/2
 ]).
 
@@ -51,7 +51,7 @@
   ,q      =   8       :: integer() % number of ranges (shards)
   ,hash   = md5       :: atom()    % hash algorithm
   ,size   =   0       :: integer() % size of ring
-  ,keys   = []        :: [{addr(), {key(), val()}}]
+  ,keys   = []        :: [{addr(), key()}]
 }).
 
 %%
@@ -93,18 +93,25 @@ init([], R) ->
    empty(R).
 
 %%
+%% number of replica
+-spec n(#ring{}) -> integer().
+
+n(#ring{n = N}) ->
+   N.
+
+%%
+%% number of shards
+-spec q(#ring{}) -> integer().
+
+q(#ring{q = Q}) ->
+   Q.
+
+%%
 %% number of hashed nodes
 -spec size(#ring{}) -> integer().
 
 size(#ring{}=R) ->
    length(R#ring.keys).
-
-%%
-%% number of replica
--spec n(#ring{}) -> integer().
-
-n(#ring{n=N}) ->
-   N.
 
 %%
 %% maps key into address on the ring
@@ -142,7 +149,7 @@ address(#ring{}=R) ->
 
 whereis(Addr, #ring{}=R)
  when is_integer(Addr) ->
-   {X, {Key, _Val}} = case lists:dropwhile(fun({Shard, _}) -> Shard < Addr end, R#ring.keys) of
+   {X, Key} = case lists:dropwhile(fun({Shard, _}) -> Shard < Addr end, R#ring.keys) of
       []   -> hd(R#ring.keys);
       List -> hd(List)
    end,
@@ -173,7 +180,7 @@ predecessors(N,  Addr, #ring{}=R)
       _ ->
          lists:reverse(Head) ++ lists:reverse(Tail)
    end,
-   [{X, Key} || {X, {Key,_Val}} <- List];
+   [{X, Key} || {X, Key} <- List];
 
 predecessors(N, Key, Ring) ->
    predecessors(N, address(Key, Ring), Ring).
@@ -200,7 +207,7 @@ successors(N, Addr, #ring{}=R)
       _ ->
          Tail ++ Head
    end,
-   [{X, Key} || {X, {Key,_Val}} <- List];
+   [{X, Key} || {X, Key} <- List];
 
 successors(N, Key, Ring) ->
    successors(N, address(Key, Ring), Ring).
@@ -247,35 +254,20 @@ whois(Key, #ring{}=R) ->
    case lists:keyfind(Addr, 1, R#ring.keys) of
       false ->
          [];
-      {Addr, {Key, _Val}} ->
+      {Addr, Key} ->
          [{Addr, Key}]
    end.
-
-%%
-%% return value associated with given key
--spec get(key(), #ring{}) -> val().
-
-get(Key, #ring{}=R) ->
-   Addr = address(Key, R),
-   case lists:keyfind(Addr, 1, R#ring.keys) of
-      false ->
-         exit(badarg);
-      {_X, {_Key, Val}} ->
-         Val
-   end.
-
-
 
 %%
 %% join key-value to the ring
 -spec join(key(), val(), #ring{}) -> #ring{}.
 
-join(Key, Val, #ring{}=R) ->
-   join(address(Key, R), Key, Val, R).
+join(Key, #ring{}=R) ->
+   join(address(Key, R), Key, R).
 
-join(Addr, Key, Val, #ring{}=R) ->
+join(Addr, Key, #ring{}=R) ->
    R#ring{
-      keys = orddict:store(Addr, {Key, Val}, R#ring.keys)
+      keys = orddict:store(Addr, Key, R#ring.keys)
    }.
 
 %%
