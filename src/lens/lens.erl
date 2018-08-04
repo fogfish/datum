@@ -47,7 +47,7 @@
 -export_type([lens/0]).
 
 -compile({no_auto_import,[apply/3, hd/1, tl/1]}).
-% -compile([inline, {inline_size, 128}, inline_list_funcs]).
+-compile([inline, {inline_size, 128}, inline_list_funcs]).
 
 %%
 %% data types
