@@ -24,7 +24,7 @@
 
 %%
 %% lens primitives
--export([fmap/2, apply/3, map/3, get/2, put/3, iso/2, isof/3, isob/3, iso/4]). 
+-export([fmap/2, apply/3, map/3, get/2, put/3, iso/2, iso/1, isof/3, isob/3, iso/4]). 
 
 %%
 %% lenses
@@ -115,6 +115,32 @@ put(Ln, A, S) ->
 iso(LensA, A, LensB, B) ->
    lens:put(LensB, lens:get(LensA, A), B).
 
+%%
+%% helper function of lens pairs product combinator
+-spec iso([{lens(), lens()}]) -> {lens(), lens()}.
+
+iso(Lenses) ->
+   {lens:p([A || {A, _} <- Lenses]), lens:p([B || {_, B} <- Lenses])}.
+
+iso(LensesA, LensesB)
+ when is_list(LensesA), is_list(LensesB) ->
+   {lens:p(LensesA), lens:p(LensesB)}.
+
+
+%%
+%% applies forward isomorphism from A to B
+-spec isof({_, _}, _, _) -> _.
+
+isof({LensA, LensB}, A, B) ->
+   iso(LensA, A, LensB, B).
+
+%%
+%% applies backward isomorphism from B to A
+-spec isob({_, _}, _, _) -> _.
+
+isob({LensA, LensB}, B, A) ->
+   iso(LensB, B, LensA, A).
+
 
 %%%------------------------------------------------------------------
 %%%
@@ -130,34 +156,7 @@ apply(Ln, Fun, S) ->
    erlang:tl( Ln(fun(X) -> fmap(Fun, with_id(X)) end, S) ).
 
 
-%%
-%% Use lens:iso/4
- -spec iso(lens(), lens()) -> {_, _}.
 
-iso(LensesA, LensesB)
- when is_list(LensesA), is_list(LensesB) ->
-   iso(lens:p(LensesA), lens:p(LensesB));
-iso(LensesA, LensesB) ->
-   {morphism(LensesA, LensesB), morphism(LensesB, LensesA)}.
-
-morphism(LensesA, LensesB) ->
-   fun(Source, Target) ->
-      lens:put(LensesB, lens:get(LensesA, Source), Target)
-   end.
-
-%%
-%% applies forward isomorphism from A to B
--spec isof({_, _}, _, _) -> _.
-
-isof({Iso, _}, A, B) ->
-   Iso(A, B).
-
-%%
-%% applies backward isomorphism from B to A
--spec isob({_, _}, _, _) -> _.
-
-isob({_, Iso}, A, B) ->
-   Iso(A, B).
 
 %%%------------------------------------------------------------------
 %%%
