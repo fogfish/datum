@@ -122,6 +122,10 @@ iso(LensA, A, LensB, B) ->
 iso(Lenses) ->
    {lens:p([A || {A, _} <- Lenses]), lens:p([B || {_, B} <- Lenses])}.
 
+iso(LensesA, LensesB)
+ when is_list(LensesA), is_list(LensesB) ->
+   {lens:p(LensesA), lens:p(LensesB)}.
+
 
 %%
 %% applies forward isomorphism from A to B
@@ -152,20 +156,6 @@ apply(Ln, Fun, S) ->
    erlang:tl( Ln(fun(X) -> fmap(Fun, with_id(X)) end, S) ).
 
 
-%%
-%% Use lens:iso/4
- -spec iso(lens(), lens()) -> {_, _}.
-
-iso(LensesA, LensesB)
- when is_list(LensesA), is_list(LensesB) ->
-   iso(lens:p(LensesA), lens:p(LensesB));
-iso(LensesA, LensesB) ->
-   {morphism(LensesA, LensesB), morphism(LensesB, LensesA)}.
-
-morphism(LensesA, LensesB) ->
-   fun(Source, Target) ->
-      lens:put(LensesB, lens:get(LensesA, Source), Target)
-   end.
 
 
 %%%------------------------------------------------------------------
