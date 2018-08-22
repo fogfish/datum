@@ -641,16 +641,16 @@ apply(_Config) ->
 -record(user,    {name = undefined, address = #address{}}).
 
 iso(_Config) ->
-   Iso = lens:iso(
-      [
-         lens:ti(#user.name),
-         lens:c(lens:ti(#user.address), lens:ti(#address.street))
-      ], 
-      [
-         lens:at(name),
+   Iso = lens:iso([
+      {
+         lens:ti(#user.name), 
+         lens:at(name)
+      },
+      {
+         lens:c(lens:ti(#user.address), lens:ti(#address.street)),
          lens:c(lens:at(address, #{}), lens:at(street))
-      ]
-   ),
+      }
+   ]),
    Rec = #user{name = "Verner", address = #address{street = "Blumenstraße"}},
    Map = #{name => "Verner", address => #{street => "Blumenstraße"}},
 
