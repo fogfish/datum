@@ -9,7 +9,7 @@
 -export(['.'/3, chain/1, curry/1]).
 
 %% category transformers
--export([unit/1, fail/1, require/4, sequence/2, flatten/2, optionT/2, optionT/3, eitherT/2]).
+-export([unit/1, fail/1, require/4, sequence/2, flatten/2, optionT/2, optionT/3, eitherT/2, tryT/1]).
 
 
 '/='({call, Ln, Ff0, Fa0}) ->
@@ -191,6 +191,21 @@ eitherT({ok, _} = X, _) ->
    X;
 eitherT({error, _} = X, _) ->
    X.
+
+%%
+%%
+-spec tryT( _ ) -> datum:either(_).
+
+tryT({'EXIT', {Reason, _Stack}}) ->
+   {error, Reason};
+tryT({'EXIT', Reason}) ->
+   {error, Reason};
+tryT({ok, _} = Result) ->
+   Result;
+tryT({error, _} = Result) ->
+   Result;
+tryT(Result) ->
+   {ok, Result}.
 
 
 

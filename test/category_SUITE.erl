@@ -112,6 +112,7 @@
    transformer_identity_flatten/1,
    transformer_identity_option/1,
    transformer_identity_either/1,
+   transformer_identity_try/1,
 
    transformer_option_unit/1,
    transformer_option_fail/1,
@@ -120,6 +121,7 @@
    transformer_option_flatten/1,
    transformer_option_option/1,
    transformer_option_either/1,
+   transformer_option_try/1,
 
    transformer_undefined_unit/1,
    transformer_undefined_fail/1,
@@ -128,6 +130,7 @@
    transformer_undefined_flatten/1,
    transformer_undefined_option/1,
    transformer_undefined_either/1,
+   transformer_undefined_try/1,
 
    transformer_either_unit/1,
    transformer_either_fail/1,
@@ -136,6 +139,7 @@
    transformer_either_flatten/1,
    transformer_either_option/1,
    transformer_either_either/1,
+   transformer_either_try/1,
 
    transformer_reader_unit/1,
    transformer_reader_fail/1,
@@ -144,6 +148,7 @@
    transformer_reader_flatten/1,
    transformer_reader_option/1,
    transformer_reader_either/1,
+   transformer_reader_try/1,
 
    transformer_kleisli_io/1
 ]).
@@ -244,6 +249,7 @@ groups() ->
          transformer_identity_flatten,
          transformer_identity_option,
          transformer_identity_either,
+         transformer_identity_try,
 
          transformer_option_unit,
          transformer_option_fail,
@@ -252,6 +258,7 @@ groups() ->
          transformer_option_flatten,
          transformer_option_option,
          transformer_option_either,
+         transformer_option_try,
 
          transformer_undefined_unit,
          transformer_undefined_fail,
@@ -260,6 +267,7 @@ groups() ->
          transformer_undefined_flatten,
          transformer_undefined_option,
          transformer_undefined_either,
+         transformer_undefined_try,
 
          transformer_either_unit,
          transformer_either_fail,
@@ -268,6 +276,7 @@ groups() ->
          transformer_either_flatten,
          transformer_either_option,
          transformer_either_either,
+         transformer_either_try,
 
          transformer_reader_unit,
          transformer_reader_fail,
@@ -276,6 +285,7 @@ groups() ->
          transformer_reader_flatten,
          transformer_reader_option,
          transformer_reader_either,
+         transformer_reader_try,
 
          transformer_kleisli_io
      ]}
@@ -719,6 +729,12 @@ laws_kleisli_associativity_2(_) ->
    ]
 ).
 
+-define(tryT(Type, X), 
+   [Type ||
+      cats:tryT(X),
+      cats:unit(_)
+   ]
+).
 
 %%
 %%
@@ -746,6 +762,11 @@ transformer_identity_either(_) ->
    1 = ?eitherT(identity, {ok, 1}),
    undefined = ?eitherT(identity, {error, badarg}).
 
+transformer_identity_try(_) ->
+   1 = ?tryT(identity, 1),
+   a = ?tryT(identity, throw(a)),
+   ok = try ?tryT(identity, exit(badarg)) catch _:badarg -> ok end,
+   ok = try ?tryT(identity, 1 / 0) catch _:badarith -> ok end.
 
 %%
 %%
@@ -773,6 +794,14 @@ transformer_option_option(_) ->
 transformer_option_either(_) ->
    1 = ?eitherT(option, {ok, 1}),
    undefined = ?eitherT(option, {error, badarg}).
+
+transformer_option_try(_) ->
+   1 = ?tryT(option, 1),
+   undefined = ?tryT(option, undefined),
+   a = ?tryT(option, throw(a)),
+   undefined = ?tryT(option, exit(badarg)),
+   undefined = ?tryT(option, 1 / 0).
+
 
 
 %%
@@ -802,6 +831,13 @@ transformer_undefined_option(_) ->
 transformer_undefined_either(_) ->
    1 = ?eitherT(undefined, {ok, 1}),
    undefined = ?eitherT(undefined, {error, badarg}).
+
+transformer_undefined_try(_) ->
+   1 = ?tryT(undefined, 1),
+   undefined = ?tryT(undefined, undefined),
+   a = ?tryT(undefined, throw(a)),
+   undefined = ?tryT(undefined, exit(badarg)),
+   undefined = ?tryT(undefined, 1 / 0).
 
 
 %%
@@ -847,6 +883,13 @@ transformer_either_either(_) ->
    {ok, 1} = ?eitherT(either, {ok, 1}),
    {error, badarg} = ?eitherT(either, {error, badarg}).
 
+transformer_either_try(_) ->
+   {ok, 1} = ?tryT(either, {ok, 1}),
+   {error, badarg} = ?tryT(either, {error, badarg}),
+   {ok, a} = ?tryT(either, throw(a)),
+   {error, badarg} = ?tryT(either, exit(badarg)),
+   {error, badarith} = ?tryT(either, 1 / 0).
+
 
 %%
 %%
@@ -890,6 +933,14 @@ transformer_reader_option(_) ->
 transformer_reader_either(_) ->
    {ok, 1} = (?eitherT(reader, {ok, 1}))(#{}),
    {error, badarg} = (?eitherT(reader, {error, badarg}))(#{}).
+
+transformer_reader_try(_) ->
+   {ok, 1} = (?tryT(reader, {ok, 1}))(#{}),
+   {error, badarg} = (?tryT(reader, {error, badarg}))(#{}),
+   {ok, a} = (?tryT(reader, throw(a)))(#{}),
+   {error, badarg} = (?tryT(reader, exit(badarg)))(#{}),
+   {error, badarith} = (?tryT(reader, 1 / 0))(#{}).
+
 
 %%
 transformer_kleisli_io(_) ->

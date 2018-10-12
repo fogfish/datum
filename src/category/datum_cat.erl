@@ -191,6 +191,9 @@ c_arrow(_Cat, {call, _, {remote, _, {atom, _, cats}, {atom, _, unit}}, _} = Expr
 c_arrow(_Cat, {call, _, {remote, _, {atom, _, cats}, {atom, _, fail}}, _} = Expr) ->
    Expr;
 
+c_arrow(_Cat, {call, Ln, {remote, _, {atom, _, cats}, {atom, _, tryT}} = TryT, [Expr]}) ->
+   {call, Ln, TryT, [{'catch', Ln, Expr}]};
+
 c_arrow(Cat, {call, Ln, {remote, Ln, {atom, _, cats}, {atom, _, _} = Fn}, Fa}) ->
    Cat:'/='({call, Ln, {remote, Ln, {atom, Ln, cats}, Fn}, Fa});
 

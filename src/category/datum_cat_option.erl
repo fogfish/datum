@@ -9,7 +9,7 @@
 -export(['.'/3, chain/1, curry/1]).
 
 %% category transformers
--export([unit/1, fail/1, require/3, sequence/1, flatten/1, optionT/1, eitherT/1]).
+-export([unit/1, fail/1, require/3, sequence/1, flatten/1, optionT/1, eitherT/1, tryT/1]).
 
 %%
 %%
@@ -143,4 +143,15 @@ eitherT({ok, X}) ->
    X;
 eitherT({error, _}) ->
    undefined.
+
+%%
+%%
+-spec tryT( _ ) -> datum:option(_).
+
+tryT({'EXIT', {_Reason, _Stack}}) ->
+   undefined;
+tryT({'EXIT', _Reason}) ->
+   undefined;
+tryT(Result) ->
+   Result.
 
