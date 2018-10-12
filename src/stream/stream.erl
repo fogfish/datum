@@ -70,6 +70,7 @@
    cycle/1
 ]).
 
+
 %%
 %% inline stream primitives
 -compile({inline,[new/0, new/1, new/2, head/1, tail/1]}).
@@ -93,11 +94,13 @@ new() ->
 new(Head) ->
    new(Head, fun stream:new/0).
 
+new(Head, #stream{} = Stream) ->
+   #stream{head = Head, tail = fun() -> Stream end};
 new(Head, Fun)
  when is_function(Fun, 0) ->
    #stream{head = Head, tail = Fun};
-new(Head, #stream{} = Stream) ->
-   #stream{head = Head, tail = fun() -> Stream end};
+new(Head, {_M, _F, _A} = Gen) ->
+   #stream{head = Head, tail = Gen};
 new(Head, ?None) ->
    new(Head).
 
@@ -124,6 +127,8 @@ head(#stream{head = Head}) ->
 
 tail(?None) ->
    ?None;
+tail(#stream{tail = {M, F, A}}) ->
+   M:F(A);
 tail(#stream{tail = Fun}) ->
    Fun().
 

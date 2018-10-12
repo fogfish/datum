@@ -55,7 +55,8 @@
    zip/1,
    zipwith/1,
    reverse/1,
-   cycle/1   
+   cycle/1,
+   ints/1
 ]).
 
 %%
@@ -122,21 +123,32 @@ new(_) ->
    {stream, 1, Null} = stream:new(1),
 
    Fun = fun() -> stream:new() end,
-   {stream, 1, Fun} = stream:new(1, Fun).
+   {stream, 1, Fun} = stream:new(1, Fun),
+   {stream, 1, {?MODULE, ints, 1}} = stream:new(1, {?MODULE, ints, 1}).
+
 
 empty(_) ->
    ?stream() = stream:new().
 
 %%
 head(_Config) ->
-   Stream = stream:new(1, fun() -> stream:new(1) end),
-   1 = stream:head(Stream).
+   StreamA = stream:new(1, fun() -> stream:new(1) end),
+   1 = stream:head(StreamA),
+
+   StreamB = stream:new(1, {?MODULE, ints, 1}),
+   1 = stream:head(StreamB).
+
 
 %%
 tail(_Config) ->
    Null = fun stream:new/0,
-   Stream = stream:new(1, fun() -> stream:new(2) end),
-   {stream, 2, Null} = stream:tail(Stream).
+
+   StreamA = stream:new(1, fun() -> stream:new(2) end),
+   {stream, 2, Null} = stream:tail(StreamA),
+
+   StreamB = stream:new(1, {?MODULE, ints, 1}),
+   {stream, 1, {?MODULE, ints, 2}} = stream:tail(StreamB),
+   {stream, 2, {?MODULE, ints, 3}} = stream:tail(stream:tail(StreamB)).
 
 %%
 is_empty(_Config) ->
@@ -393,3 +405,6 @@ sunique(false, Stream) ->
 sunique(true, Stream) ->
    Stream.
 
+
+ints(X) ->
+   stream:new(X, {?MODULE, ints, X + 1}).
