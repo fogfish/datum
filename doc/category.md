@@ -146,6 +146,21 @@ The library defines transformers
 %%
 %% transforms nested objects into object of category
 -spec flatten(object(object(...))) -> object().
+
+%%
+%% Transforms `option` category into object of given category, 
+%% it maps meaningful value into itself, `undefined` value into failure object.
+-spec optionT(_, option(_)) -> _.
+
+%%
+%% Transforms `either` category into object of given category,
+%% it maps right branch into meaningful value,
+%% left branch to failure object
+-spec eitherT(either(_, _)) -> undefined | _.
+
+%%
+%% lifts failure and exceptions into object of category.
+-spec tryT(_) -> _.
 ```
 
 
@@ -183,20 +198,6 @@ The identity category chains ordinary functions.
 g(f()).
 ```
 
-The category implements transformers
-
-```erlang
-%% Transforms `option` category into `identity`, 
-%% it maps meaningful value into itself,
-%% `undefined` value into `undefined` atom.
--spec optionT(_, option(_)) -> _.
-
-%% Transforms `either` category into `identity`, 
-%% it maps right branch into meaningful value,
-%% left branch to `undefined`
--spec eitherT(either(_, _)) -> undefined | _.
-```
-
 
 ### Option
 
@@ -217,15 +218,6 @@ case f() of
    X ->
       g(X)
 ends
-```
-
-The category implements transformers
-
-```erlang
-%% Transforms `either` category into `option`, 
-%% it maps right branch into meaningful value,
-%% left branch to `undefined`
--spec eitherT(either(_, _)) -> option(_).
 ```
 
 
@@ -251,16 +243,6 @@ case f() of
 ends
 ```
 
-The category implements transformers
-
-```erlang
-%% Transforms `either` category into `option`, 
-%% it maps right branch into meaningful value,
-%% left branch to `undefined`
--spec eitherT(either(_, _)) -> option(_).
-```
-
-
 
 ### Either
 
@@ -281,15 +263,6 @@ case f() of
    {ok, X} ->
       g(X)
 ends
-```
-
-The category implements transformers
-
-```erlang
-%% Transforms `option` category into `either`, 
-%% it maps meaningful value into right branch,
-%% `undefined` value into left.
--spec optionT(_, option(_)) -> either(_, _).
 ```
 
 ### Reader
@@ -318,15 +291,6 @@ fun(Env) ->
       {ok, X} ->
          g(X, Env)
    end.
-```
-
-The category implements transformers
-
-```erlang
-%% Transforms `option` category into `either`, 
-%% it maps meaningful value into right branch,
-%% `undefined` value into left.
--spec optionT(_, option(_)) -> either(_, _).
 ```
 
 
