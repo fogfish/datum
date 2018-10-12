@@ -1,7 +1,7 @@
 {application, datum,
    [
       {description, "pure functional and generic programming"},
-      {vsn,         "4.3.6"},
+      {vsn,         "4.4.0"},
       {modules,     []},
       {registered,  []},
       {applications,[
