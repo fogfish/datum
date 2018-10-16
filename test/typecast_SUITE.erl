@@ -28,7 +28,8 @@
    cast_unicode_characters/1,
    cast_atom/1,
    cast_new_atom/1,
-   cast_hexdec/1
+   cast_hexdec/1,
+   cast_timestamp/1
 ]).
 
 
@@ -115,4 +116,8 @@ cast_hexdec(_) ->
    <<"000f">> = typecast:x([0,15]),
    <<"f">> = typecast:x(15),
    undefined = try typecast:x({15}) catch _:_ -> undefined end.
+
+cast_timestamp(_) ->
+   {1539,713652,691476} = typecast:t(typecast:i({1539,713652,691476})),
+   {1539,713652,691476} = typecast:t(1539713652691476).
 

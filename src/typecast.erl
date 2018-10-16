@@ -27,9 +27,11 @@
    lc/1,
    a/1,
    atom/1,
-   x/1
+   x/1,
+   t/1
 ]).
 
+-define(TBASE,          1000000).
 
 %%
 %% typecast scalar data type to integer or fails
@@ -46,7 +48,7 @@ btoi(X) -> ltoi(btol(X)).
 atoi(X) -> ltoi(atol(X)).
 ltoi(X) -> list_to_integer(X).
 ftoi(X) -> erlang:trunc(X).
-ttoi({A2, A1, A0}) -> A0 + 1000000 * (A1 + 1000000 * A2).
+ttoi({A2, A1, A0}) -> A0 + ?TBASE * (A1 + ?TBASE * A2).
 
 %%
 %% typecast scalar data type to double in normal (fixed-point) notation or fails
@@ -182,3 +184,17 @@ btoh(X) ->
 
 itoh(X) ->
    << <<(if A < $A -> A; A > $A -> $a + (A - $A) end):8>> || <<A:8>> <= erlang:integer_to_binary(X, 16) >>.
+
+%%
+%% typecast scalar data type to timestamp or fails
+-spec t(_) -> {integer(), integer(), integer()}.
+
+t(X) when is_integer(X) -> itot(X).
+
+itot(X) ->
+   A0  = X rem ?TBASE,
+   Y   = X div ?TBASE,
+   A1  = Y rem ?TBASE,
+   A2  = Y div ?TBASE,
+   {A2, A1, A0}.
+
