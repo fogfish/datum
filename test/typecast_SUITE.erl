@@ -46,6 +46,7 @@ cast_int(_) ->
    1 = typecast:i("1"),
    1 = typecast:i(1),
    1 = typecast:i(1.0),
+   1539713652691476 = typecast:i({1539,713652,691476}),
    undefined = try typecast:i({1}) catch _:_ -> undefined end.
 
 cast_float(_) ->

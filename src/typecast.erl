@@ -39,12 +39,14 @@ i(X) when is_binary(X)  -> btoi(X);
 i(X) when is_atom(X)    -> atoi(X);
 i(X) when is_list(X)    -> ltoi(X);
 i(X) when is_integer(X) -> X;
-i(X) when is_float(X)   -> ftoi(X).
+i(X) when is_float(X)   -> ftoi(X);
+i({A, B, C} = X) when is_integer(A), is_integer(B), is_integer(C) -> ttoi(X).
 
 btoi(X) -> ltoi(btol(X)).
 atoi(X) -> ltoi(atol(X)).
 ltoi(X) -> list_to_integer(X).
-ftoi(X) -> erlang:trunc(X). 
+ftoi(X) -> erlang:trunc(X).
+ttoi({A2, A1, A0}) -> A0 + 1000000 * (A1 + 1000000 * A2).
 
 %%
 %% typecast scalar data type to double in normal (fixed-point) notation or fails
