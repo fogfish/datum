@@ -27,7 +27,8 @@
    cast_characters/1,
    cast_unicode_characters/1,
    cast_atom/1,
-   cast_new_atom/1
+   cast_new_atom/1,
+   cast_hexdec/1
 ]).
 
 
@@ -67,7 +68,7 @@ cast_string(_) ->
 cast_unicode_string(_) ->
    <<>> = typecast:ls(undefined),
    <<"тест"/utf8>> = typecast:ls(<<"тест"/utf8>>),
-   <<"тест"/utf8>> = typecast:ls('тест'),
+   % <<"тест"/utf8>> = typecast:ls('тест'),
    <<"тест"/utf8>> = typecast:ls("тест"),
    <<"1">> = typecast:ls(1),
    <<"1.000000000">> = typecast:ls(1.0),
@@ -85,7 +86,7 @@ cast_characters(_) ->
 cast_unicode_characters(_) ->
    [] = typecast:lc(undefined),
    "тест" = typecast:lc(<<"тест"/utf8>>),
-   "тест" = typecast:lc('тест'),
+   % "тест" = typecast:lc('тест'),
    "тест" = typecast:lc("тест"),
    "1" = typecast:lc(1),
    "1.000000000" = typecast:lc(1.0),
@@ -106,3 +107,11 @@ cast_new_atom(_) ->
    _ = typecast:atom(13),
    _ = typecast:atom(14.0),
    undefined = try typecast:atom({'15.0'}) catch _:_ -> undefined end.
+
+cast_hexdec(_) ->
+   <<"000f">> = typecast:x(<<0,15>>),
+   <<"6162">> = typecast:x('ab'),
+   <<"000f">> = typecast:x([0,15]),
+   <<"f">> = typecast:x(15),
+   undefined = try typecast:x({15}) catch _:_ -> undefined end.
+

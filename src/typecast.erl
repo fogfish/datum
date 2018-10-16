@@ -26,7 +26,8 @@
    c/1,
    lc/1,
    a/1,
-   atom/1
+   atom/1,
+   x/1
 ]).
 
 
@@ -165,3 +166,17 @@ ltoaa(X) -> list_to_atom(X).
 itoaa(X) -> ltoaa(itol(X)).
 ftoaa(X) -> ltoaa(ftol(X)).
 
+%%
+%% typecast scalar data type to hexadecimal or fails
+-spec x(_) -> binary().
+
+x(X) when is_binary(X)  -> btoh(X);
+x(X) when is_atom(X)    -> btoh(atos(X));
+x(X) when is_list(X)    -> btoh(ltos(X));
+x(X) when is_integer(X) -> itoh(X).
+
+btoh(X) ->
+   << <<(if A < 10 -> $0 + A; A >= 10 -> $a + (A - 10) end):8>> || <<A:4>> <= X >>.
+
+itoh(X) ->
+   << <<(if A < $A -> A; A > $A -> $a + (A - $A) end):8>> || <<A:8>> <= erlang:integer_to_binary(X, 16) >>.
