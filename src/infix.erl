@@ -702,27 +702,27 @@ type_list([]) -> [].
 %%%------------------------------------------------------------------   
 
 hook_infix({op, Line, '*', {op, _, '*', {var, _, '_'}, {atom, _, _} = Op}, R0}) ->
-    lpartial(Op, Line, uuid(), expr(R0));
+    lpartial({remote, Line, Op, {atom, Line, append}}, Line, uuid(), expr(R0));
 
 hook_infix({op, Line, '*', {op, _, '*', L0, {atom, _, _} = Op}, {var, _, '_'}}) ->
-    rpartial(Op, Line, expr(L0), uuid());
+    rpartial({remote, Line, Op, {atom, Line, append}}, Line, expr(L0), uuid());
 
 hook_infix({op, Line, '*', {op, _, '*', L0, {atom, _, _} = Op}, R0}) ->
     L1 = expr(L0),
     R1 = expr(R0),
-    {call, Line, Op, [L1, R1]};
+    {call, Line, {remote, Line, Op, {atom, Line, append}}, [L1, R1]};
 
 
 hook_infix({op, Line, '/', {op, _, '/', {var, _, '_'}, {atom, _, _} = Op}, R0}) ->
-    lpartial({remote, Line, Op, {atom, Line, append}}, Line, uuid(), expr(R0));
+    lpartial(Op, Line, uuid(), expr(R0));
 
 hook_infix({op, Line, '/', {op, _, '/', L0, {atom, _, _} = Op}, {var, _, '_'}}) ->
-    rpartial({remote, Line, Op, {atom, Line, append}}, Line, expr(L0), uuid());
+    rpartial(Op, Line, expr(L0), uuid());
 
 hook_infix({op, Line, '/', {op, _, '/', L0, {atom, _, _} = Op}, R0}) ->
     L1 = expr(L0),
     R1 = expr(R0),
-    {call, Line, {remote, Line, Op, {atom, Line, append}}, [L1, R1]};
+    {call, Line, Op, [L1, R1]};
 
 
 
