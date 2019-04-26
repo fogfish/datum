@@ -4,17 +4,15 @@
 -module(generic).
 
 -export([
-    to/2
-,   toL/2
-,   from/3
-,   fromL/3
+    from/2
+,   to/3
 ,   parse_transform/2
 ]).
 
 
--spec to([atom()], tuple()) -> map().
+-spec from([atom()], tuple()) -> map().
 
-to(Fields, Struct) ->
+from(Fields, Struct) ->
     maps:from_list(
         [{Key, Value} ||
             {Key, Value} <- lists:zip(
@@ -26,32 +24,11 @@ to(Fields, Struct) ->
         ]
     ).
 
--spec toL([atom()], tuple()) -> map().
+-spec to(atom(), [atom()], map()) -> tuple().
 
-toL(Fields, Struct) ->
-    maps:from_list(
-        [{typecast:s(Key), Value} ||
-            {Key, Value} <- lists:zip(
-                Fields,
-                tl(tuple_to_list(Struct))
-            ),
-            Value /= undefined,
-            Value /= null
-        ]
-    ).
-
--spec from(atom(), [atom()], map()) -> tuple().
-
-from(Type, Fields, Struct) ->
+to(Type, Fields, Struct) ->
     list_to_tuple([Type | 
-      [maps:get(X, Struct, undefined) || X <- Fields]]
-    ).
-
--spec fromL(atom(), [atom()], map()) -> tuple().
-
-fromL(Type, Fields, Struct) ->
-    list_to_tuple([Type | 
-      [maps:get(typecast:s(X), Struct, undefined) || X <- Fields]]
+        [maps:get(X, Struct, undefined) || X <- Fields]]
     ).
 
 %%%------------------------------------------------------------------
@@ -543,11 +520,11 @@ expr({named_fun,Loc,Name,Cs}) ->
 %%
 %%
 expr({call, Ln, 
-    {remote, _, {atom, _, generic}, {atom, _, to}},
+    {remote, _, {atom, _, generic}, {atom, _, from}},
     [{record, _, {var, _, _} = Struct, Type, _}]
 }) ->
     {call, Ln,
-        {remote, Ln, {atom, Ln, generic}, {atom, Ln, to}},
+        {remote, Ln, {atom, Ln, generic}, {atom, Ln, from}},
         [
             {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]},
             expr(Struct)
@@ -555,37 +532,11 @@ expr({call, Ln,
     };
 
 expr({call, Ln, 
-    {remote, _, {atom, _, generic}, {atom, _, to}},
+    {remote, _, {atom, _, generic}, {atom, _, from}},
     [{record, _, Type, _} = Struct]
 }) ->
     {call, Ln,
-        {remote, Ln, {atom, Ln, generic}, {atom, Ln, to}},
-        [
-            {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]},
-            expr(Struct)
-        ]
-    };
-
-%%
-%%
-expr({call, Ln, 
-    {remote, _, {atom, _, genericL}, {atom, _, to}},
-    [{record, _, {var, _, _} = Struct, Type, _}]
-}) ->
-    {call, Ln,
-        {remote, Ln, {atom, Ln, generic}, {atom, Ln, toL}},
-        [
-            {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]},
-            expr(Struct)
-        ]
-    };
-
-expr({call, Ln, 
-    {remote, _, {atom, _, genericL}, {atom, _, to}},
-    [{record, _, Type, _} = Struct]
-}) ->
-    {call, Ln,
-        {remote, Ln, {atom, Ln, generic}, {atom, Ln, toL}},
+        {remote, Ln, {atom, Ln, generic}, {atom, Ln, from}},
         [
             {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]},
             expr(Struct)
@@ -599,20 +550,7 @@ expr({call, Ln,
     [Struct]
 }) ->
     {call, Ln,
-        {remote, Ln, {atom, Ln, generic}, {atom, Ln, from}},
-        [
-            {atom, Ln, Type},
-            {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]},
-            expr(Struct)
-        ]
-    };
-
-expr({call, Ln,
-    {remote, _, {atom, _, genericL}, {atom, _, Type}},
-    [Struct]
-}) ->
-    {call, Ln,
-        {remote, Ln, {atom, Ln, generic}, {atom, Ln, fromL}},
+        {remote, Ln, {atom, Ln, generic}, {atom, Ln, to}},
         [
             {atom, Ln, Type},
             {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]},

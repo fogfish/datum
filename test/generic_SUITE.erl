@@ -22,11 +22,9 @@
 
 -export([all/0]).
 -export([
-   struct_to_generic/1
+   syntax_generic/1
+,  struct_to_generic/1
 ,  generic_to_struct/1
-,  struct_to_labeled/1
-,  labeled_to_struct/1
-
 ]).
 
 -record(adt, {a, b, c}).
@@ -41,19 +39,28 @@ all() ->
 
 %%
 %%
+syntax_generic(_) ->
+   ok = transform("generic:from(#adt{a = 1})."),
+   ok = transform("generic:from(X#adt{})."),
+   ok = transform("generic:adt(#{a => 1})."),
+   ok = transform("generic:adt(X).").
+
+
+%%
+%%
 struct_to_generic(_) ->
    #{
       a := 1,
       b := <<"test">>,
       c := 2.0
-   } = generic:to(#adt{a = 1, b = <<"test">>, c = 2.0}),
+   } = generic:from(#adt{a = 1, b = <<"test">>, c = 2.0}),
 
    X = #adt{a = 1, b = <<"test">>, c = 2.0},
    #{
       a := 1,
       b := <<"test">>,
       c := 2.0
-   } = generic:to(X#adt{}).
+   } = generic:from(X#adt{}).
 
 %%
 %%
@@ -71,34 +78,17 @@ generic_to_struct(_) ->
       c = 2.0
    } = generic:adt(X).
 
-%%
-%%
-struct_to_labeled(_) ->
-   #{
-      <<"a">> := 1,
-      <<"b">> := <<"test">>,
-      <<"c">> := 2.0
-   } = genericL:to(#adt{a = 1, b = <<"test">>, c = 2.0}),
 
-   X = #adt{a = 1, b = <<"test">>, c = 2.0},
-   #{
-      <<"a">> := 1,
-      <<"b">> := <<"test">>,
-      <<"c">> := 2.0
-   } = genericL:to(X#adt{}).
+%%%------------------------------------------------------------------
+%%%
+%%% helpers
+%%%
+%%%------------------------------------------------------------------   
 
-%%
-%%
-labeled_to_struct(_) ->
-   #adt{
-      a = 1,
-      b = <<"test">>,
-      c = 2.0
-   } = genericL:adt(#{<<"a">> => 1, <<"b">> => <<"test">>, <<"c">> => 2.0}),
+transform(Code) ->
+   {ok, Parsed, _} = erl_scan:string(Code),
+   {ok, Forms} = erl_parse:parse_exprs(Parsed),
+   Fun  = [{function, 1, a, 1, [{clause, 1, [], [], Forms}]}],
+   [{function, _, _, _, _}] = generic:parse_transform(Fun, []),
+   ok.
 
-   X = #{<<"a">> => 1, <<"b">> => <<"test">>, <<"c">> => 2.0},
-   #adt{
-      a = 1,
-      b = <<"test">>,
-      c = 2.0
-   } = genericL:adt(X).

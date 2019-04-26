@@ -17,15 +17,16 @@
 
 The [feature overview](doc/features.md) provides an introduction to datum features, use-cases and reasoning of they existence:
 
-* data structures with common behavior: **foldable**, **traversable** and **map-like** including 
-* pure functional **data types**: binary search tree, red-black tree, heap, queues, streams and others
+* notation for `option` and `either` types
+* data structures with common behavior: **foldable**, **traversable** and **map-like**. 
+* pure functional **data types**: binary search tree, red-black tree, heap, queues, and others
+* **streams** or lazy lists are a sequential data structure that contains on demand computed elements.
 * resembles concept of getters and setters ([**lens**](doc/lens.md)) for complex algebraic data types.
-* define a **category pattern** and **monads**
-* [type casts](doc/typecast.md) of scalar (primitive) data types
+* define a **category pattern**, **monads** and they composition for Erlang applications
+* [**typecasts**](doc/typecast.md) of primitive data types
+* mapping of algebraic data types to they **generic** representation and back
 * supports **OTP/18.x** or later release
 
-
-**Cheat Sheet** is available [here](doc/cheatsheet.md)
 
 ## Getting started
 
