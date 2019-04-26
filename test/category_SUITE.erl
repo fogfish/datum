@@ -736,6 +736,8 @@ laws_kleisli_associativity_2(_) ->
    ]
 ).
 
+zero() -> 0.
+
 %%
 %%
 transformer_identity_unit(_) ->
@@ -766,7 +768,7 @@ transformer_identity_try(_) ->
    1 = ?tryT(identity, 1),
    a = ?tryT(identity, throw(a)),
    ok = try ?tryT(identity, exit(badarg)) catch _:badarg -> ok end,
-   ok = try ?tryT(identity, 1 / 0) catch _:badarith -> ok end.
+   ok = try ?tryT(identity, 1 / zero()) catch _:badarith -> ok end.
 
 %%
 %%
@@ -800,7 +802,7 @@ transformer_option_try(_) ->
    undefined = ?tryT(option, undefined),
    a = ?tryT(option, throw(a)),
    undefined = ?tryT(option, exit(badarg)),
-   undefined = ?tryT(option, 1 / 0).
+   undefined = ?tryT(option, 1 / zero()).
 
 
 
@@ -837,7 +839,7 @@ transformer_undefined_try(_) ->
    undefined = ?tryT(undefined, undefined),
    a = ?tryT(undefined, throw(a)),
    undefined = ?tryT(undefined, exit(badarg)),
-   undefined = ?tryT(undefined, 1 / 0).
+   undefined = ?tryT(undefined, 1 / zero()).
 
 
 %%
@@ -888,7 +890,7 @@ transformer_either_try(_) ->
    {error, badarg} = ?tryT(either, {error, badarg}),
    {ok, a} = ?tryT(either, throw(a)),
    {error, badarg} = ?tryT(either, exit(badarg)),
-   {error, badarith} = ?tryT(either, 1 / 0).
+   {error, badarith} = ?tryT(either, 1 / zero()).
 
 
 %%
@@ -939,7 +941,7 @@ transformer_reader_try(_) ->
    {error, badarg} = (?tryT(reader, {error, badarg}))(#{}),
    {ok, a} = (?tryT(reader, throw(a)))(#{}),
    {error, badarg} = (?tryT(reader, exit(badarg)))(#{}),
-   {error, badarith} = (?tryT(reader, 1 / 0))(#{}).
+   {error, badarith} = (?tryT(reader, 1 / zero()))(#{}).
 
 
 %%
