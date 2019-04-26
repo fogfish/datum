@@ -12,7 +12,8 @@
 
 -spec from([atom()], tuple()) -> map().
 
-from(Fields, Struct) ->
+from(Fields, Struct)
+ when is_tuple(Struct) ->
     maps:from_list(
         [{Key, Value} ||
             {Key, Value} <- lists:zip(
@@ -26,10 +27,14 @@ from(Fields, Struct) ->
 
 -spec to(atom(), [atom()], map()) -> tuple().
 
-to(Type, Fields, Struct) ->
+to(Type, Fields, Generic)
+ when is_map(Generic) ->
     list_to_tuple([Type | 
-        [maps:get(X, Struct, undefined) || X <- Fields]]
-    ).
+        [maps:get(X, Generic, undefined) || X <- Fields]]
+    );
+to(Type, Fields, Generic)
+ when is_list(Generic), length(Fields) =:= length(Generic) ->
+    list_to_tuple([Type | Generic]).
 
 %%%------------------------------------------------------------------
 %%%
