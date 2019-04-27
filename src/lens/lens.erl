@@ -517,17 +517,41 @@ c(Ln9, Ln8, Ln7, Ln6, Ln5, Ln4, Ln3, Ln2, Ln1) ->
 p(Lenses)
  when is_list(Lenses) ->
    fun(Fun, Struct) ->
-      fmap(put_lens_product(Lenses, _, Struct), Fun(get_lens_product(Lenses, Struct)))
+      fmap(p_put(Lenses, _, Struct), Fun(p_get(Lenses, Struct)))
+   end;
+
+p(Lenses)
+ when is_tuple(Lenses) ->
+   fun(Fun, Struct) ->
+      fmap(
+         p_put_struct(Lenses, _, Struct),
+         Fun(list_to_tuple(p_get(tuple_to_list(Lenses), Struct)))
+      )
    end.
 
-get_lens_product(Lenses, Struct) ->
-   [lens:get(LnX, Struct) || LnX <- Lenses].
+%%
+p_get([Lens | Lenses], Struct)
+ when is_function(Lens) ->
+   [lens:get(Lens, Struct) | p_get(Lenses, Struct)];
 
-put_lens_product([Lens | Lenses], [X | View], Struct) ->
-   put_lens_product(Lenses, View, lens:put(Lens, X, Struct));
-put_lens_product([], [], Struct) ->
+p_get([Value | Lenses], Struct) ->
+   [Value | p_get(Lenses, Struct)];
+
+p_get([], _) ->
+   [].
+
+%%
+p_put([Lens | Lenses], [X | View], Struct)
+ when is_function(Lens) ->
+   p_put(Lenses, View, lens:put(Lens, X, Struct));
+p_put([_Lens | Lenses], [_X | View], Struct) ->
+   p_put(Lenses, View, Struct);
+p_put([], [], Struct) ->
    Struct.
 
+%%
+p_put_struct(Lenses, View, Struct) ->
+   p_put(erlang:tuple_to_list(Lenses), erlang:tuple_to_list(View), Struct).
 
 %%
 %% Inline variants of lens product combinator.  
