@@ -44,12 +44,7 @@ syntax_generic(_) ->
    ok = transform("generic:from(X#adt{})."),
    ok = transform("generic:adt(#{a => 1})."),
    ok = transform("generic:adt(X)."),
-
-   ok = transform("-compile({parse_transform, generic})."),
-   ok = transform("-export([all/0])."),
-   ok = transform("a:b(), a:b(1), a:b(X), a:b(#t{}), a:b(#{})."),
-   ok = transform("b(), b(1), b(X), b(#t{}), b(#{}).").
-
+   ok = transform("a:b(X).").
 
 %%
 %%

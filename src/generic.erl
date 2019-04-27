@@ -36,6 +36,58 @@ to(Type, Fields, Generic)
  when is_list(Generic), length(Fields) =:= length(Generic) ->
     list_to_tuple([Type | Generic]).
 
+%%
+%%
+-spec hook_generic(_) -> _.
+
+%%
+%%
+hook_generic({call, Ln, 
+    {remote, _, {atom, _, generic}, {atom, _, from}},
+    [{record, _, {var, _, _} = Struct, Type, _}]
+}) ->
+    {call, Ln,
+        {remote, Ln, {atom, Ln, generic}, {atom, Ln, from}},
+        [
+            {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]},
+            expr(Struct)
+        ]
+    };
+
+hook_generic({call, Ln, 
+    {remote, _, {atom, _, generic}, {atom, _, from}},
+    [{record, _, Type, _} = Struct]
+}) ->
+    {call, Ln,
+        {remote, Ln, {atom, Ln, generic}, {atom, Ln, from}},
+        [
+            {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]},
+            expr(Struct)
+        ]
+    };
+
+hook_generic({call, Ln,
+    {remote, _, {atom, _, generic}, {atom, _, Type}},
+    [Struct]
+}) ->
+    {call, Ln,
+        {remote, Ln, {atom, Ln, generic}, {atom, Ln, to}},
+        [
+            {atom, Ln, Type},
+            {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]},
+            expr(Struct)
+        ]
+    };
+
+hook_generic({call,Line,F0,As0}) ->
+    %% N.B. If F an atom then call to local function or BIF, if F a
+    %% remote structure (see below) then call to other module,
+    %% otherwise apply to "function".
+    F1 = expr(F0),
+    As1 = expr_list(As0),
+    {call,Line,F1,As1}.
+
+
 %%%------------------------------------------------------------------
 %%%
 %%% stdlib-3.0/examples/erl_id_trans.erl
@@ -521,55 +573,8 @@ expr({'fun',Line,Body}) ->
     end;
 expr({named_fun,Loc,Name,Cs}) ->
     {named_fun,Loc,Name,fun_clauses(Cs)};
-
-%%
-%%
-expr({call, Ln, 
-    {remote, _, {atom, _, generic}, {atom, _, from}},
-    [{record, _, {var, _, _} = Struct, Type, _}]
-}) ->
-    {call, Ln,
-        {remote, Ln, {atom, Ln, generic}, {atom, Ln, from}},
-        [
-            {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]},
-            expr(Struct)
-        ]
-    };
-
-expr({call, Ln, 
-    {remote, _, {atom, _, generic}, {atom, _, from}},
-    [{record, _, Type, _} = Struct]
-}) ->
-    {call, Ln,
-        {remote, Ln, {atom, Ln, generic}, {atom, Ln, from}},
-        [
-            {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]},
-            expr(Struct)
-        ]
-    };
-
-%%
-%%
-expr({call, Ln,
-    {remote, _, {atom, _, generic}, {atom, _, Type}},
-    [Struct]
-}) ->
-    {call, Ln,
-        {remote, Ln, {atom, Ln, generic}, {atom, Ln, to}},
-        [
-            {atom, Ln, Type},
-            {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]},
-            expr(Struct)
-        ]
-    };
-
-expr({call,Line,F0,As0}) ->
-    %% N.B. If F an atom then call to local function or BIF, if F a
-    %% remote structure (see below) then call to other module,
-    %% otherwise apply to "function".
-    F1 = expr(F0),
-    As1 = expr_list(As0),
-    {call,Line,F1,As1};
+expr({call, _, _, _} = Call) ->
+    hook_generic(Call);
 expr({'catch',Line,E0}) ->
     %% No new variables added.
     E1 = expr(E0),

@@ -90,7 +90,8 @@ compile: rebar3
 ##
 ## execute common test and terminate node
 test:
-	@./rebar3 ct --config=test/${TEST}.config --cover --verbose
+# 	@./rebar3 ct --config test/${TEST}.config --cover --verbose
+	@./rebar3 ct --cover --verbose
 	@./rebar3 cover
 
 # test: _build/test.beam
