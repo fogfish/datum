@@ -25,6 +25,8 @@
    syntax_generic/1
 ,  struct_to_generic/1
 ,  generic_to_struct/1
+,  structs_to_generic/1
+,  generic_to_structs/1
 ]).
 
 -record(adt, {a, b, c}).
@@ -76,13 +78,52 @@ generic_to_struct(_) ->
       a = 1,
       b = <<"test">>,
       c = 2.0
-   } = generic:adt(X),
+   } = generic:adt(X).
 
-   #adt{
+   % #adt{
+   %    a = 1,
+   %    b = <<"test">>,
+   %    c = 2.0   
+   % } = generic:adt([1, <<"test">>, 2.0]).
+
+
+%%
+%%
+structs_to_generic(_) ->
+   [#{
+      a := 1,
+      b := <<"test">>,
+      c := 2.0
+   }] = generic:from([#adt{a = 1, b = <<"test">>, c = 2.0}]),
+
+   X = [#adt{a = 1, b = <<"test">>, c = 2.0}],
+   [#{
+      a := 1,
+      b := <<"test">>,
+      c := 2.0
+   }] = generic:from(X#adt{}).
+
+%%
+%%
+generic_to_structs(_) ->
+   [#adt{
       a = 1,
       b = <<"test">>,
-      c = 2.0   
-   } = generic:adt([1, <<"test">>, 2.0]).
+      c = 2.0
+   }] = generic:adt([#{a => 1, b => <<"test">>, c => 2.0}]),
+
+   X = [#{a => 1, b => <<"test">>, c => 2.0}],
+   [#adt{
+      a = 1,
+      b = <<"test">>,
+      c = 2.0
+   }] = generic:adt(X).
+
+   % #adt{
+   %    a = 1,
+   %    b = <<"test">>,
+   %    c = 2.0   
+   % } = generic:adt([1, <<"test">>, 2.0]).
 
 
 %%%------------------------------------------------------------------

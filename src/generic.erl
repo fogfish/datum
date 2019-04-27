@@ -10,6 +10,8 @@
 ]).
 
 
+%%
+%%
 -spec from([atom()], tuple()) -> map().
 
 from(Fields, Struct)
@@ -23,8 +25,14 @@ from(Fields, Struct)
             Value /= undefined,
             Value /= null
         ]
-    ).
+    );
 
+from(Fields, Structs)
+ when is_list(Structs) ->
+    [from(Fields, Struct) || Struct <- Structs].
+
+%%
+%%
 -spec to(atom(), [atom()], map()) -> tuple().
 
 to(Type, Fields, Generic)
@@ -32,9 +40,10 @@ to(Type, Fields, Generic)
     list_to_tuple([Type | 
         [maps:get(X, Generic, undefined) || X <- Fields]]
     );
-to(Type, Fields, Generic)
- when is_list(Generic), length(Fields) =:= length(Generic) ->
-    list_to_tuple([Type | Generic]).
+
+to(Type, Fields, Generics)
+ when is_list(Generics) ->
+    [to(Type, Fields, Generic) || Generic <- Generics].
 
 %%
 %%
@@ -57,6 +66,18 @@ hook_generic({call, Ln,
 hook_generic({call, Ln, 
     {remote, _, {atom, _, generic}, {atom, _, from}},
     [{record, _, Type, _} = Struct]
+}) ->
+    {call, Ln,
+        {remote, Ln, {atom, Ln, generic}, {atom, Ln, from}},
+        [
+            {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]},
+            expr(Struct)
+        ]
+    };
+
+hook_generic({call, Ln, 
+    {remote, _, {atom, _, generic}, {atom, _, from}},
+    [{cons, Ln, {record, _, Type, _}, _} = Struct]
 }) ->
     {call, Ln,
         {remote, Ln, {atom, Ln, generic}, {atom, Ln, from}},
