@@ -1,5 +1,6 @@
 # Features overview
 
+* [Infix functions](#infix-functions) 
 * [Option type](#option-type)
 * [Either type](#either-type)
 * [Foldable](#foldable)
@@ -13,6 +14,12 @@
 
 <!-- * [Type safe cast](#type-safe-cast) -->
 <!-- * [Topological](#topological) -->
+
+## Infix functions
+
+In Erlang, we apply functions using prefix notation - name is followed by its arguments in brackets `plus(1, 2)`. Humans are more used to infix operators than prefix or postfix. If a function takes two arguments, we have the option of using it in infix form, where we place it between its first and second arguments `1 /plus/ 2`. To apply a function using infix notation, we enclose its name in slash characters (/). This allows us to use functions as infix operators.
+
+See details about [infix functions](infix.md). 
 
 
 ## Option type
