@@ -28,7 +28,6 @@
    Expr = dot_expr(Ln, Pattern, {call, Ln, Ff0, Fa1}, G),
    {either, VarN, Expr};
 
-% '.'(_, {either, _VarX, G}, {generate, Ln, {var, _, VarN}, F}) ->
 '.'(_, {either, _VarX, G}, {generate, Ln, Pattern, F}) ->
    {Fa1, VarZ} = datum_cat:cc_derive(F, []),
    Expr = dot_expr(Ln, [Pattern], Fa1, G),
