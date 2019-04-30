@@ -23,6 +23,7 @@ The [feature overview](doc/features.md) provides an introduction to datum featur
 * **streams** or lazy lists are a sequential data structure that contains on demand computed elements.
 * resembles concept of getters and setters ([**lens**](doc/lens.md)) for complex algebraic data types.
 * define a **category pattern**, **monads** and they composition for Erlang applications
+* **do-notation** with pattern matching
 * [**typecasts**](doc/typecast.md) of primitive data types
 * mapping of algebraic data types to they **generic** representation and back
 * supports **OTP/18.x** or later release

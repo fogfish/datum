@@ -111,6 +111,17 @@ f(X, Y, R) ->
 
 The usage of intermediate state do not benefit for chains of ordinary functions. Unfortunately, we can't express all of our programs as chains of ordinary functions. Later' we will demonstrate the benefit of intermediate states for computation with a side-effect. 
 
+Note: the state syntax supports a traditional pattern matching but it is not available for identity and undefined categories yet.
+
+> In a pattern matching, a left-hand side pattern is matched against a right-hand side term. If the matching succeeds, any unbound variables in the pattern become bound. If the matching fails, a run-time error occurs.  
+```erlang
+f(X, Y, R) ->
+   [either ||
+      ...
+      {fd, Data} <- read(...) 
+      ...
+   ].
+```
 
 ### Composition with transformers
 
