@@ -36,6 +36,7 @@
    syntax_option_unit/1,
    syntax_option_fail/1,
    syntax_option_state/1,
+   syntax_option_pattern/1,
    syntax_option_transformer/1,
    syntax_option_partial/1,
 
@@ -50,6 +51,7 @@
    syntax_either_unit/1,
    syntax_either_fail/1,
    syntax_either_state/1,
+   syntax_either_pattern/1,
    syntax_either_transformer/1,
    syntax_either_partial/1,
 
@@ -57,6 +59,7 @@
    syntax_reader_unit/1,
    syntax_reader_fail/1,
    syntax_reader_state/1,
+   syntax_reader_pattern/1,
    syntax_reader_transformer/1,
    syntax_reader_partial/1,
 
@@ -64,6 +67,7 @@
    syntax_kleisli_unit/1,
    syntax_kleisli_fail/1,
    syntax_kleisli_state/1,
+   syntax_kleisli_pattern/1,
    syntax_kleisli_transformer/1,
    syntax_kleisli_partial/1,
    syntax_kleisli_list/1,
@@ -202,7 +206,6 @@ t(m_identity,   X) -> X + 2.
 
 t(reader,   X, Y) -> {ok, X + Y}.
 
-
 %% eq 6.
 -define(cat_compose_expr(Type),
    [Type ||
@@ -249,6 +252,17 @@ t(reader,   X, Y) -> {ok, X + Y}.
            d(Type, A, B, C) %% 12
    ]
 ).
+
+-define(cat_compose_pattern(Type),
+   [Type ||
+      {a, A} <- a(Type, {a, 1}),      %% 1
+           b(Type, A),      
+           B <- c(Type, _),      %% 6
+      {c, C} <- a(Type, {c, 2}),      %% 2
+           d(Type, A, B, C) %% 12
+   ]
+).
+
 
 %% eq 24.
 -define(cat_compose_transformer(Type),
@@ -305,6 +319,9 @@ syntax_option_fail(_) ->
 syntax_option_state(_) ->
    12 = ?cat_compose_state(option).
 
+syntax_option_pattern(_) ->
+   12 = ?cat_compose_pattern(option).
+
 syntax_option_transformer(_) ->
    24 = ?cat_compose_transformer(option).
 
@@ -346,6 +363,9 @@ syntax_either_fail(_) ->
 syntax_either_state(_) ->
    {ok, 12} = ?cat_compose_state(either).
 
+syntax_either_pattern(_) ->
+   {ok, 12} = ?cat_compose_pattern(either).
+
 syntax_either_transformer(_) ->
    {ok, 24} = ?cat_compose_transformer(either).
 
@@ -365,6 +385,9 @@ syntax_reader_fail(_) ->
 
 syntax_reader_state(_) ->
    {ok, 12} = (?cat_compose_state(reader))(2).
+
+syntax_reader_pattern(_) ->
+   {ok, 12} = (?cat_compose_pattern(reader))(2).
 
 syntax_reader_transformer(_) ->
    {ok, 24} = (?cat_compose_transformer(reader))(2).
@@ -386,6 +409,9 @@ syntax_kleisli_fail(_) ->
 
 syntax_kleisli_state(_) ->
    12 = ?cat_compose_state(m_identity).
+
+syntax_kleisli_pattern(_) ->
+   12 = ?cat_compose_pattern(m_identity).
 
 syntax_kleisli_transformer(_) ->
    24 = ?cat_compose_transformer(m_identity).
