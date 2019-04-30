@@ -48,9 +48,8 @@ syntax_composition_with_pattern(_) ->
    ok = transform("[option || #a{a = A} =< 1, #b{b = B} <- do:this(A), do:that(C)]."),
    % ok = transform("[undefined || #a{a = A} =< 1, #b{b = B} <- do:this(A), do:that(C)]."),
    ok = transform("[either || #a{a = A} =< 1, #b{b = B} <- do:this(A), do:that(C)]."),
-   % ok = transform("[reader || #a{a = A} =< 1, #b{b = B} <- do:this(A), do:that(C)]."),
-   % ok = transform("[m_identity || #a{a = A} =< 1, #b{b = B} <- do:this(A), do:that(C)]."),
-   ok.
+   ok = transform("[reader || #a{a = A} =< 1, #b{b = B} <- do:this(A), do:that(C)]."),
+   ok = transform("[m_identity || #a{a = A} =< 1, #b{b = B} <- do:this(A), do:that(C)].").
 
 syntax_composition_with_transformer(_) ->
    ok = transform("[identity || cats:unit(1), _/= x(_), _/= cats:this(_), _/= do:that(_)]."),

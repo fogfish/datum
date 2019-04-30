@@ -66,7 +66,7 @@ curry({option, VarX, {'case', Ln, _, _} = Expr}) ->
    {'fun', Ln,
       {clauses, [
          {clause, Ln,
-            [{var, Ln, VarX}],
+            [VarX],
             [],
             [Expr]
          }

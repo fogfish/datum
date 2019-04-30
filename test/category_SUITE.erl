@@ -22,14 +22,7 @@
 
 %%
 %% common test
--export([
-   all/0
-  ,groups/0
-  ,init_per_suite/1
-  ,end_per_suite/1
-  ,init_per_group/2
-  ,end_per_group/2
-]).
+-export([all/0]).
 
 -export([
    syntax_identity_expr/1,
@@ -160,156 +153,12 @@
 %%%
 %%%----------------------------------------------------------------------------   
 all() ->
-   [
-      {group, syntax}
-     ,{group, laws}
-     ,{group, transformers}
+   [Test || {Test, NAry} <- ?MODULE:module_info(exports), 
+      Test =/= module_info,
+      Test =/= init_per_suite,
+      Test =/= end_per_suite,
+      NAry =:= 1
    ].
-
-groups() ->
-   [
-      {syntax, [parallel], [
-         syntax_identity_expr,
-         syntax_identity_unit,
-         syntax_identity_fail,
-         syntax_identity_state,
-         syntax_identity_transformer,
-         syntax_identity_partial,
-
-         syntax_option_expr,
-         syntax_option_unit,
-         syntax_option_fail,
-         syntax_option_state,
-         syntax_option_transformer,
-         syntax_option_partial,
-
-         syntax_undefined_expr,
-         % syntax_undefined_unit,
-         syntax_undefined_fail,
-         syntax_undefined_state,
-         syntax_undefined_transformer,
-         syntax_undefined_partial,
-
-         syntax_either_expr,
-         syntax_either_unit,
-         syntax_either_fail,
-         syntax_either_state,
-         syntax_either_transformer,
-         syntax_either_partial,
-
-         syntax_reader_expr,
-         syntax_reader_unit,
-         syntax_reader_fail,
-         syntax_reader_state,
-         syntax_reader_transformer,
-         syntax_reader_partial,
-
-         syntax_kleisli_expr,
-         syntax_kleisli_unit,
-         syntax_kleisli_list
-      ]}
-
-     ,{laws, [parallel], [
-         laws_identity_left_identity,
-         laws_identity_right_identity,
-         laws_identity_associativity_1,
-         laws_identity_associativity_2,
-
-         laws_option_left_identity,
-         laws_option_right_identity,
-         laws_option_associativity_1,
-         laws_option_associativity_2,
-
-         laws_undefined_left_identity,
-         laws_undefined_right_identity,
-         laws_undefined_associativity_1,
-         laws_undefined_associativity_2,
-
-         laws_either_left_identity,
-         laws_either_right_identity,
-         laws_either_associativity_1,
-         laws_either_associativity_2,
-
-         laws_reader_left_identity,
-         laws_reader_right_identity,
-         laws_reader_associativity_1,
-         laws_reader_associativity_2,
-
-         laws_kleisli_left_identity,
-         laws_kleisli_right_identity,
-         laws_kleisli_associativity_1,
-         laws_kleisli_associativity_2
-      ]}
-
-     ,{transformers, [parallel], [
-         transformer_identity_unit,
-         transformer_identity_fail,
-         transformer_identity_require,
-         transformer_identity_sequence,
-         transformer_identity_flatten,
-         transformer_identity_option,
-         transformer_identity_either,
-         transformer_identity_try,
-
-         transformer_option_unit,
-         transformer_option_fail,
-         transformer_option_require,
-         transformer_option_sequence,
-         transformer_option_flatten,
-         transformer_option_option,
-         transformer_option_either,
-         transformer_option_try,
-
-         transformer_undefined_unit,
-         transformer_undefined_fail,
-         transformer_undefined_require,
-         transformer_undefined_sequence,
-         transformer_undefined_flatten,
-         transformer_undefined_option,
-         transformer_undefined_either,
-         transformer_undefined_try,
-
-         transformer_either_unit,
-         transformer_either_fail,
-         transformer_either_require,
-         transformer_either_sequence,
-         transformer_either_flatten,
-         transformer_either_option,
-         transformer_either_either,
-         transformer_either_try,
-
-         transformer_reader_unit,
-         transformer_reader_fail,
-         transformer_reader_require,
-         transformer_reader_sequence,
-         transformer_reader_flatten,
-         transformer_reader_option,
-         transformer_reader_either,
-         transformer_reader_try,
-
-         transformer_kleisli_io
-     ]}
-   ].
-
-%%%----------------------------------------------------------------------------   
-%%%
-%%% init
-%%%
-%%%----------------------------------------------------------------------------   
-init_per_suite(Config) ->
-   Config.
-
-end_per_suite(_Config) ->
-   ok.
-
-%% 
-%%
-init_per_group(_, Config) ->
-   Config.
-
-end_per_group(_, _Config) ->
-   ok.
-
 
 %%%----------------------------------------------------------------------------   
 %%%
