@@ -20,7 +20,7 @@ The [feature overview](doc/features.md) provides an introduction to datum featur
 * data structures with common behavior: **foldable**, **traversable** and **map-like** including 
 * pure functional **data types**: binary search tree, red-black tree, heap, queues, streams and others
 * resembles concept of getters and setters ([**lens**](doc/lens.md)) for complex algebraic data types.
-* define a **category pattern** and **monads**
+* define a **category pattern**, **monads** and **do-notation** with pattern matching
 * [type casts](doc/typecast.md) of scalar (primitive) data types
 * supports **OTP/18.x** or later release
 

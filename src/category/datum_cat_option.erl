@@ -22,17 +22,17 @@
 %% f(_) . g(_) -> case f(_) of undefined -> undefined ; X -> g(X) end
 %%
 '.'(_, {option, VarX, G}, {call, Ln, Ff0, Fa0}) ->
-   VarN = datum_cat:uuid(),
-   Expr = dot_expr(Ln, VarX, {call, Ln, Ff0, datum_cat:cc_bind_var({var, Ln, VarN}, Fa0)}, G),
+   VarN = {var, Ln, datum_cat:uuid()},
+   Expr = dot_expr(Ln, VarX, {call, Ln, Ff0, datum_cat:cc_bind_var(VarN, Fa0)}, G),
    {option, VarN, Expr};
 
-'.'(_, {option, VarX, G}, {generate, Ln, {var, _, VarN}, F}) ->
-   Expr = dot_expr(Ln, VarN, datum_cat:cc_bind_var({var, Ln, VarX}, F), G),
+'.'(_, {option, VarX, G}, {generate, Ln, Pattern, F}) ->
+   Expr = dot_expr(Ln, Pattern, datum_cat:cc_bind_var(VarX, F), G),
    {option, VarX, Expr};
 
 '.'(Cat, {call, Ln, Ff0, Fa0}, G) ->
-   VarN = datum_cat:uuid(),
-   Expr = {call, Ln, Ff0, datum_cat:cc_bind_var({var, Ln, VarN}, Fa0)},
+   VarN = {var, Ln, datum_cat:uuid()},
+   Expr = {call, Ln, Ff0, datum_cat:cc_bind_var(VarN, Fa0)},
    '.'(Cat, {option, VarN, Expr}, G);
 
 '.'(Cat, {generate, _Ln, _Var, F}, G) ->
@@ -41,7 +41,7 @@
 
 %%
 %% 
-dot_expr(Ln, VarX, F, G) ->
+dot_expr(Ln, Pattern, F, G) ->
    {'case', Ln, F, [
       {clause, Ln,
          [{atom, Ln, undefined}],
@@ -49,7 +49,7 @@ dot_expr(Ln, VarX, F, G) ->
          [{atom, Ln, undefined}]
       },
       {clause, Ln, 
-         [{var, Ln, VarX}],
+         [Pattern],
          [],
          [G]
       }
@@ -66,7 +66,7 @@ curry({option, VarX, {'case', Ln, _, _} = Expr}) ->
    {'fun', Ln,
       {clauses, [
          {clause, Ln,
-            [{var, Ln, VarX}],
+            [VarX],
             [],
             [Expr]
          }
