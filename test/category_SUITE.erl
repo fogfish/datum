@@ -22,14 +22,7 @@
 
 %%
 %% common test
--export([
-   all/0
-  ,groups/0
-  ,init_per_suite/1
-  ,end_per_suite/1
-  ,init_per_group/2
-  ,end_per_group/2
-]).
+-export([all/0]).
 
 -export([
    syntax_identity_expr/1,
@@ -43,6 +36,7 @@
    syntax_option_unit/1,
    syntax_option_fail/1,
    syntax_option_state/1,
+   syntax_option_pattern/1,
    syntax_option_transformer/1,
    syntax_option_partial/1,
 
@@ -57,6 +51,7 @@
    syntax_either_unit/1,
    syntax_either_fail/1,
    syntax_either_state/1,
+   syntax_either_pattern/1,
    syntax_either_transformer/1,
    syntax_either_partial/1,
 
@@ -64,6 +59,7 @@
    syntax_reader_unit/1,
    syntax_reader_fail/1,
    syntax_reader_state/1,
+   syntax_reader_pattern/1,
    syntax_reader_transformer/1,
    syntax_reader_partial/1,
 
@@ -71,6 +67,7 @@
    syntax_kleisli_unit/1,
    syntax_kleisli_fail/1,
    syntax_kleisli_state/1,
+   syntax_kleisli_pattern/1,
    syntax_kleisli_transformer/1,
    syntax_kleisli_partial/1,
    syntax_kleisli_list/1,
@@ -160,156 +157,12 @@
 %%%
 %%%----------------------------------------------------------------------------   
 all() ->
-   [
-      {group, syntax}
-     ,{group, laws}
-     ,{group, transformers}
+   [Test || {Test, NAry} <- ?MODULE:module_info(exports), 
+      Test =/= module_info,
+      Test =/= init_per_suite,
+      Test =/= end_per_suite,
+      NAry =:= 1
    ].
-
-groups() ->
-   [
-      {syntax, [parallel], [
-         syntax_identity_expr,
-         syntax_identity_unit,
-         syntax_identity_fail,
-         syntax_identity_state,
-         syntax_identity_transformer,
-         syntax_identity_partial,
-
-         syntax_option_expr,
-         syntax_option_unit,
-         syntax_option_fail,
-         syntax_option_state,
-         syntax_option_transformer,
-         syntax_option_partial,
-
-         syntax_undefined_expr,
-         % syntax_undefined_unit,
-         syntax_undefined_fail,
-         syntax_undefined_state,
-         syntax_undefined_transformer,
-         syntax_undefined_partial,
-
-         syntax_either_expr,
-         syntax_either_unit,
-         syntax_either_fail,
-         syntax_either_state,
-         syntax_either_transformer,
-         syntax_either_partial,
-
-         syntax_reader_expr,
-         syntax_reader_unit,
-         syntax_reader_fail,
-         syntax_reader_state,
-         syntax_reader_transformer,
-         syntax_reader_partial,
-
-         syntax_kleisli_expr,
-         syntax_kleisli_unit,
-         syntax_kleisli_list
-      ]}
-
-     ,{laws, [parallel], [
-         laws_identity_left_identity,
-         laws_identity_right_identity,
-         laws_identity_associativity_1,
-         laws_identity_associativity_2,
-
-         laws_option_left_identity,
-         laws_option_right_identity,
-         laws_option_associativity_1,
-         laws_option_associativity_2,
-
-         laws_undefined_left_identity,
-         laws_undefined_right_identity,
-         laws_undefined_associativity_1,
-         laws_undefined_associativity_2,
-
-         laws_either_left_identity,
-         laws_either_right_identity,
-         laws_either_associativity_1,
-         laws_either_associativity_2,
-
-         laws_reader_left_identity,
-         laws_reader_right_identity,
-         laws_reader_associativity_1,
-         laws_reader_associativity_2,
-
-         laws_kleisli_left_identity,
-         laws_kleisli_right_identity,
-         laws_kleisli_associativity_1,
-         laws_kleisli_associativity_2
-      ]}
-
-     ,{transformers, [parallel], [
-         transformer_identity_unit,
-         transformer_identity_fail,
-         transformer_identity_require,
-         transformer_identity_sequence,
-         transformer_identity_flatten,
-         transformer_identity_option,
-         transformer_identity_either,
-         transformer_identity_try,
-
-         transformer_option_unit,
-         transformer_option_fail,
-         transformer_option_require,
-         transformer_option_sequence,
-         transformer_option_flatten,
-         transformer_option_option,
-         transformer_option_either,
-         transformer_option_try,
-
-         transformer_undefined_unit,
-         transformer_undefined_fail,
-         transformer_undefined_require,
-         transformer_undefined_sequence,
-         transformer_undefined_flatten,
-         transformer_undefined_option,
-         transformer_undefined_either,
-         transformer_undefined_try,
-
-         transformer_either_unit,
-         transformer_either_fail,
-         transformer_either_require,
-         transformer_either_sequence,
-         transformer_either_flatten,
-         transformer_either_option,
-         transformer_either_either,
-         transformer_either_try,
-
-         transformer_reader_unit,
-         transformer_reader_fail,
-         transformer_reader_require,
-         transformer_reader_sequence,
-         transformer_reader_flatten,
-         transformer_reader_option,
-         transformer_reader_either,
-         transformer_reader_try,
-
-         transformer_kleisli_io
-     ]}
-   ].
-
-%%%----------------------------------------------------------------------------   
-%%%
-%%% init
-%%%
-%%%----------------------------------------------------------------------------   
-init_per_suite(Config) ->
-   Config.
-
-end_per_suite(_Config) ->
-   ok.
-
-%% 
-%%
-init_per_group(_, Config) ->
-   Config.
-
-end_per_group(_, _Config) ->
-   ok.
-
 
 %%%----------------------------------------------------------------------------   
 %%%
@@ -352,7 +205,6 @@ t(either,   X) -> {ok, X + 2};
 t(m_identity,   X) -> X + 2.
 
 t(reader,   X, Y) -> {ok, X + Y}.
-
 
 %% eq 6.
 -define(cat_compose_expr(Type),
@@ -400,6 +252,17 @@ t(reader,   X, Y) -> {ok, X + Y}.
            d(Type, A, B, C) %% 12
    ]
 ).
+
+-define(cat_compose_pattern(Type),
+   [Type ||
+      {a, A} <- a(Type, {a, 1}),      %% 1
+           b(Type, A),      
+           B <- c(Type, _),      %% 6
+      {c, C} <- a(Type, {c, 2}),      %% 2
+           d(Type, A, B, C) %% 12
+   ]
+).
+
 
 %% eq 24.
 -define(cat_compose_transformer(Type),
@@ -456,6 +319,9 @@ syntax_option_fail(_) ->
 syntax_option_state(_) ->
    12 = ?cat_compose_state(option).
 
+syntax_option_pattern(_) ->
+   12 = ?cat_compose_pattern(option).
+
 syntax_option_transformer(_) ->
    24 = ?cat_compose_transformer(option).
 
@@ -497,6 +363,9 @@ syntax_either_fail(_) ->
 syntax_either_state(_) ->
    {ok, 12} = ?cat_compose_state(either).
 
+syntax_either_pattern(_) ->
+   {ok, 12} = ?cat_compose_pattern(either).
+
 syntax_either_transformer(_) ->
    {ok, 24} = ?cat_compose_transformer(either).
 
@@ -516,6 +385,9 @@ syntax_reader_fail(_) ->
 
 syntax_reader_state(_) ->
    {ok, 12} = (?cat_compose_state(reader))(2).
+
+syntax_reader_pattern(_) ->
+   {ok, 12} = (?cat_compose_pattern(reader))(2).
 
 syntax_reader_transformer(_) ->
    {ok, 24} = (?cat_compose_transformer(reader))(2).
@@ -537,6 +409,9 @@ syntax_kleisli_fail(_) ->
 
 syntax_kleisli_state(_) ->
    12 = ?cat_compose_state(m_identity).
+
+syntax_kleisli_pattern(_) ->
+   12 = ?cat_compose_pattern(m_identity).
 
 syntax_kleisli_transformer(_) ->
    24 = ?cat_compose_transformer(m_identity).
@@ -736,6 +611,8 @@ laws_kleisli_associativity_2(_) ->
    ]
 ).
 
+zero() -> 0.
+
 %%
 %%
 transformer_identity_unit(_) ->
@@ -766,7 +643,7 @@ transformer_identity_try(_) ->
    1 = ?tryT(identity, 1),
    a = ?tryT(identity, throw(a)),
    ok = try ?tryT(identity, exit(badarg)) catch _:badarg -> ok end,
-   ok = try ?tryT(identity, 1 / 0) catch _:badarith -> ok end.
+   ok = try ?tryT(identity, 1 / zero()) catch _:badarith -> ok end.
 
 %%
 %%
@@ -800,7 +677,7 @@ transformer_option_try(_) ->
    undefined = ?tryT(option, undefined),
    a = ?tryT(option, throw(a)),
    undefined = ?tryT(option, exit(badarg)),
-   undefined = ?tryT(option, 1 / 0).
+   undefined = ?tryT(option, 1 / zero()).
 
 
 
@@ -837,7 +714,7 @@ transformer_undefined_try(_) ->
    undefined = ?tryT(undefined, undefined),
    a = ?tryT(undefined, throw(a)),
    undefined = ?tryT(undefined, exit(badarg)),
-   undefined = ?tryT(undefined, 1 / 0).
+   undefined = ?tryT(undefined, 1 / zero()).
 
 
 %%
@@ -888,7 +765,7 @@ transformer_either_try(_) ->
    {error, badarg} = ?tryT(either, {error, badarg}),
    {ok, a} = ?tryT(either, throw(a)),
    {error, badarg} = ?tryT(either, exit(badarg)),
-   {error, badarith} = ?tryT(either, 1 / 0).
+   {error, badarith} = ?tryT(either, 1 / zero()).
 
 
 %%
@@ -939,7 +816,7 @@ transformer_reader_try(_) ->
    {error, badarg} = (?tryT(reader, {error, badarg}))(#{}),
    {ok, a} = (?tryT(reader, throw(a)))(#{}),
    {error, badarg} = (?tryT(reader, exit(badarg)))(#{}),
-   {error, badarith} = (?tryT(reader, 1 / 0))(#{}).
+   {error, badarith} = (?tryT(reader, 1 / zero()))(#{}).
 
 
 %%

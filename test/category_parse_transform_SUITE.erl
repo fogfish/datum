@@ -5,6 +5,7 @@
    all/0,
    syntax_composition/1,
    syntax_composition_with_state/1,
+   syntax_composition_with_pattern/1,
    syntax_composition_with_transformer/1,
    syntax_composition_partial/1,
    syntax_nested_list_comprehension/1,
@@ -14,15 +15,11 @@
 ]).
 
 all() ->
-   [
-      syntax_composition,
-      syntax_composition_with_state,
-      syntax_composition_with_transformer,
-      syntax_composition_partial,
-      syntax_nested_list_comprehension,
-      syntax_side_effect_operator,
-      syntax_kleisli_with_list_ops,
-      syntax_composition_parial
+   [Test || {Test, NAry} <- ?MODULE:module_info(exports), 
+      Test =/= module_info,
+      Test =/= init_per_suite,
+      Test =/= end_per_suite,
+      NAry =:= 1
    ].
 
 %%
@@ -45,6 +42,14 @@ syntax_composition_with_state(_) ->
    ok = transform("[either || A =< 1, B <- do:this(A), do:that(C)]."),
    ok = transform("[reader || A =< 1, B <- do:this(A), do:that(C)]."),
    ok = transform("[m_identity || A =< 1, B <- do:this(A), do:that(C)].").
+
+syntax_composition_with_pattern(_) ->
+   % ok = transform("[identity || #a{a = A} =< 1, #b{b = B} <- do:this(A), do:that(C)]."),
+   ok = transform("[option || #a{a = A} =< 1, #b{b = B} <- do:this(A), do:that(C)]."),
+   % ok = transform("[undefined || #a{a = A} =< 1, #b{b = B} <- do:this(A), do:that(C)]."),
+   ok = transform("[either || #a{a = A} =< 1, #b{b = B} <- do:this(A), do:that(C)]."),
+   ok = transform("[reader || #a{a = A} =< 1, #b{b = B} <- do:this(A), do:that(C)]."),
+   ok = transform("[m_identity || #a{a = A} =< 1, #b{b = B} <- do:this(A), do:that(C)].").
 
 syntax_composition_with_transformer(_) ->
    ok = transform("[identity || cats:unit(1), _/= x(_), _/= cats:this(_), _/= do:that(_)]."),
