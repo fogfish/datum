@@ -25,7 +25,6 @@
 '.'(_, {either, VarX, G}, {call, Ln, Ff0, Fa0}) ->
    {Fa1, VarN} = datum_cat:cc_derive(Fa0, []),
    Pattern = [{var, Ln, X} || X <- VarX],
-   % Expr = dot_expr(Ln, VarX, {call, Ln, Ff0, Fa1}, G),
    Expr = dot_expr(Ln, Pattern, {call, Ln, Ff0, Fa1}, G),
    {either, VarN, Expr};
 
@@ -33,7 +32,6 @@
 '.'(_, {either, _VarX, G}, {generate, Ln, Pattern, F}) ->
    {Fa1, VarZ} = datum_cat:cc_derive(F, []),
    Expr = dot_expr(Ln, [Pattern], Fa1, G),
-   % Expr = dot_expr(Ln, [VarN], Fa1, G),
    {either, VarZ, Expr};
 
 '.'(Cat, {call, Ln, Ff0, Fa0}, G) ->
@@ -63,10 +61,8 @@ dot_expr(Ln, [], F, G) ->
    ]};
 dot_expr(Ln, Pattern, F, G) ->
    Err = datum_cat:uuid(),
-   % Pat = [{var, Ln, X} || X <- VarX],
    {'case', Ln, F, [
       {clause, Ln,
-         % [{tuple, Ln, [{atom, Ln, ok}|Pat]}],
          [{tuple, Ln, [{atom, Ln, ok}|Pattern]}],
          [],
          [G]
