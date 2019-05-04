@@ -51,6 +51,51 @@ to(Type, Fields, Generics)
 
 %%
 %%
+hook_generic({call, Ln,
+    {remote, _, {atom, _, generic}, {atom, _, encode}},
+    [{record, _, Type, _}]
+}) ->
+    {'fun', Ln,
+        {clauses, [
+            {clause, Ln,
+                [{var, Ln, 'X'}],
+                [],
+                [
+                    {call, Ln,
+                        {remote, Ln, {atom, Ln, generic}, {atom, Ln, from}},
+                        [
+                            {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]},
+                            {var, Ln, 'X'}
+                        ]
+                    }
+                ]
+            }
+        ]}
+    };
+
+hook_generic({call, Ln,
+    {remote, _, {atom, _, generic}, {atom, _, decode}},
+    [{record, _, Type, _}]
+}) ->
+    {'fun', Ln,
+        {clauses, [
+            {clause, Ln,
+                [{var, Ln, 'X'}],
+                [],
+                [
+                    {call, Ln,
+                        {remote, Ln, {atom, Ln, generic}, {atom, Ln, to}},
+                        [
+                            {atom, Ln, Type},
+                            {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]},
+                            {var, Ln, 'X'}
+                        ]
+                    }
+                ]
+            }
+        ]}
+    };
+
 hook_generic({call, Ln, 
     {remote, _, {atom, _, generic}, {atom, _, from}},
     [{record, _, {var, _, _} = Struct, Type, _}]

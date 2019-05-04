@@ -22,11 +22,9 @@
 
 -export([all/0]).
 -export([
-   syntax_generic/1
-,  struct_to_generic/1
-,  generic_to_struct/1
-,  structs_to_generic/1
-,  generic_to_structs/1
+   syntax/1
+,  generic/1
+,  derived/1
 ]).
 
 -record(adt, {a, b, c}).
@@ -41,90 +39,35 @@ all() ->
 
 %%
 %%
-syntax_generic(_) ->
+syntax(_) ->
    ok = transform("generic:from(#adt{a = 1})."),
    ok = transform("generic:from(X#adt{})."),
    ok = transform("generic:adt(#{a => 1})."),
    ok = transform("generic:adt(X)."),
+   ok = transform("generic:encode(#adt{})."),
+   ok = transform("generic:decode(#adt{})."),
    ok = transform("a:b(X).").
 
 %%
 %%
-struct_to_generic(_) ->
-   #{
-      a := 1,
-      b := <<"test">>,
-      c := 2.0
-   } = generic:from(#adt{a = 1, b = <<"test">>, c = 2.0}),
+generic(_) ->
+   Struct  = #adt{a = 1, b = <<"test">>, c = 2.0},
+   Structs = [Struct],
 
-   X = #adt{a = 1, b = <<"test">>, c = 2.0},
-   #{
-      a := 1,
-      b := <<"test">>,
-      c := 2.0
-   } = generic:from(X#adt{}).
+   #{}    = generic:from(Struct#adt{}),
+   [#{}]  = generic:from(Structs#adt{}),
+   Struct = generic:adt(generic:from(Struct#adt{})),
+   Structs= generic:adt(generic:from(Structs#adt{})).
 
 %%
 %%
-generic_to_struct(_) ->
-   #adt{
-      a = 1,
-      b = <<"test">>,
-      c = 2.0
-   } = generic:adt(#{a => 1, b => <<"test">>, c => 2.0}),
+derived(_) ->
+   Encode = generic:encode(#adt{}),
+   Decode = generic:decode(#adt{}),
 
-   X = #{a => 1, b => <<"test">>, c => 2.0},
-   #adt{
-      a = 1,
-      b = <<"test">>,
-      c = 2.0
-   } = generic:adt(X).
-
-   % #adt{
-   %    a = 1,
-   %    b = <<"test">>,
-   %    c = 2.0   
-   % } = generic:adt([1, <<"test">>, 2.0]).
-
-
-%%
-%%
-structs_to_generic(_) ->
-   [#{
-      a := 1,
-      b := <<"test">>,
-      c := 2.0
-   }] = generic:from([#adt{a = 1, b = <<"test">>, c = 2.0}]),
-
-   X = [#adt{a = 1, b = <<"test">>, c = 2.0}],
-   [#{
-      a := 1,
-      b := <<"test">>,
-      c := 2.0
-   }] = generic:from(X#adt{}).
-
-%%
-%%
-generic_to_structs(_) ->
-   [#adt{
-      a = 1,
-      b = <<"test">>,
-      c = 2.0
-   }] = generic:adt([#{a => 1, b => <<"test">>, c => 2.0}]),
-
-   X = [#{a => 1, b => <<"test">>, c => 2.0}],
-   [#adt{
-      a = 1,
-      b = <<"test">>,
-      c = 2.0
-   }] = generic:adt(X).
-
-   % #adt{
-   %    a = 1,
-   %    b = <<"test">>,
-   %    c = 2.0   
-   % } = generic:adt([1, <<"test">>, 2.0]).
-
+   Expect = #adt{a = 1, b = <<"test">>, c = 2.0},
+   Expect = Decode(Encode(Expect)),
+   [Expect] = Decode(Encode([Expect])).
 
 %%%------------------------------------------------------------------
 %%%
