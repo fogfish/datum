@@ -95,58 +95,34 @@ hook_generic({call, Ln,
     cc_encode(Ln, from, Type);
 
 hook_generic({call, Ln,
-    {remote, _, {atom, _, generic}, {atom, _, lencode}},
-    [{record, _, Type, _}]
-}) ->
-    cc_encode(Ln, labelled_from, Type);
-
-hook_generic({call, Ln,
     {remote, _, {atom, _, generic}, {atom, _, decode}},
     [{record, _, Type, _}]
 }) ->
     cc_decode(Ln, to, Type);
 
-hook_generic({call, Ln,
-    {remote, _, {atom, _, generic}, {atom, _, ldecode}},
-    [{record, _, Type, _}]
-}) ->
-    cc_decode(Ln, labelled_to, Type);
-
 hook_generic({call, Ln, 
     {remote, _, {atom, _, generic}, {atom, _, from}},
     [{record, _, {var, _, _} = Struct, Type, _}]
 }) ->
-    {call, Ln,
-        {remote, Ln, {atom, Ln, generic}, {atom, Ln, from}},
-        [
-            {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]},
-            expr(Struct)
-        ]
-    };
+    cc_from(Ln, from, Type, Struct);
 
 hook_generic({call, Ln, 
     {remote, _, {atom, _, generic}, {atom, _, from}},
     [{record, _, Type, _} = Struct]
 }) ->
-    {call, Ln,
-        {remote, Ln, {atom, Ln, generic}, {atom, Ln, from}},
-        [
-            {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]},
-            expr(Struct)
-        ]
-    };
+    cc_from(Ln, from, Type, Struct);
 
 hook_generic({call, Ln, 
     {remote, _, {atom, _, generic}, {atom, _, from}},
     [{cons, Ln, {record, _, Type, _}, _} = Struct]
 }) ->
-    {call, Ln,
-        {remote, Ln, {atom, Ln, generic}, {atom, Ln, from}},
-        [
-            {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]},
-            expr(Struct)
-        ]
-    };
+    cc_from(Ln, from, Type, Struct);
+
+hook_generic({call, Ln, 
+    {remote, _, {atom, _, generic}, {atom, _, from}},
+    [{cons, Ln, {record, _, {var, _, _}, Type, _}, _} = Struct]
+}) ->
+    cc_from(Ln, from, Type, Struct);
 
 hook_generic({call, Ln,
     {remote, _, {atom, _, generic}, {atom, _, Type}},
@@ -154,6 +130,56 @@ hook_generic({call, Ln,
 }) ->
     {call, Ln,
         {remote, Ln, {atom, Ln, generic}, {atom, Ln, to}},
+        [
+            {atom, Ln, Type},
+            {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]},
+            expr(Struct)
+        ]
+    };
+
+
+hook_generic({call, Ln,
+    {remote, _, {atom, _, labelled}, {atom, _, encode}},
+    [{record, _, Type, _}]
+}) ->
+    cc_encode(Ln, labelled_from, Type);
+
+hook_generic({call, Ln,
+    {remote, _, {atom, _, labelled}, {atom, _, decode}},
+    [{record, _, Type, _}]
+}) ->
+    cc_decode(Ln, labelled_to, Type);
+
+hook_generic({call, Ln, 
+    {remote, _, {atom, _, labelled}, {atom, _, from}},
+    [{record, _, {var, _, _} = Struct, Type, _}]
+}) ->
+    cc_from(Ln, labelled_from, Type, Struct);
+
+hook_generic({call, Ln, 
+    {remote, _, {atom, _, labelled}, {atom, _, from}},
+    [{record, _, Type, _} = Struct]
+}) ->
+    cc_from(Ln, labelled_from, Type, Struct);
+
+hook_generic({call, Ln, 
+    {remote, _, {atom, _, labelled}, {atom, _, from}},
+    [{cons, Ln, {record, _, Type, _}, _} = Struct]
+}) ->
+    cc_from(Ln, labelled_from, Type, Struct);
+
+hook_generic({call, Ln, 
+    {remote, _, {atom, _, labelled}, {atom, _, from}},
+    [{cons, Ln, {record, _, {var, _, _}, Type, _}, _} = Struct]
+}) ->
+    cc_from(Ln, labelled_from, Type, Struct);
+
+hook_generic({call, Ln,
+    {remote, _, {atom, _, labelled}, {atom, _, Type}},
+    [Struct]
+}) ->
+    {call, Ln,
+        {remote, Ln, {atom, Ln, generic}, {atom, Ln, labelled_to}},
         [
             {atom, Ln, Type},
             {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]},
@@ -207,6 +233,15 @@ cc_decode(Ln, With, Type) ->
                 ]
             }
         ]}
+    }.
+
+cc_from(Ln, With, Type, Struct) ->
+    {call, Ln,
+        {remote, Ln, {atom, Ln, generic}, {atom, Ln, With}},
+        [
+            {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]},
+            expr(Struct)
+        ]
     }.
 
 %%%------------------------------------------------------------------
