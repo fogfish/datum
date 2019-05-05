@@ -6,6 +6,8 @@
 -export([
     from/2
 ,   to/3
+,   labelled_from/2
+,   labelled_to/3
 ,   parse_transform/2
 ]).
 
@@ -47,6 +49,41 @@ to(Type, Fields, Generics)
 
 %%
 %%
+-spec labelled_from([atom()], tuple()) -> map().
+
+labelled_from(Fields, Struct)
+ when is_tuple(Struct) ->
+    maps:from_list(
+        [{typecast:s(Key), Value} ||
+            {Key, Value} <- lists:zip(
+                Fields,
+                tl(tuple_to_list(Struct))
+            ),
+            Value /= undefined,
+            Value /= null
+        ]
+    );
+
+labelled_from(Fields, Structs)
+ when is_list(Structs) ->
+    [labelled_from(Fields, Struct) || Struct <- Structs].
+
+%%
+%%
+-spec labelled_to(atom(), [atom()], map()) -> tuple().
+
+labelled_to(Type, Fields, Generic)
+ when is_map(Generic) ->
+    list_to_tuple([Type | 
+        [maps:get(typecast:s(X), Generic, undefined) || X <- Fields]]
+    );
+
+labelled_to(Type, Fields, Generics)
+ when is_list(Generics) ->
+    [labelled_to(Type, Fields, Generic) || Generic <- Generics].
+
+%%
+%%
 -spec hook_generic(_) -> _.
 
 %%
@@ -55,46 +92,25 @@ hook_generic({call, Ln,
     {remote, _, {atom, _, generic}, {atom, _, encode}},
     [{record, _, Type, _}]
 }) ->
-    {'fun', Ln,
-        {clauses, [
-            {clause, Ln,
-                [{var, Ln, 'X'}],
-                [],
-                [
-                    {call, Ln,
-                        {remote, Ln, {atom, Ln, generic}, {atom, Ln, from}},
-                        [
-                            {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]},
-                            {var, Ln, 'X'}
-                        ]
-                    }
-                ]
-            }
-        ]}
-    };
+    cc_encode(Ln, from, Type);
+
+hook_generic({call, Ln,
+    {remote, _, {atom, _, generic}, {atom, _, lencode}},
+    [{record, _, Type, _}]
+}) ->
+    cc_encode(Ln, labelled_from, Type);
 
 hook_generic({call, Ln,
     {remote, _, {atom, _, generic}, {atom, _, decode}},
     [{record, _, Type, _}]
 }) ->
-    {'fun', Ln,
-        {clauses, [
-            {clause, Ln,
-                [{var, Ln, 'X'}],
-                [],
-                [
-                    {call, Ln,
-                        {remote, Ln, {atom, Ln, generic}, {atom, Ln, to}},
-                        [
-                            {atom, Ln, Type},
-                            {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]},
-                            {var, Ln, 'X'}
-                        ]
-                    }
-                ]
-            }
-        ]}
-    };
+    cc_decode(Ln, to, Type);
+
+hook_generic({call, Ln,
+    {remote, _, {atom, _, generic}, {atom, _, ldecode}},
+    [{record, _, Type, _}]
+}) ->
+    cc_decode(Ln, labelled_to, Type);
 
 hook_generic({call, Ln, 
     {remote, _, {atom, _, generic}, {atom, _, from}},
@@ -153,6 +169,45 @@ hook_generic({call,Line,F0,As0}) ->
     As1 = expr_list(As0),
     {call,Line,F1,As1}.
 
+
+cc_encode(Ln, With, Type) ->
+    {'fun', Ln,
+        {clauses, [
+            {clause, Ln,
+                [{var, Ln, 'X'}],
+                [],
+                [
+                    {call, Ln,
+                        {remote, Ln, {atom, Ln, generic}, {atom, Ln, With}},
+                        [
+                            {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]},
+                            {var, Ln, 'X'}
+                        ]
+                    }
+                ]
+            }
+        ]}
+    }.
+
+cc_decode(Ln, With, Type) ->
+    {'fun', Ln,
+        {clauses, [
+            {clause, Ln,
+                [{var, Ln, 'X'}],
+                [],
+                [
+                    {call, Ln,
+                        {remote, Ln, {atom, Ln, generic}, {atom, Ln, With}},
+                        [
+                            {atom, Ln, Type},
+                            {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]},
+                            {var, Ln, 'X'}
+                        ]
+                    }
+                ]
+            }
+        ]}
+    }.
 
 %%%------------------------------------------------------------------
 %%%

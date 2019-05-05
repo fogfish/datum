@@ -25,6 +25,7 @@
    syntax/1
 ,  generic/1
 ,  derived/1
+,  derived_labelled/1
 ]).
 
 -record(adt, {a, b, c}).
@@ -52,22 +53,44 @@ syntax(_) ->
 %%
 generic(_) ->
    Struct  = #adt{a = 1, b = <<"test">>, c = 2.0},
+   Expect  = #{a => 1, b => <<"test">>, c => 2.0},
    Structs = [Struct],
 
-   #{}    = generic:from(Struct#adt{}),
-   [#{}]  = generic:from(Structs#adt{}),
+   Expect = generic:from(Struct#adt{}),
+   [Expect] = generic:from(Structs#adt{}),
    Struct = generic:adt(generic:from(Struct#adt{})),
-   Structs= generic:adt(generic:from(Structs#adt{})).
+   Structs = generic:adt(generic:from(Structs#adt{})).
 
 %%
 %%
 derived(_) ->
+   Struct  = #adt{a = 1, b = <<"test">>, c = 2.0},
+   Expect  = #{a => 1, b => <<"test">>, c => 2.0},
+
    Encode = generic:encode(#adt{}),
    Decode = generic:decode(#adt{}),
 
-   Expect = #adt{a = 1, b = <<"test">>, c = 2.0},
-   Expect = Decode(Encode(Expect)),
-   [Expect] = Decode(Encode([Expect])).
+   Expect = Encode(Struct),
+   [Expect] = Encode([Struct]),
+
+   Struct = Decode(Encode(Struct)),
+   [Struct] = Decode(Encode([Struct])).
+
+%%
+%%
+derived_labelled(_) ->
+   Struct  = #adt{a = 1, b = <<"test">>, c = 2.0},
+   Expect  = #{<<"a">> => 1, <<"b">> => <<"test">>, <<"c">> => 2.0},
+
+   Encode = generic:lencode(#adt{}),
+   Decode = generic:ldecode(#adt{}),
+
+   Expect = Encode(Struct),
+   [Expect] = Encode([Struct]),
+
+   Struct = Decode(Encode(Struct)),
+   [Struct] = Decode(Encode([Struct])).
+
 
 %%%------------------------------------------------------------------
 %%%
