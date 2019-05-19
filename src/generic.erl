@@ -4,9 +4,9 @@
 -module(generic).
 
 -export([
-    from/2
-,   to/3
-,   labelled_from/2
+    generic_of/2
+,   generic_to/3
+,   labelled_of/2
 ,   labelled_to/3
 ,   parse_transform/2
 ]).
@@ -14,9 +14,9 @@
 
 %%
 %%
--spec from([atom()], tuple()) -> map().
+-spec generic_of([atom()], tuple()) -> map().
 
-from(Fields, Struct)
+generic_of(Fields, Struct)
  when is_tuple(Struct) ->
     maps:from_list(
         [{Key, Value} ||
@@ -29,29 +29,29 @@ from(Fields, Struct)
         ]
     );
 
-from(Fields, Structs)
+generic_of(Fields, Structs)
  when is_list(Structs) ->
-    [from(Fields, Struct) || Struct <- Structs].
+    [generic_of(Fields, Struct) || Struct <- Structs].
 
 %%
 %%
--spec to(atom(), [atom()], map()) -> tuple().
+-spec generic_to(atom(), [atom()], map()) -> tuple().
 
-to(Type, Fields, Generic)
+generic_to(Type, Fields, Generic)
  when is_map(Generic) ->
     list_to_tuple([Type | 
         [maps:get(X, Generic, undefined) || X <- Fields]]
     );
 
-to(Type, Fields, Generics)
+generic_to(Type, Fields, Generics)
  when is_list(Generics) ->
-    [to(Type, Fields, Generic) || Generic <- Generics].
+    [generic_to(Type, Fields, Generic) || Generic <- Generics].
 
 %%
 %%
--spec labelled_from([atom()], tuple()) -> map().
+-spec labelled_of([atom()], tuple()) -> map().
 
-labelled_from(Fields, Struct)
+labelled_of(Fields, Struct)
  when is_tuple(Struct) ->
     maps:from_list(
         [{typecast:s(Key), Value} ||
@@ -64,9 +64,9 @@ labelled_from(Fields, Struct)
         ]
     );
 
-labelled_from(Fields, Structs)
+labelled_of(Fields, Structs)
  when is_list(Structs) ->
-    [labelled_from(Fields, Struct) || Struct <- Structs].
+    [labelled_of(Fields, Struct) || Struct <- Structs].
 
 %%
 %%
@@ -92,57 +92,33 @@ hook_generic({call, Ln,
     {remote, _, {atom, _, generic}, {atom, _, encode}},
     [{record, _, Type, _}]
 }) ->
-    cc_encode(Ln, from, Type);
+    cc_encode(Ln, generic_of, Type);
 
 hook_generic({call, Ln,
     {remote, _, {atom, _, generic}, {atom, _, decode}},
     [{record, _, Type, _}]
 }) ->
-    cc_decode(Ln, to, Type);
+    cc_decode(Ln, generic_to, Type);
 
 hook_generic({call, Ln, 
-    {remote, _, {atom, _, generic}, {atom, _, from}},
-    [{record, _, {var, _, _} = Struct, Type, _}]
-}) ->
-    cc_from(Ln, from, Type, Struct);
-
-hook_generic({call, Ln, 
-    {remote, _, {atom, _, generic}, {atom, _, from}},
-    [{record, _, Type, _} = Struct]
-}) ->
-    cc_from(Ln, from, Type, Struct);
-
-hook_generic({call, Ln, 
-    {remote, _, {atom, _, generic}, {atom, _, from}},
-    [{cons, Ln, {record, _, Type, _}, _} = Struct]
-}) ->
-    cc_from(Ln, from, Type, Struct);
-
-hook_generic({call, Ln, 
-    {remote, _, {atom, _, generic}, {atom, _, from}},
-    [{cons, Ln, {record, _, {var, _, _}, Type, _}, _} = Struct]
-}) ->
-    cc_from(Ln, from, Type, Struct);
-
-hook_generic({call, Ln,
-    {remote, _, {atom, _, generic}, {atom, _, Type}},
+    {remote, _, {atom, _, generic_of}, {atom, _, Type}},
     [Struct]
 }) ->
-    {call, Ln,
-        {remote, Ln, {atom, Ln, generic}, {atom, Ln, to}},
-        [
-            {atom, Ln, Type},
-            {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]},
-            expr(Struct)
-        ]
-    };
+    cc_of(Ln, generic_of, Type, Struct);
 
+hook_generic({call, Ln,
+    {remote, _, {atom, _, generic_to}, {atom, _, Type}},
+    [Struct]
+}) ->
+    cc_to(Ln, generic_to, Type, Struct);
 
+%%
+%%
 hook_generic({call, Ln,
     {remote, _, {atom, _, labelled}, {atom, _, encode}},
     [{record, _, Type, _}]
 }) ->
-    cc_encode(Ln, labelled_from, Type);
+    cc_encode(Ln, labelled_of, Type);
 
 hook_generic({call, Ln,
     {remote, _, {atom, _, labelled}, {atom, _, decode}},
@@ -151,41 +127,16 @@ hook_generic({call, Ln,
     cc_decode(Ln, labelled_to, Type);
 
 hook_generic({call, Ln, 
-    {remote, _, {atom, _, labelled}, {atom, _, from}},
-    [{record, _, {var, _, _} = Struct, Type, _}]
-}) ->
-    cc_from(Ln, labelled_from, Type, Struct);
-
-hook_generic({call, Ln, 
-    {remote, _, {atom, _, labelled}, {atom, _, from}},
-    [{record, _, Type, _} = Struct]
-}) ->
-    cc_from(Ln, labelled_from, Type, Struct);
-
-hook_generic({call, Ln, 
-    {remote, _, {atom, _, labelled}, {atom, _, from}},
-    [{cons, Ln, {record, _, Type, _}, _} = Struct]
-}) ->
-    cc_from(Ln, labelled_from, Type, Struct);
-
-hook_generic({call, Ln, 
-    {remote, _, {atom, _, labelled}, {atom, _, from}},
-    [{cons, Ln, {record, _, {var, _, _}, Type, _}, _} = Struct]
-}) ->
-    cc_from(Ln, labelled_from, Type, Struct);
-
-hook_generic({call, Ln,
-    {remote, _, {atom, _, labelled}, {atom, _, Type}},
+    {remote, _, {atom, _, labelled_of}, {atom, _, Type}},
     [Struct]
 }) ->
-    {call, Ln,
-        {remote, Ln, {atom, Ln, generic}, {atom, Ln, labelled_to}},
-        [
-            {atom, Ln, Type},
-            {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]},
-            expr(Struct)
-        ]
-    };
+    cc_of(Ln, labelled_of, Type, Struct);
+
+hook_generic({call, Ln,
+    {remote, _, {atom, _, labelled_to}, {atom, _, Type}},
+    [Struct]
+}) ->
+    cc_to(Ln, labelled_to, Type, Struct);
 
 hook_generic({call,Line,F0,As0}) ->
     %% N.B. If F an atom then call to local function or BIF, if F a
@@ -235,10 +186,20 @@ cc_decode(Ln, With, Type) ->
         ]}
     }.
 
-cc_from(Ln, With, Type, Struct) ->
+cc_of(Ln, With, Type, Struct) ->
     {call, Ln,
         {remote, Ln, {atom, Ln, generic}, {atom, Ln, With}},
         [
+            {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]},
+            expr(Struct)
+        ]
+    }.
+
+cc_to(Ln, With, Type, Struct) ->
+    {call, Ln,
+        {remote, Ln, {atom, Ln, generic}, {atom, Ln, With}},
+        [
+            {atom, Ln, Type},
             {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]},
             expr(Struct)
         ]

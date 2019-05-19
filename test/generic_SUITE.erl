@@ -42,17 +42,17 @@ all() ->
 %%
 %%
 syntax(_) ->
-   ok = transform("generic:from(#adt{a = 1})."),
-   ok = transform("generic:from(X#adt{})."),
-   ok = transform("generic:adt(#{a => 1})."),
-   ok = transform("generic:adt(X)."),
+   ok = transform("generic_of:adt(#adt{a = 1})."),
+   ok = transform("generic_of:adt(X)."),
+   ok = transform("generic_to:adt(#{a => 1})."),
+   ok = transform("generic_to:adt(X)."),
    ok = transform("generic:encode(#adt{})."),
    ok = transform("generic:decode(#adt{})."),
 
-   ok = transform("labelled:from(#adt{a = 1})."),
-   ok = transform("labelled:from(X#adt{})."),
-   ok = transform("labelled:adt(#{a => 1})."),
-   ok = transform("labelled:adt(X)."),
+   ok = transform("labelled_of:adt(#adt{a = 1})."),
+   ok = transform("labelled_of:adt(X)."),
+   ok = transform("labelled_to:adt(#{a => 1})."),
+   ok = transform("labelled_to:adt(X)."),
    ok = transform("labelled:encode(#adt{})."),
    ok = transform("labelled:decode(#adt{})."),
 
@@ -64,10 +64,10 @@ generic(_) ->
    Struct  = #adt{a = 1, b = <<"test">>, c = 2.0},
    Expect  = #{a => 1, b => <<"test">>, c => 2.0},
 
-   Expect = generic:from(Struct#adt{}),
-   [Expect] = generic:from([Struct#adt{}]),
-   Struct = generic:adt(generic:from(Struct#adt{})),
-   [Struct] = generic:adt(generic:from([Struct#adt{}])).
+   Expect = generic_of:adt(Struct),
+   [Expect] = generic_of:adt([Struct]),
+   Struct = generic_to:adt(generic_of:adt(Struct)),
+   [Struct] = generic_to:adt(generic_of:adt([Struct])).
 
 %%
 %%
@@ -90,10 +90,10 @@ labelled(_) ->
    Struct  = #adt{a = 1, b = <<"test">>, c = 2.0},
    Expect  = #{<<"a">> => 1, <<"b">> => <<"test">>, <<"c">> => 2.0},
 
-   Expect = labelled:from(Struct#adt{}),
-   [Expect] = labelled:from([Struct#adt{}]),
-   Struct = labelled:adt(labelled:from(Struct#adt{})),
-   [Struct] = labelled:adt(labelled:from([Struct#adt{}])).
+   Expect = labelled_of:adt(Struct),
+   [Expect] = labelled_of:adt([Struct]),
+   Struct = labelled_to:adt(labelled_of:adt(Struct)),
+   [Struct] = labelled_to:adt(labelled_of:adt([Struct])).
 %%
 %%
 derived_labelled(_) ->

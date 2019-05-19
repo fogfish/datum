@@ -221,7 +221,7 @@ The library introduces a `generic` parse transform that implements automatic map
 example() ->
    %%
    %% builds a generic representation from #person{} ADT
-   Gen = generic:from(#person{
+   Gen = generic_of:person(#person{
       name    = "Verner Pleishner",
       address = "Blumenstrasse 14",
       city    = "Berne"
@@ -229,7 +229,7 @@ example() ->
 
    %%
    %% builds #person{} ADT from generic representation
-   generic:person(Gen).
+   generic_to:person(Gen).
 ```
 
 In facts, a macro magic happens behind to execute transformation without boilerplate. As the result a labeled generic representation is returned.
