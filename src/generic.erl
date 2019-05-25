@@ -106,11 +106,24 @@ hook_generic({call, Ln,
 }) ->
     cc_of(Ln, generic_of, Type, Struct);
 
+hook_generic({call, Ln, 
+    {remote, _, {atom, _, generic_of}, {atom, _, _}},
+    [Spec, Struct]
+}) ->
+    cc_explicit_of(Ln, generic_of, Spec, Struct);
+
 hook_generic({call, Ln,
     {remote, _, {atom, _, generic_to}, {atom, _, Type}},
     [Struct]
 }) ->
     cc_to(Ln, generic_to, Type, Struct);
+
+hook_generic({call, Ln,
+    {remote, _, {atom, _, generic_to}, {atom, _, Type}},
+    [Spec, Struct]
+}) ->
+    cc_explicit_to(Ln, generic_to, Type, Spec, Struct);
+
 
 %%
 %%
@@ -132,11 +145,23 @@ hook_generic({call, Ln,
 }) ->
     cc_of(Ln, labelled_of, Type, Struct);
 
+hook_generic({call, Ln, 
+    {remote, _, {atom, _, labelled_of}, {atom, _, _}},
+    [Spec, Struct]
+}) ->
+    cc_explicit_of(Ln, labelled_of, Spec, Struct);
+
 hook_generic({call, Ln,
     {remote, _, {atom, _, labelled_to}, {atom, _, Type}},
     [Struct]
 }) ->
     cc_to(Ln, labelled_to, Type, Struct);
+
+hook_generic({call, Ln,
+    {remote, _, {atom, _, labelled_to}, {atom, _, Type}},
+    [Spec, Struct]
+}) ->
+    cc_explicit_to(Ln, labelled_to, Type, Spec, Struct);
 
 hook_generic({call,Line,F0,As0}) ->
     %% N.B. If F an atom then call to local function or BIF, if F a
@@ -195,6 +220,16 @@ cc_of(Ln, With, Type, Struct) ->
         ]
     }.
 
+cc_explicit_of(Ln, With, Spec, Struct) ->
+    {call, Ln,
+        {remote, Ln, {atom, Ln, generic}, {atom, Ln, With}},
+        [
+            Spec,
+            expr(Struct)
+        ]
+    }.
+
+
 cc_to(Ln, With, Type, Struct) ->
     {call, Ln,
         {remote, Ln, {atom, Ln, generic}, {atom, Ln, With}},
@@ -204,6 +239,18 @@ cc_to(Ln, With, Type, Struct) ->
             expr(Struct)
         ]
     }.
+
+cc_explicit_to(Ln, With, Type, Spec, Struct) ->
+    {call, Ln,
+        {remote, Ln, {atom, Ln, generic}, {atom, Ln, With}},
+        [
+            {atom, Ln, Type},
+            Spec,
+            expr(Struct)
+        ]
+    }.
+
+
 
 %%%------------------------------------------------------------------
 %%%

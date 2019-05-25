@@ -24,8 +24,10 @@
 -export([
    syntax/1
 ,  generic/1
+,  generic_explicit_spec/1
 ,  derived/1
 ,  labelled/1
+,  labelled_explicit_spec/1
 ,  derived_labelled/1
 ]).
 
@@ -71,6 +73,18 @@ generic(_) ->
 
 %%
 %%
+generic_explicit_spec(_) ->
+   Struct  = #adt{a = 1, b = <<"test">>, c = 2.0},
+   Expect  = #{x => 1, y => <<"test">>, z => 2.0},
+   Spec    = [x, y, z],
+
+   Expect = generic_of:adt(Spec, Struct),
+   [Expect] = generic_of:adt(Spec, [Struct]),
+   Struct = generic_to:adt(Spec, generic_of:adt(Spec, Struct)),
+   [Struct] = generic_to:adt(Spec, generic_of:adt(Spec, [Struct])).
+
+%%
+%%
 derived(_) ->
    Struct  = #adt{a = 1, b = <<"test">>, c = 2.0},
    Expect  = #{a => 1, b => <<"test">>, c => 2.0},
@@ -94,6 +108,19 @@ labelled(_) ->
    [Expect] = labelled_of:adt([Struct]),
    Struct = labelled_to:adt(labelled_of:adt(Struct)),
    [Struct] = labelled_to:adt(labelled_of:adt([Struct])).
+
+%%
+%%
+labelled_explicit_spec(_) ->
+   Struct  = #adt{a = 1, b = <<"test">>, c = 2.0},
+   Expect  = #{<<"x">> => 1, <<"y">> => <<"test">>, <<"z">> => 2.0},
+   Spec    = [x, y, z],
+
+   Expect = labelled_of:adt(Spec, Struct),
+   [Expect] = labelled_of:adt(Spec, [Struct]),
+   Struct = labelled_to:adt(Spec, labelled_of:adt(Spec, Struct)),
+   [Struct] = labelled_to:adt(Spec, labelled_of:adt(Spec, [Struct])).
+
 %%
 %%
 derived_labelled(_) ->
