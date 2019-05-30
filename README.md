@@ -39,6 +39,8 @@ The stable library release is available via hex packages, add the library as dep
 {deps, [{datum}]}.
 ``` 
 
+Please follow the [feature overview](doc/features.md) to start leaning all available features; then continue to library [examples](examples) and to [source code](src).
+
 
 ## How To Contribute
 
