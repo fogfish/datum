@@ -17,15 +17,15 @@
 
 The [feature overview](doc/features.md) provides an introduction to datum features, use-cases and reasoning of they existence:
 
-* notation for `option` and `either` types
-* data structures with common behavior: **foldable**, **traversable** and **map-like**. 
+* `option` and `either` type notations
+* a set of generic data types that can be inspected, traversed, and manipulated with common behavior: **foldable**, **traversable** and **map-like**. 
 * pure functional **data types**: binary search tree, red-black tree, heap, queues, and others
 * **streams** or lazy lists are a sequential data structure that contains on demand computed elements.
 * resembles concept of getters and setters ([**lens**](doc/lens.md)) for complex algebraic data types.
-* define a **category pattern**, **monads** and they composition for Erlang applications
-* **do-notation** with pattern matching
+* mapping of algebraic data types to they [**generic**](doc/generic.md) representation and back
+* define a [**category pattern**](doc/category.md), [**monads**](doc/monad.md) and they composition for Erlang applications. You might be familiar with this concept as pipe, flow or function composition.
+* generic [**do-notation**](doc/monad.md) with pattern matching. 
 * [**typecasts**](doc/typecast.md) of primitive data types
-* mapping of algebraic data types to they **generic** representation and back
 * supports **OTP/18.x** or later release
 
 
@@ -91,9 +91,4 @@ If you experience any issues with the library, please let us know via [GitHub is
 
 ## License
 
-Copyright 2012 Dmitry Kolesnikov
-
-Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0.
-
-Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
-
+[![See LICENSE](https://img.shields.io/hexpm/l/plug.svg?style=for-the-badge)](LICENSE)

@@ -2,6 +2,17 @@
 
 The library uses [semantic versions](http://semver.org) to identify stable releases. 
 
+## Release 4.6.x
+
+**Features**
+* [#68](https://github.com/fogfish/datum/issues/68): Implements generic representations
+
+## Release 4.5.x
+
+**Features**
+* [#54](https://github.com/fogfish/datum/issues/54): Implements pattern matching within do-notation
+
+
 ## Release 4.4.0
 
 **Features**

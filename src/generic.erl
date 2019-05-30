@@ -6,8 +6,10 @@
 -export([
     generic_of/2
 ,   generic_to/3
+,   generic_lens/2
 ,   labelled_of/2
 ,   labelled_to/3
+,   labelled_lens/2
 ,   parse_transform/2
 ]).
 
@@ -49,6 +51,15 @@ generic_to(Type, Fields, Generics)
 
 %%
 %%
+-spec generic_lens(atom(), [atom()]) -> datum:lens().
+
+generic_lens(Type, Fields) ->
+    lens:p(list_to_tuple([Type |
+        [lens:at(X) || X <- Fields]]
+    )).
+
+%%
+%%
 -spec labelled_of([atom()], tuple()) -> map().
 
 labelled_of(Fields, Struct)
@@ -84,6 +95,15 @@ labelled_to(Type, Fields, Generics)
 
 %%
 %%
+-spec labelled_lens(atom(), [atom()]) -> datum:lens().
+
+labelled_lens(Type, Fields) ->
+    lens:p(list_to_tuple([Type |
+        [lens:at(typecast:s(X)) || X <- Fields]]
+    )).
+
+%%
+%%
 -spec hook_generic(_) -> _.
 
 %%
@@ -95,10 +115,34 @@ hook_generic({call, Ln,
     cc_encode(Ln, generic_of, Type);
 
 hook_generic({call, Ln,
+    {remote, _, {atom, _, generic}, {atom, _, encode}},
+    [Spec, {record, _, Type, _}]
+}) ->
+    cc_encode(Ln, generic_of, Spec, Type);
+
+hook_generic({call, Ln,
     {remote, _, {atom, _, generic}, {atom, _, decode}},
     [{record, _, Type, _}]
 }) ->
     cc_decode(Ln, generic_to, Type);
+
+hook_generic({call, Ln,
+    {remote, _, {atom, _, generic}, {atom, _, decode}},
+    [Spec, {record, _, Type, _}]
+}) ->
+    cc_decode(Ln, generic_to, Spec, Type);
+
+hook_generic({call, Ln,
+    {remote, _, {atom, _, generic}, {atom, _, lens}},
+    [{record, _, Type, _}]
+}) ->
+    cc_lens(Ln, generic_lens, Type);
+
+hook_generic({call, Ln,
+    {remote, _, {atom, _, generic}, {atom, _, lens}},
+    [Spec, {record, _, Type, _}]
+}) ->
+    cc_lens(Ln, generic_lens, Spec, Type);
 
 hook_generic({call, Ln, 
     {remote, _, {atom, _, generic_of}, {atom, _, Type}},
@@ -134,10 +178,34 @@ hook_generic({call, Ln,
     cc_encode(Ln, labelled_of, Type);
 
 hook_generic({call, Ln,
+    {remote, _, {atom, _, labelled}, {atom, _, encode}},
+    [Spec, {record, _, Type, _}]
+}) ->
+    cc_encode(Ln, labelled_of, Spec, Type);
+
+hook_generic({call, Ln,
     {remote, _, {atom, _, labelled}, {atom, _, decode}},
     [{record, _, Type, _}]
 }) ->
     cc_decode(Ln, labelled_to, Type);
+
+hook_generic({call, Ln,
+    {remote, _, {atom, _, labelled}, {atom, _, decode}},
+    [Spec, {record, _, Type, _}]
+}) ->
+    cc_decode(Ln, labelled_to, Spec, Type);
+
+hook_generic({call, Ln,
+    {remote, _, {atom, _, labelled}, {atom, _, lens}},
+    [{record, _, Type, _}]
+}) ->
+    cc_lens(Ln, labelled_lens, Type);
+
+hook_generic({call, Ln,
+    {remote, _, {atom, _, labelled}, {atom, _, lens}},
+    [Spec, {record, _, Type, _}]
+}) ->
+    cc_lens(Ln, labelled_lens, Spec, Type);
 
 hook_generic({call, Ln, 
     {remote, _, {atom, _, labelled_of}, {atom, _, Type}},
@@ -191,6 +259,25 @@ cc_encode(Ln, With, Type) ->
         ]}
     }.
 
+cc_encode(Ln, With, Spec, _Type) ->
+    {'fun', Ln,
+        {clauses, [
+            {clause, Ln,
+                [{var, Ln, 'X'}],
+                [],
+                [
+                    {call, Ln,
+                        {remote, Ln, {atom, Ln, generic}, {atom, Ln, With}},
+                        [
+                            Spec,
+                            {var, Ln, 'X'}
+                        ]
+                    }
+                ]
+            }
+        ]}
+    }.
+
 cc_decode(Ln, With, Type) ->
     {'fun', Ln,
         {clauses, [
@@ -203,6 +290,26 @@ cc_decode(Ln, With, Type) ->
                         [
                             {atom, Ln, Type},
                             {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]},
+                            {var, Ln, 'X'}
+                        ]
+                    }
+                ]
+            }
+        ]}
+    }.
+
+cc_decode(Ln, With, Spec, Type) ->
+    {'fun', Ln,
+        {clauses, [
+            {clause, Ln,
+                [{var, Ln, 'X'}],
+                [],
+                [
+                    {call, Ln,
+                        {remote, Ln, {atom, Ln, generic}, {atom, Ln, With}},
+                        [
+                            {atom, Ln, Type},
+                            Spec,
                             {var, Ln, 'X'}
                         ]
                     }
@@ -250,7 +357,23 @@ cc_explicit_to(Ln, With, Type, Spec, Struct) ->
         ]
     }.
 
+cc_lens(Ln, With, Type) ->
+    {call, Ln,
+        {remote, Ln, {atom, Ln, generic}, {atom, Ln, With}},
+        [
+            {atom, Ln, Type},
+            {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]}
+        ]
+    }.
 
+cc_lens(Ln, With, Spec, Type) ->
+    {call, Ln,
+        {remote, Ln, {atom, Ln, generic}, {atom, Ln, With}},
+        [
+            {atom, Ln, Type},
+            Spec
+        ]
+    }.
 
 %%%------------------------------------------------------------------
 %%%

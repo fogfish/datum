@@ -24,11 +24,17 @@
 -export([
    syntax/1
 ,  generic/1
-,  generic_explicit_spec/1
-,  derived/1
+,  generic_assisted/1
+,  generic_partial/1
+,  generic_partial_assisted/1
+,  generic_lens/1
+,  generic_lens_assisted/1
 ,  labelled/1
-,  labelled_explicit_spec/1
-,  derived_labelled/1
+,  labelled_assisted/1
+,  labelled_partial/1
+,  labelled_partial_assisted/1
+,  labelled_lens/1
+,  labelled_lens_assisted/1
 ]).
 
 -record(adt, {a, b, c}).
@@ -73,7 +79,7 @@ generic(_) ->
 
 %%
 %%
-generic_explicit_spec(_) ->
+generic_assisted(_) ->
    Struct  = #adt{a = 1, b = <<"test">>, c = 2.0},
    Expect  = #{x => 1, y => <<"test">>, z => 2.0},
    Spec    = [x, y, z],
@@ -85,7 +91,7 @@ generic_explicit_spec(_) ->
 
 %%
 %%
-derived(_) ->
+generic_partial(_) ->
    Struct  = #adt{a = 1, b = <<"test">>, c = 2.0},
    Expect  = #{a => 1, b => <<"test">>, c => 2.0},
 
@@ -100,6 +106,45 @@ derived(_) ->
 
 %%
 %%
+generic_partial_assisted(_) ->
+   Struct  = #adt{a = 1, b = <<"test">>, c = 2.0},
+   Expect  = #{x => 1, y => <<"test">>, z => 2.0},
+   Spec    = [x, y, z],
+
+   Encode = generic:encode(Spec, #adt{}),
+   Decode = generic:decode(Spec, #adt{}),
+
+   Expect = Encode(Struct),
+   [Expect] = Encode([Struct]),
+
+   Struct = Decode(Encode(Struct)),
+   [Struct] = Decode(Encode([Struct])).
+
+%%
+%%
+generic_lens(_) ->
+   Struct  = #{a => 1, b => <<"test">>, c => 2.0},
+   Expect  = #adt{a = 1, b = <<"test">>, c = 2.0},
+
+   Lens = generic:lens(#adt{}),
+
+   Expect = lens:get(Lens, Struct),
+   [Expect] = lens:get(lens:c(lens:traverse(), Lens), [Struct]).
+
+%%
+%%
+generic_lens_assisted(_) ->
+   Struct  = #{x => 1, y => <<"test">>, z => 2.0},
+   Expect  = #adt{a = 1, b = <<"test">>, c = 2.0},
+   Spec    = [x, y, z],
+
+   Lens = generic:lens(Spec, #adt{}),
+
+   Expect = lens:get(Lens, Struct),
+   [Expect] = lens:get(lens:c(lens:traverse(), Lens), [Struct]).
+
+%%
+%%
 labelled(_) ->
    Struct  = #adt{a = 1, b = <<"test">>, c = 2.0},
    Expect  = #{<<"a">> => 1, <<"b">> => <<"test">>, <<"c">> => 2.0},
@@ -111,7 +156,7 @@ labelled(_) ->
 
 %%
 %%
-labelled_explicit_spec(_) ->
+labelled_assisted(_) ->
    Struct  = #adt{a = 1, b = <<"test">>, c = 2.0},
    Expect  = #{<<"x">> => 1, <<"y">> => <<"test">>, <<"z">> => 2.0},
    Spec    = [x, y, z],
@@ -123,7 +168,7 @@ labelled_explicit_spec(_) ->
 
 %%
 %%
-derived_labelled(_) ->
+labelled_partial(_) ->
    Struct  = #adt{a = 1, b = <<"test">>, c = 2.0},
    Expect  = #{<<"a">> => 1, <<"b">> => <<"test">>, <<"c">> => 2.0},
 
@@ -136,6 +181,44 @@ derived_labelled(_) ->
    Struct = Decode(Encode(Struct)),
    [Struct] = Decode(Encode([Struct])).
 
+%%
+%%
+labelled_partial_assisted(_) ->
+   Struct  = #adt{a = 1, b = <<"test">>, c = 2.0},
+   Expect  = #{<<"x">> => 1, <<"y">> => <<"test">>, <<"z">> => 2.0},
+   Spec    = [x, y, z],
+
+   Encode = labelled:encode(Spec, #adt{}),
+   Decode = labelled:decode(Spec, #adt{}),
+
+   Expect = Encode(Struct),
+   [Expect] = Encode([Struct]),
+
+   Struct = Decode(Encode(Struct)),
+   [Struct] = Decode(Encode([Struct])).
+
+%%
+%%
+labelled_lens(_) ->
+   Struct  = #{<<"a">> => 1, <<"b">> => <<"test">>, <<"c">> => 2.0},
+   Expect  = #adt{a = 1, b = <<"test">>, c = 2.0},
+
+   Lens = labelled:lens(#adt{}),
+
+   Expect = lens:get(Lens, Struct),
+   [Expect] = lens:get(lens:c(lens:traverse(), Lens), [Struct]).
+
+%%
+%%
+labelled_lens_assisted(_) ->
+   Struct  = #{<<"x">> => 1, <<"y">> => <<"test">>, <<"z">> => 2.0},
+   Expect  = #adt{a = 1, b = <<"test">>, c = 2.0},
+   Spec    = [x, y, z],
+
+   Lens = labelled:lens(Spec, #adt{}),
+
+   Expect = lens:get(Lens, Struct),
+   [Expect] = lens:get(lens:c(lens:traverse(), Lens), [Struct]).
 
 %%%------------------------------------------------------------------
 %%%
