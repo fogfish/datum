@@ -7,11 +7,18 @@ The library uses [semantic versions](http://semver.org) to identify stable relea
 **Features**
 * [#68](https://github.com/fogfish/datum/issues/68): Implements generic representations
 
+
 ## Release 4.5.x
 
 **Features**
 * [#54](https://github.com/fogfish/datum/issues/54): Implements pattern matching within do-notation
+* Support product lenses for records (`lens:p/1`).
+* Add typecast utility for scalar types.
+* Support MFA generator for streams
 
+**Improvements**
+
+* Support lists comprehension at do-notation
 
 ## Release 4.4.0
 
