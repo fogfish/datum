@@ -29,19 +29,7 @@
 -module(lens_SUITE).
 -include_lib("common_test/include/ct.hrl").
 
-%%
-%% common test
--export([
-   all/0
-  ,groups/0
-  ,init_per_suite/1
-  ,end_per_suite/1
-  ,init_per_group/2
-  ,end_per_group/2
-]).
-
-%%
-%% pure lens interface
+-export([all/0]).
 -export([
    id/1,
    const/1,
@@ -83,12 +71,13 @@
    compose8/1,
    compose9/1,
 
-   product1/1, 
-   product2/1, 
-   product3/1, 
-   product4/1, 
-   product5/1, 
-   product6/1, 
+   product1_with_list/1,
+   product1_with_tuple/1,
+   product2/1,
+   product3/1,
+   product4/1,
+   product5/1,
+   product6/1,
    product7/1,
    product8/1,
    product9/1,
@@ -108,71 +97,12 @@
 %%%
 %%%----------------------------------------------------------------------------   
 all() ->
-   [
-      {group, basic},
-      {group, binary},
-      {group, list},
-      {group, tuple},
-      {group, map},
-      {group, pair},
-      {group, keylist},
-      {group, unittest},
-      {group, compose},
-      {group, lens_api}
+   [Test || {Test, NAry} <- ?MODULE:module_info(exports), 
+      Test =/= module_info,
+      Test =/= init_per_suite,
+      Test =/= end_per_suite,
+      NAry =:= 1
    ].
-
-groups() ->
-   [
-      {basic, [parallel],
-         [id, const]},
-
-      {binary, [parallel],
-         [hbits, tbits, bits]},
-
-      {list, [parallel],
-         [hd, hd_om, tl, tl_om, traverse, traverse_empty, takewith, takewith_om]},
-
-      {tuple, [parallel],
-         [t1, t2, t3, ti]},
-
-      {map,   [parallel],
-         [at, at_om]},
-
-      {pair,   [parallel],
-         [pair, pair_om]},
-
-      {keylist,  [parallel],
-         [keylist, keylist_om]},
-
-      {unittest, [parallel],
-         [require, defined]},
-
-      {compose, [parallel], 
-         [compose1, compose2, compose3, compose4, compose5, compose6, compose7, compose8, compose9,
-          product1, product2, product3, product4, product5, product6, product7, product8, product9]},
-
-      {lens_api, [parallel],
-         [get, put, map, apply, iso_pairs, iso_lists, iso4]}
-   ].
-
-%%%----------------------------------------------------------------------------   
-%%%
-%%% init
-%%%
-%%%----------------------------------------------------------------------------   
-init_per_suite(Config) ->
-   Config.
-
-end_per_suite(_Config) ->
-   ok.
-
-%% 
-%%
-init_per_group(_, Config) ->
-   Config.
-
-end_per_group(_, _Config) ->
-   ok.
 
 %%%----------------------------------------------------------------------------   
 %%%
@@ -548,13 +478,21 @@ compose9(_Config) ->
    law_put_put(Lens, a, b, [a, {[{[{[{b}]}], 2}],2}], Data).
 
 
-product1(_Config) ->
+product1_with_list(_Config) ->
    Lens = lens:p([lens:at(a), lens:at(b)]),
    Data = #{a => 1, b => 2},
    [1, 2] = lens:get(Lens, Data),
    law_get_put(Lens, Data),
    law_put_get(Lens, [a, b], Data),
    law_put_put(Lens, [a, b], [-1, -2], #{a => -1, b => -2}, Data).
+
+product1_with_tuple(_Config) ->
+   Lens = lens:p({a, lens:at(a), lens:at(b)}),
+   Data = #{a => 1, b => 2},
+   {a, 1, 2} = lens:get(Lens, Data),
+   law_get_put(Lens, Data),
+   law_put_get(Lens, {a, a, b}, Data),
+   law_put_put(Lens, {a, a, b}, {a, -1, -2}, #{a => -1, b => -2}, Data).
 
 product2(_Config) ->
    Lens = lens:p(lens:at(a), lens:at(b)),

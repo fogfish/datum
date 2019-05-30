@@ -8,6 +8,7 @@
 * [Pure functional data types](#pure-functional-data-types)
 * [Stream](#stream)
 * [Lens](#lens)
+* [Generic representation](#generic-representation)
 * [Category pattern](#category-pattern)
 * [Monad](#monad)
 
@@ -204,6 +205,36 @@ end.
 lens:get(Lens(a), lens:put(Lens(a), 1, bst:new())).
 ```
 
+## Generic representation
+
+Automatic transformation of algebraic data types to they generic representation solve wide problems of generic programming. Erlang has strong foundation and language primitives on this aspect due to dynamically typed nature. Existence of generic types (lists, maps and tuples) makes a programming task trivial. However, absence of strong types makes it error prone while switching a context from generic algorithms to business domain. Thus usage of algebraic data types (encoded in Erlang records) improves maintainability of domain specific code. 
+
+> The main advantage of using records rather than tuples is that fields in a record are accessed by name, whereas fields in a tuple are accessed by position.
+
+The library introduces a `generic` parse transform that implements automatic mapping between ADTs and generic representations.
+
+```erlang
+-compile({parse_transform, generic}).
+
+-record(person, {name, address, city}).
+
+example() ->
+   %%
+   %% builds a generic representation from #person{} ADT
+   Gen = generic_of:person(#person{
+      name    = "Verner Pleishner",
+      address = "Blumenstrasse 14",
+      city    = "Berne"
+   }),
+
+   %%
+   %% builds #person{} ADT from generic representation
+   generic_to:person(Gen).
+```
+
+In facts, a macro magic happens behind to execute transformation without boilerplate. As the result a labeled generic representation is returned.
+
+See details about [generic patterns](generic.md).
 
 
 ## Category pattern

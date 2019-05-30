@@ -17,15 +17,17 @@
 
 The [feature overview](doc/features.md) provides an introduction to datum features, use-cases and reasoning of they existence:
 
-* data structures with common behavior: **foldable**, **traversable** and **map-like** including 
-* pure functional **data types**: binary search tree, red-black tree, heap, queues, streams and others
+* `option` and `either` type notations
+* a set of generic data types that can be inspected, traversed, and manipulated with common behavior: **foldable**, **traversable** and **map-like**. 
+* pure functional **data types**: binary search tree, red-black tree, heap, queues, and others
+* **streams** or lazy lists are a sequential data structure that contains on demand computed elements.
 * resembles concept of getters and setters ([**lens**](doc/lens.md)) for complex algebraic data types.
-* define a **category pattern**, **monads** and **do-notation** with pattern matching
-* [type casts](doc/typecast.md) of scalar (primitive) data types
+* mapping of algebraic data types to they [**generic**](doc/generic.md) representation and back
+* define a [**category pattern**](doc/category.md), [**monads**](doc/monad.md) and they composition for Erlang applications. You might be familiar with this concept as pipe, flow or function composition.
+* generic [**do-notation**](doc/monad.md) with pattern matching. 
+* [**typecasts**](doc/typecast.md) of primitive data types
 * supports **OTP/18.x** or later release
 
-
-**Cheat Sheet** is available [here](doc/cheatsheet.md)
 
 ## Getting started
 
@@ -37,16 +39,20 @@ The stable library release is available via hex packages, add the library as dep
 {deps, [{datum}]}.
 ``` 
 
+Please follow the [feature overview](doc/features.md) to start leaning all available features; then continue to library [examples](examples) and to [source code](src).
+
 
 ## How To Contribute
 
-The library is Apache 2.0 licensed and accepts contributions via GitHub pull requests:
+The library is [Apache 2.0](LICENSE) licensed and accepts contributions via GitHub pull requests:
 
-* Fork the repository on GitHub
-* Read build instructions
-* Make a pull request
+1. Fork it
+2. Create your feature branch (`git checkout -b my-new-feature`)
+3. Commit your changes (`git commit -am 'Added some feature'`)
+4. Push to the branch (`git push origin my-new-feature`)
+5. Create new Pull Request
 
-The build process requires [Erlang/OTP](http://www.erlang.org/downloads) version 19.0 or later and essential build tools.
+The development requires [Erlang/OTP](http://www.erlang.org/downloads) version 19.0 or later and essential build tools.
 
 **Build** and **run** service in your development console. The following command boots Erlang virtual machine and opens Erlang shell.
 
@@ -89,9 +95,4 @@ If you experience any issues with the library, please let us know via [GitHub is
 
 ## License
 
-Copyright 2012 Dmitry Kolesnikov
-
-Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License. You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0.
-
-Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the specific language governing permissions and limitations under the License.
-
+[![See LICENSE](https://img.shields.io/hexpm/l/plug.svg?style=for-the-badge)](LICENSE)
