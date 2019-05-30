@@ -2,9 +2,9 @@
 
 > Generic programming is a style of computer programming in which algorithms are written in terms of types to-be-specified-later that are then instantiated when needed for specific types provided as parameters. -- said by [Wikipedia](https://en.wikipedia.org/wiki/Generic_programming).
 
-Erlang permits writing a generic code. It is known to be dynamic, strong typing language, the article [Types (or lack thereof)](https://learnyousomeerlang.com/types-or-lack-thereof) describes it in excellent manner. The in-depth study about type systems have been presented at [Point Of No Local Return: The Continuing Story Of Erlang Type Systems](http://www.erlang-factory.com/static/upload/media/1465548492405302zeeshanlakhanipointofnolocalreturn.pdf).
+Erlang permits writing a generic code. It is known to be dynamic, strong typing language, the article [Types (or lack thereof)](https://learnyousomeerlang.com/types-or-lack-thereof) describes it in excellent manner. The in-depth study about type systems have been presented at [Point Of No Local Return: The Continuing Story Of Erlang Type Systems](http://www.erlang-factory.com/static/upload/media/1465548492405302zeeshanlakhanipointofnolocalreturn.pdf). In this section, we would not discuss type systems. Instead we look on other aspect closely related to types.
 
-Type theory and a functional programming also operates with [algebraic data types](https://en.wikipedia.org/wiki/Algebraic_data_type). They are known as a composition of other types. The theory defines two classes of compositions: product types (tuples, records) and co-product types (sum, enumeration or variant types). Product types are strongly expressed by [records](http://erlang.org/doc/reference_manual/records.html) in Erlang; co-products are loosely defined (we skip them at current release). 
+Type theory and a functional programming operates with [algebraic data types](https://en.wikipedia.org/wiki/Algebraic_data_type). They are known as a composition of other types. The theory defines two classes of compositions: product types (tuples, records) and co-product types (sum, enumeration or variant types). Product types are strongly expressed by [records](http://erlang.org/doc/reference_manual/records.html) in Erlang; co-products are loosely defined (we skip them at current library release). 
 
 ```erlang
 -type fullname() :: binary().
@@ -52,21 +52,21 @@ As an example, a typical macro here to cast record type to the map:
 ).
 ```
 
-Unfortunately, usage of records have a couple of disadvantages that make them hardly usable in large projects:
+Unfortunately, usage of records have a couple of disadvantages that makes they usage questionable:
 
-* external serialization of domain models often requires knowledge of internals about records: types, attributes names, cardinality, etc. This information is not implicitly available unless you import `.hrl` file with records definition.
+* external serialization of domain models often requires knowledge of internals about records: types, attributes names, cardinality, etc. This information is not implicitly available unless you import `.hrl` file with records definition. It will be available for you only at compile time. 
 * record transformations to other record or any external format requires boilerplate code.
 * generic programming with records requires macros.
-* new built-in data type `maps()` obsoletes usage of records for casual use-cases.
+* new built-in data type `map()` obsoletes usage of records for casual use-cases.
 
 For these reasons, we would like to improve records runtime flexibility through `parse_transform` while keeping its compile-time benefits for domain modeling.
 
-The latest release of library aims on most common tasks in software engineering: representation switching.
+The latest release of library aims on most common tasks in software engineering: representation switching or data transformation.
 
 
 ## Switching representations
 
-`datum` provides a `parse_transform` called `generic` that allows us to switch back and forth between a concrete records (ADT) and its generic representa􏰀on without boilerplate. Please not that the generic representation is opaque structure for your code. Please follow examples of generic [here](../examples/src/examples_generic.erl).
+`datum` provides a `parse_transform` called `generic` that allows us to switch back and forth between a concrete records (ADT) and its generic representation without boilerplate. Please not that the generic representation is opaque structure for your code. Please follow examples of generic [here](../examples/src/examples_generic.erl).
 
 <!--
 Let's take a closer look at generic semantic:
@@ -100,10 +100,10 @@ person() ->
 semi_auto() ->
    Person = person(),
    Generic = generic_of:person(Person),
-   Employee = generic_to:person(Generic).   
+   Person = generic_to:person(Generic).   
 ```
 
-The generic representation carries-on instances of records fields and associated metadata, the current implementation uses `maps()` but this is subject to change in future release of the library. If two ADTs have the similar representation we can convert back and forth between them using their generics representation:
+The generic representation carries-on instances of records fields and associated metadata, the current implementation uses `map()` but this is subject to change in future release of the library. If two ADTs have the similar representation we can convert back and forth between them using their generics representation:
 
 ```erlang
 -compile({parse_transform, generic}).
@@ -115,16 +115,18 @@ Generic = generic_of:person(#person{ ... }).
 Employee = generic_to:employee(Generic).
 ```
 
-Please note that "similar" representation means -- set of common fields.
+Please note that "similar" representation means -- subset of common fields.
 
 ```erlang
 -compile({parse_transform, generic}).
 
 -record(person, {name, age, address}).
--record(visitor, {name, age}).
+-record(visitor, {name}).
+-record(location, {address}).
 
 Generic = generic_of:person(#person{ ... }).
 Visitor = generic_to:visitor(Generic).
+Location = generic_to:location(Generic).
 ```
 
 Semi-auto derivation works with recursive types but current version supports only lists.
@@ -139,7 +141,7 @@ Employee = generic_to:employee(Generic).
 
 ### Assisted derivation
 
-It is also possible to customize encoders/decoders for records without generic derivation. The feature supports morphism if two ADTs do not share similar representation.
+It is also possible to customize semi-auto encoders/decoders for records. The feature supports morphism if two ADTs do not share similar representation.
 
 ```erlang
 -compile({parse_transform, generic}).
