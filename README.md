@@ -42,13 +42,15 @@ The stable library release is available via hex packages, add the library as dep
 
 ## How To Contribute
 
-The library is Apache 2.0 licensed and accepts contributions via GitHub pull requests:
+The library is [Apache 2.0](LICENSE) licensed and accepts contributions via GitHub pull requests:
 
-* Fork the repository on GitHub
-* Read build instructions
-* Make a pull request
+1. Fork it
+2. Create your feature branch (`git checkout -b my-new-feature`)
+3. Commit your changes (`git commit -am 'Added some feature'`)
+4. Push to the branch (`git push origin my-new-feature`)
+5. Create new Pull Request
 
-The build process requires [Erlang/OTP](http://www.erlang.org/downloads) version 19.0 or later and essential build tools.
+The development requires [Erlang/OTP](http://www.erlang.org/downloads) version 19.0 or later and essential build tools.
 
 **Build** and **run** service in your development console. The following command boots Erlang virtual machine and opens Erlang shell.
 
