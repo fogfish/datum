@@ -95,4 +95,4 @@ If you experience any issues with the library, please let us know via [GitHub is
 
 ## License
 
-[![See LICENSE](https://img.shields.io/hexpm/l/plug.svg?style=for-the-badge)](LICENSE)
+[![See LICENSE](https://img.shields.io/github/license/fogfish/datum.svg?style=for-the-badge)](LICENSE)
