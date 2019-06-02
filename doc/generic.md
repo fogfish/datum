@@ -27,6 +27,18 @@ The beauty of Erlang records (product type) is that they definitions are only av
 %% src/person.erl:18: field birthday undefined in record person
 ```
 
+There are few other benefits of records over other data types: type testing and pattern matching. These subject has been widely covered at [official documentation](http://erlang.org/doc/programming_examples/records.html):
+
+```erlang
+%%
+%% type testing
+myfun(X) when is_record(X, person) -> ...
+
+%%
+%% pattern matching
+myfun(#person{name = Name}) -> ...
+``` 
+
 ## Generic programming with records
 
 Erlang offers few features that helps with generic programming:
