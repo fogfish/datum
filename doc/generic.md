@@ -37,7 +37,9 @@ myfun(X) when is_record(X, person) -> ...
 %%
 %% pattern matching
 myfun(#person{name = Name}) -> ...
-``` 
+```
+
+Be aware that type testing of records does not validates types of record fields. It checks only that a tuple of correct size and that its first element corresponds to desired type (e.g. `persion`). Therefore `is_record(#person{name = pleishner}, person)` will return true despite the name field being type annotated as binary.
 
 ## Generic programming with records
 
