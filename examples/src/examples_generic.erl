@@ -110,9 +110,9 @@ custom_codecs() ->
       location = generic_of:address(Address),
       owner    = generic_of:person(Person)
    }),
-   Lens = lens:p(#estate{
-      location = lens:c(lens:at(location), generic:lens(#address{})),
-      owner    = lens:c(lens:at(owner), generic:lens(#person{}))
+   Lens = generic:lens(#estate{
+      location = generic:lens(#address{}), 
+      owner    = generic:lens(#person{})
    }),
    _Estate = lens:get(Lens, Generic).
 

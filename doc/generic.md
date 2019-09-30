@@ -46,7 +46,7 @@ Be aware that type testing of records does not validates types of record fields.
 Erlang offers few features that helps with generic programming:
 
 1. record expressions are translated to tuple by compiler, use `element/2` and `setelement/3` for generic access to tuple elements.
-2. functions `tuple_to_list/1` and `list_to_tuple/1` are transformers to another an alternative generic representation.
+2. functions `tuple_to_list/1` and `list_to_tuple/1` are transformers to an alternative generic representation.
 3. pseudo function `record_info/2` to obtain record structure.
 
 As an example, a typical macro here to cast record type to the map:
@@ -75,7 +75,7 @@ Unfortunately, usage of records have a couple of disadvantages that makes they u
 
 For these reasons, we would like to improve records runtime flexibility through `parse_transform` while keeping its compile-time benefits for domain modeling.
 
-The latest release of library aims on most common tasks in software engineering: representation switching or data transformation.
+The latest release of library's generic feature aims on most common tasks in software engineering: representation switching or data transformation.
 
 
 ## Switching representations
@@ -217,7 +217,7 @@ examples_generic_io:recv(#person{}).
 
 ### Custom encoders/decoders
 
-Only flat data structures are supported at the moment. You still need to deal with custom derivation. There are few approaches here
+Only flat data structures are supported at the moment. You still need to deal with custom derivation in complex use-cases. There are few approaches here
 
 You can write encoder from scratch. In many cases semi-auto and assisted derivation helps you here -- you only writes a custom code for container types but you benefit of derived codec for atomic one.
 
@@ -237,15 +237,15 @@ custom_codec() ->
    }).      
 ```
 
-The custom decoder requires traversal through generic data structures. This task do not differs from traditional approach, which involves a portion of boilerplate. The library offers only a [lens abstraction](lens.md) to solve the problem in a relatively boilerplate-free way.
+The custom decoder requires traversal through generic data structures. This task do not differs from traditional approach, which involves a portion of boilerplate. The library offers a [lens abstraction](lens.md) to solve the problem in a relatively boilerplate-free way.
 
 ```erlang
 
 custom_decoder() ->
    ...
-   Lens = lens:p(#estate{
-      location = lens:c(lens:at(location), generic:lens(#address{})),
-      owner    = lens:c(lens:at(owner), generic:lens(#person{}))
+   Lens = generic:lens(#estate{
+      location = generic:lens(#address{}), 
+      owner    = generic:lens(#person{})
    }),
    Estate = lens:get(Lens, Generic).
 

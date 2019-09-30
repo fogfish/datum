@@ -29,12 +29,14 @@
 ,  generic_partial_assisted/1
 ,  generic_lens/1
 ,  generic_lens_assisted/1
+,  generic_lens_custom/1
 ,  labelled/1
 ,  labelled_assisted/1
 ,  labelled_partial/1
 ,  labelled_partial_assisted/1
 ,  labelled_lens/1
 ,  labelled_lens_assisted/1
+,  labelled_lens_custom/1
 ]).
 
 -record(adt, {a, b, c}).
@@ -145,6 +147,17 @@ generic_lens_assisted(_) ->
 
 %%
 %%
+generic_lens_custom(_) ->
+   Struct  = #{a => <<"1">>, b => <<"test">>, c => 2.0},
+   Expect  = #adt{a = 1, b = <<"test">>, c = 2.0},
+
+   Lens = generic:lens(#adt{a = int()}),
+
+   Expect = lens:get(Lens, Struct),
+   [Expect] = lens:get(lens:c(lens:traverse(), Lens), [Struct]).
+
+%%
+%%
 labelled(_) ->
    Struct  = #adt{a = 1, b = <<"test">>, c = 2.0},
    Expect  = #{<<"a">> => 1, <<"b">> => <<"test">>, <<"c">> => 2.0},
@@ -220,6 +233,16 @@ labelled_lens_assisted(_) ->
    Expect = lens:get(Lens, Struct),
    [Expect] = lens:get(lens:c(lens:traverse(), Lens), [Struct]).
 
+%%
+%%
+labelled_lens_custom(_) ->
+   Struct  = #{<<"a">> => <<"1">>, <<"b">> => <<"test">>, <<"c">> => 2.0},
+   Expect  = #adt{a = 1, b = <<"test">>, c = 2.0},
+
+   Lens = labelled:lens(#adt{a = int()}),
+
+   Expect = lens:get(Lens, Struct),
+   [Expect] = lens:get(lens:c(lens:traverse(), Lens), [Struct]).
 %%%------------------------------------------------------------------
 %%%
 %%% helpers
@@ -232,3 +255,8 @@ transform(Code) ->
    Fun  = [{function, 1, a, 1, [{clause, 1, [], [], Forms}]}],
    [{function, _, _, _, _}] = generic:parse_transform(Fun, []),
    ok.
+
+int() ->
+   fun(Fun, Value) ->
+      lens:fmap(fun(X) -> X end, Fun(typecast:i(Value)))
+   end.
