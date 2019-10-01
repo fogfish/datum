@@ -11,7 +11,6 @@
       {env, []},
 
       {licenses, ["Apache"]},
-      {maintainers, ["Dmitry Kolesnikov"]},
       {links, [
          {"GitHub", "https://github.com/fogfish/datum"}
       ]}
