@@ -6,10 +6,10 @@
 -export([
     generic_of/2
 ,   generic_to/3
-,   generic_lens/2
+,   generic_lens/3
 ,   labelled_of/2
 ,   labelled_to/3
-,   labelled_lens/2
+,   labelled_lens/3
 ,   parse_transform/2
 ]).
 
@@ -51,12 +51,20 @@ generic_to(Type, Fields, Generics)
 
 %%
 %%
--spec generic_lens(atom(), [atom()]) -> datum:lens().
+-spec generic_lens(atom(), [atom()], [{atom(), datum:lens()}]) -> datum:lens().
 
-generic_lens(Type, Fields) ->
+generic_lens(Type, Fields, Lenses) ->
     lens:p(list_to_tuple([Type |
-        [lens:at(X) || X <- Fields]]
+        [generic_lens_at(X, Lenses) || X <- Fields]]
     )).
+
+generic_lens_at(Field, Lenses) ->
+    case lists:keyfind(Field, 1, Lenses) of
+        {_, Lens} when is_function(Lens) ->
+            lens:c(lens:at(Field), Lens);
+        _ ->
+            lens:at(Field)
+    end.
 
 %%
 %%
@@ -95,12 +103,20 @@ labelled_to(Type, Fields, Generics)
 
 %%
 %%
--spec labelled_lens(atom(), [atom()]) -> datum:lens().
+-spec labelled_lens(atom(), [atom()], [{atom(), datum:lens()}]) -> datum:lens().
 
-labelled_lens(Type, Fields) ->
+labelled_lens(Type, Fields, Lenses) ->
     lens:p(list_to_tuple([Type |
-        [lens:at(typecast:s(X)) || X <- Fields]]
+        [labelled_lens_at(X, Lenses) || X <- Fields]]
     )).
+
+labelled_lens_at(Field, Lenses) ->
+    case lists:keyfind(Field, 1, Lenses) of
+        {_, Lens} when is_function(Lens) ->
+            lens:c(lens:at(typecast:s(Field)), Lens);
+        _ ->
+            lens:at(typecast:s(Field))
+    end.
 
 %%
 %%
@@ -134,15 +150,15 @@ hook_generic({call, Ln,
 
 hook_generic({call, Ln,
     {remote, _, {atom, _, generic}, {atom, _, lens}},
-    [{record, _, Type, _}]
+    [{record, _, Type, Lenses}]
 }) ->
-    cc_lens(Ln, generic_lens, Type);
+    cc_lens(Ln, generic_lens, Type, cc_lens_explicit(Ln, Lenses));
 
 hook_generic({call, Ln,
     {remote, _, {atom, _, generic}, {atom, _, lens}},
-    [Spec, {record, _, Type, _}]
+    [Spec, {record, _, Type, Lenses}]
 }) ->
-    cc_lens(Ln, generic_lens, Spec, Type);
+    cc_lens(Ln, generic_lens, Spec, Type, cc_lens_explicit(Ln, Lenses));
 
 hook_generic({call, Ln, 
     {remote, _, {atom, _, generic_of}, {atom, _, Type}},
@@ -197,15 +213,15 @@ hook_generic({call, Ln,
 
 hook_generic({call, Ln,
     {remote, _, {atom, _, labelled}, {atom, _, lens}},
-    [{record, _, Type, _}]
+    [{record, _, Type, Lenses}]
 }) ->
-    cc_lens(Ln, labelled_lens, Type);
+    cc_lens(Ln, labelled_lens, Type, cc_lens_explicit(Ln, Lenses));
 
 hook_generic({call, Ln,
     {remote, _, {atom, _, labelled}, {atom, _, lens}},
-    [Spec, {record, _, Type, _}]
+    [Spec, {record, _, Type, Lenses}]
 }) ->
-    cc_lens(Ln, labelled_lens, Spec, Type);
+    cc_lens(Ln, labelled_lens, Spec, Type, cc_lens_explicit(Ln, Lenses));
 
 hook_generic({call, Ln, 
     {remote, _, {atom, _, labelled_of}, {atom, _, Type}},
@@ -357,23 +373,31 @@ cc_explicit_to(Ln, With, Type, Spec, Struct) ->
         ]
     }.
 
-cc_lens(Ln, With, Type) ->
+cc_lens(Ln, With, Type, Lenses) ->
     {call, Ln,
         {remote, Ln, {atom, Ln, generic}, {atom, Ln, With}},
         [
             {atom, Ln, Type},
-            {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]}
+            {call, Ln, {atom, Ln, record_info}, [{atom, Ln, fields}, {atom, Ln, Type}]},
+            Lenses
         ]
     }.
 
-cc_lens(Ln, With, Spec, Type) ->
+cc_lens(Ln, With, Spec, Type, Lenses) ->
     {call, Ln,
         {remote, Ln, {atom, Ln, generic}, {atom, Ln, With}},
         [
             {atom, Ln, Type},
-            Spec
+            Spec,
+            Lenses
         ]
     }.
+
+cc_lens_explicit(Ln0, [{record_field, Ln, {atom, _, _} = Key, {call, _, _, _} = Lens} | Tail]) ->
+    {cons, Ln, {tuple, Ln, [Key, expr(Lens)]}, cc_lens_explicit(Ln0, Tail)};
+
+cc_lens_explicit(Ln, []) ->
+    {nil, Ln}.
 
 %%%------------------------------------------------------------------
 %%%
