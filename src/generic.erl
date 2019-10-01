@@ -393,14 +393,8 @@ cc_lens(Ln, With, Spec, Type, Lenses) ->
         ]
     }.
 
-cc_lens_explicit(Ln0, [{record_field, Ln, {atom, _, _} = Key, {call, _, {remote, _, {atom, _, generic}, _}, _} = Lens} | Tail]) ->
-    {cons, Ln, {tuple, Ln, [Key, hook_generic(Lens)]}, cc_lens_explicit(Ln0, Tail)};
-
-cc_lens_explicit(Ln0, [{record_field, Ln, {atom, _, _} = Key, {call, _, {remote, _, {atom, _, labelled}, _}, _} = Lens} | Tail]) ->
-    {cons, Ln, {tuple, Ln, [Key, hook_generic(Lens)]}, cc_lens_explicit(Ln0, Tail)};
-
 cc_lens_explicit(Ln0, [{record_field, Ln, {atom, _, _} = Key, {call, _, _, _} = Lens} | Tail]) ->
-    {cons, Ln, {tuple, Ln, [Key, Lens]}, cc_lens_explicit(Ln0, Tail)};
+    {cons, Ln, {tuple, Ln, [Key, expr(Lens)]}, cc_lens_explicit(Ln0, Tail)};
 
 cc_lens_explicit(Ln, []) ->
     {nil, Ln}.
