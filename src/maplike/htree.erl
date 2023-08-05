@@ -52,6 +52,8 @@
 -define(CONFIG_HTREE_WIDTH,     2).
 -endif.
 
+-export_type([inner/0, tree/0, leaf/0]).
+
 %%
 %% data types
 -type(leaf()     :: [{key(), val()}]).   %% leaf node container
