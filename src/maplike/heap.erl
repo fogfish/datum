@@ -66,6 +66,8 @@
    remove/2
 ]).
 
+-export_type([heap/0, rank/0]).
+
 -type heap()  :: datum:option({heap(), rank(), key(), val(), heap()}).
 -type key()   :: _.
 -type val()   :: _.
